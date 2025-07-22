@@ -1,0 +1,15 @@
+<?php
+
+namespace Programster\Stripe\Enums;
+class ExceptionInvalidDropdownValue extends \Exception
+{
+    public function __construct(private readonly string $value)
+    {
+        parent::__construct("Dropdown option value is not alphanumeric.");
+    }
+
+    public function getValue(): string
+    {
+        return $this->value;
+    }
+}

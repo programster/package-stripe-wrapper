@@ -1,0 +1,32 @@
+{
+    "name": "programster/stripe-wrapper",
+    "type": "sdk",
+    "description": "A wrapper around the stipe/stripe-php SDK in order to make life easier.",
+    "keywords": ["stripe","sdk"],
+    "homepage": "https://github.com/programster/package-stripe-wrapper",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Stuart Page",
+            "email": "sdpagent@gmail.com",
+            "homepage": "https://blog.programster.org",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=8.3.0",
+        "stripe/stripe-php": "^16.3",
+        "ext-curl": "*",
+        "programster/collections": "^0.1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Programster\\Stripe\\": "src/",
+            "Programster\\Stripe\\Collections\\": "src/collections/",
+            "Programster\\Stripe\\Enums\\": "src/enums/",
+            "Programster\\Stripe\\Exceptions\\": "src/exceptions/",
+            "Programster\\Stripe\\Interfaces\\": "src/interfaces/",
+            "Programster\\Stripe\\Models\\": "src/models/"
+        }
+    }
+}
