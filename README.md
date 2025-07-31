@@ -143,7 +143,7 @@ $items = new SubscriptionLineItemCollection(
     )
 );
 
-$checkoutSession = $client->createheckoutSessionForSubscription(
+$checkoutSession = $client->createCheckoutSessionForSubscription(
     flowConfig: $flowConfig,
     items: $items,
 );

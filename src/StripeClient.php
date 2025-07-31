@@ -377,7 +377,7 @@ readonly class StripeClient
      *
      * @throws ApiErrorException
      */
-    public function createheckoutSessionForSubscription(
+    public function createCheckoutSessionForSubscription(
         FlowConfig                      $flowConfig,
         SubscriptionLineItemCollection   $items,
         ?SubscriptionData                $subscriptionData = null,
