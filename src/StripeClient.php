@@ -613,8 +613,15 @@ readonly class StripeClient
         return Session::create($params);
     }
 
-    public function createCheckoutSessionForSetup()
-    {
 
+    /**
+     * Retrieve a Stripe checkout session by ID.
+     * @param string $checkoutSessionId - the ID of the session to retrieve.
+     * @return Session - The Stripe checkout session.
+     * @throws ApiErrorException
+     */
+    public function retrieveCheckoutSession(string $checkoutSessionId) : Session
+    {
+        return Session::retrieve($checkoutSessionId);
     }
 }
