@@ -162,9 +162,12 @@ readonly class StripeClient
      *
      * @param FlowConfig $flowConfig
      *
-     * @param SubscriptionLineItemCollection $items
+     * @param SinglePaymentLineItemsCollection $items - A collection of SinglePaymentLineItem objects that are being
+     * purchased.
      *
-     * @param PaymentIntentData|null $paymentIntentData
+     * @param PaymentIntentData|null $paymentIntentData - A subset of parameters to be passed to PaymentIntent creation
+     * for Checkout Sessions in payment mode.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data
      *
      * @param string|null $customerEmail - optionally provide the customer's email address. If provided, this value
      * will be used when the Customer object is created. If not provided, customers will be asked to enter their email
@@ -284,7 +287,7 @@ readonly class StripeClient
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,
-        PaymentIntentData                $paymentIntent = null,
+        ?PaymentIntentData               $paymentIntent = null,
         ?string                          $paymentMethodConfigurationId = null,
         ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes = null,
         ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
