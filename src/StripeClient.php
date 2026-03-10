@@ -33,6 +33,7 @@ use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollection;
 use Programster\Stripe\Models\TimePeriod;
 use Stripe\Checkout\Session;
+use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
 use Stripe\Subscription;
@@ -103,6 +104,45 @@ readonly class StripeClient
 
         $subscriptions = $this->m_underlyingStripeClient->subscriptions->all($params);
         return $subscriptions;
+    }
+
+
+    /**
+     * Retrieve payment intents in the account.
+     * https://docs.stripe.com/api/payment_intents/list
+     * @param string|null $customerId - optionally specify the (Stripe) ID of a customer to retrieve payment intents
+     * specific to them.
+     * @param string|null $customerAccountId - optionally specify the Stripe account ID to retrieve payments related
+     * to them.
+     * @param TimePeriod|null $created
+     * @param string|null $cursorStartingAfter
+     * @param string|null $cursorEndingBefore
+     * @param string|null $testClock
+     * @param int $limit - A limit on the number of objects to be returned. Limit can range between 1 and 100.
+     * @return Collection
+     * @throws ApiErrorException
+     */
+    public function listPaymentIntents(
+        ?string $customerId = null,
+        ?string $customerAccountId = null,
+        ?TimePeriod $created = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?string $testClock = null,
+        int $limit = 100,
+    ) : Collection
+    {
+        $params = ['limit' => $limit];
+
+        if ($customerId !== null) { $params['customer'] = $customerId; }
+        if ($customerAccountId !== null) { $params['customer_account'] = $customerAccountId; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+
+        $paymentIntents = $this->m_underlyingStripeClient->paymentIntents->all($params);
+        return $paymentIntents;
     }
 
 
