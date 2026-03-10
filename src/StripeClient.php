@@ -347,7 +347,7 @@ readonly class StripeClient
         if ($afterExpiration !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
         if ($allowPromoCodes !== null) { $params['allow_promotion_codes'] = $allowPromoCodes; }
         if ($billingAddressCollection !== null) { $params['billing_address_collection'] = $billingAddressCollection->value; }
-        if ($consentConfig !== null) { $params['consent_config'] = $consentConfig->toArray(); }
+        if ($consentConfig !== null) { $params['consent_collection'] = $consentConfig->toArray(); }
         if ($currency !== null) { $params['currency'] = $currency->value; }
         if ($customFields !== null) { $params['custom_fields'] = $customFields->toStripeArrayForm(); }
         if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
@@ -565,7 +565,7 @@ readonly class StripeClient
         if ($afterExpiration !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
         if ($allowPromoCodes !== null) { $params['allow_promotion_codes'] = $allowPromoCodes; }
         if ($billingAddressCollection !== null) { $params['billing_address_collection'] = $billingAddressCollection->value; }
-        if ($consentConfig !== null) { $params['consent_config'] = $consentConfig->toArray(); }
+        if ($consentConfig !== null) { $params['consent_collection'] = $consentConfig->toArray(); }
         if ($currency !== null) { $params['currency'] = $currency->value; }
         if ($customFields !== null) { $params['custom_fields'] = $customFields->toStripeArrayForm(); }
         if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
