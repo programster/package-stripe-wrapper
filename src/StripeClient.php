@@ -2,6 +2,7 @@
 
 namespace Programster\Stripe;
 
+use DateTime;
 use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\collections\SubscriptionLineItemCollection;
@@ -14,6 +15,8 @@ use Programster\Stripe\Enums\CustomerCreation;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Enums\SubmitType;
+use Programster\Stripe\Enums\SubscriptionCollectionMethod;
+use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
 use Programster\Stripe\Models\CustomTextOptions;
@@ -28,15 +31,128 @@ use Programster\Stripe\Models\StripeConnectPaymentConfig;
 use Programster\Stripe\Models\StripeConnectSubscriptionConfig;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollection;
+use Programster\Stripe\Models\TimePeriod;
 use Stripe\Checkout\Session;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
+use Stripe\Subscription;
 
 readonly class StripeClient
 {
+    private \Stripe\StripeClient $m_underlyingStripeClient;
+
+
     public function __construct(private string $secretKey)
     {
+        $this->m_underlyingStripeClient = new \Stripe\StripeClient($secretKey);
         Stripe::setApiKey($this->secretKey);
+    }
+
+
+    /**
+     * List subscriptions - https://docs.stripe.com/api/subscriptions/list?lang=php
+     * @param string|null $customerId - optionally pass the ID of a customer to filter subscriptions to those belonging
+     * to a specific customer.
+     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
+     * subscriptions after this pointer.
+     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
+     *  subscriptions before this pointer.
+     * @param string|null $priceId - optionally filter for subscriptions that contain this recurring price ID.
+     * @param TimePeriod|null $created - optionally filter subscriptions created within a certain time period
+     * @param TimePeriod|null $currentPeriodEnd - Only return subscriptions whose current_period_end falls within the
+     * given date interval.
+     * @param TimePeriod|null $currentPeriodStart - Only return subscriptions whose current_period_start falls within
+     * the given date interval.
+     * @param SubscriptionStatus|null $subscriptionStatus - filter subscriptions by their status.
+     * @param bool|null $automaticTaxEnabled - filter subscriptions based on whether they have auto tax enabled or not.
+     * @param SubscriptionCollectionMethod|null $collectionMethod - filter subscriptions based on whether they auto
+     * charge or send an invoice to be paid.
+     * @param string|null $testClock - optionally filter subscriptions that have the specified test clock in development.
+     * @param int $limit - optionally specify the limit to the number of subscriptions in the result (pagination). This
+     * package's default is 100, which is the maximum, so you can only override it to reduce the number.
+     * @return \Stripe\Collection
+     * @throws ApiErrorException
+     */
+    public function listSubscriptions(
+        ?string $customerId = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?string $priceId = null,
+        ?TimePeriod $created = null,
+        ?TimePeriod $currentPeriodEnd = null,
+        ?TimePeriod $currentPeriodStart = null,
+        ?SubscriptionStatus $subscriptionStatus = null,
+        ?bool $automaticTaxEnabled = null,
+        ?SubscriptionCollectionMethod $collectionMethod = null,
+        ?string $testClock = null,
+        int $limit = 100,
+    )
+    {
+        $params = ['limit' => $limit];
+
+        if ($customerId !== null) { $params['customer'] = $customerId; }
+        if ($priceId !== null) { $params['price'] = $priceId; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($currentPeriodEnd !== null) { $params['current_period_end'] = $currentPeriodEnd->toArray(); }
+        if ($currentPeriodStart !== null) { $params['current_period_start'] = $currentPeriodStart->toArray(); }
+        if ($subscriptionStatus !== null) { $params['status'] = $subscriptionStatus->value; }
+        if ($automaticTaxEnabled !== null) { $params['automatic_tax'] = $automaticTaxEnabled; }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+
+        $subscriptions = $this->m_underlyingStripeClient->subscriptions->all($params);
+        return $subscriptions;
+    }
+
+
+    public function listCustomers(
+        ?string $email = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?TimePeriod $created = null,
+        ?string $testClock = null,
+        int $limit = 100,
+    )
+    {
+        $params = ['limit' => $limit];
+
+        if ($email !== null) { $params['email'] = $email; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+
+        $customers = $this->m_underlyingStripeClient->customers->all($params);
+        return $customers;
+    }
+
+
+    /**
+     * Returns a list of charges you’ve previously created. The charges are returned in sorted order, with the most
+     * recent charges appearing first.
+     */
+    public function listCharges(
+        ?string $customerId = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?TimePeriod $created = null,
+        ?string $paymentIntent = null,
+        ?string $transferGroup = null,
+        int $limit = 100,
+    )
+    {
+        $params = ['limit' => $limit];
+
+        if ($customerId !== null) { $params['customer'] = $customerId; }
+        if ($paymentIntent !== null) { $params['payment_intent'] = $paymentIntent; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($transferGroup !== null) { $params['transfer_group'] = $transferGroup; }
+
+        $customers = $this->m_underlyingStripeClient->charges->all($params);
+        return $customers;
     }
 
 
@@ -103,10 +219,9 @@ readonly class StripeClient
      * @param BillingAddressCollection $billingAddressCollection - Describe whether Checkout should collect the
      * customer’s billing address.
      *
-     * @param CountryCodeCollection|null $allowedShippingLocations - optionally specify a list of countries to allow
-     * Stripe to collect a shipping address for, for shipping a product as part of this transaction. E.g. if you are
-     * selling a product to be shipped, and you only ship to the UK, you need to fill in a collection with one element
-     * identifying the UK. If you don't provide this, then Stripe won't collect a shipping address!
+     * @param CountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to collect the
+     * customer's shipping address for the transaction. This will need to be the country codes of the countries that
+     * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
      *
      * @param TaxIdCollection|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
@@ -164,7 +279,7 @@ readonly class StripeClient
         ?AfterExpiration                 $afterExpiration = null,
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection           $allowedShippingLocations = null,
+        ?CountryCodeCollection           $shippingAddressCollection = null,
         ?TaxIdCollection                 $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
@@ -235,10 +350,10 @@ readonly class StripeClient
         if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
         if ($taxIdCollection !== null) { $params['tax_id_collection'] = $taxIdCollection->toArray(); }
 
-        if ($allowedShippingLocations !== null)
+        if ($shippingAddressCollection !== null)
         {
             $params['shipping_address_collection'] = [
-                'allowed_countries' => $allowedShippingLocations->toStripeArrayForm()
+                'allowed_countries' => $shippingAddressCollection->toStripeArrayForm()
             ];
         }
 
@@ -282,7 +397,8 @@ readonly class StripeClient
     /**
      * Create a checkout session object for a subscription payment, rather than a one-time payment, or setting up a
      * customer. This can contain items that are paid for once, but should be used when there is at least one item
-     * that has a subscription payment.
+     * that has a subscription payment. Please note that customerCreation is deliberately not included in this method
+     * as Stripe does not allow it, as it is not applicable, like it is for createCheckoutSessionForSinglePayment
      * https://docs.stripe.com/api/checkout/sessions/create
      *
      * @param FlowConfig $flowConfig
@@ -316,11 +432,6 @@ readonly class StripeClient
      * @param ExistingCustomer|null $existingStripeCustomer - if you have an existing stripe customer ID, create one
      * of these objects with it, and optionally a configuration for whether that customer is updatable.
      *
-     * @param CustomerCreation|null $customerCreation - specify if a customer should be created in Stripe or not for this
-     * payment. The value and docs talk about "if required", which is the case for a subscription, but this method is
-     * for a payment, so creating a customer should not be required.
-     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
-     *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice for the one-time payment
      * should be created. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
      *
@@ -342,10 +453,9 @@ readonly class StripeClient
      *
      * @param BillingAddressCollection $billingAddressCollection
      *
-     * @param CountryCodeCollection|null $allowedShippingLocations - optionally specify a list of countries to allow
-     * Stripe to collect a shipping address for, for shipping a product as part of this transaction. E.g. if you are
-     * selling a product to be shipped, and you only ship to the UK, you need to fill in a collection with one element
-     * identifying the UK. If you don't provide this, then Stripe won't collect a shipping address!
+     * @param CountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to collect the
+     * customer's shipping address for the transaction. This will need to be the country codes of the countries that
+     * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
      *
      * @param TaxIdCollection|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
@@ -388,7 +498,6 @@ readonly class StripeClient
         ?Locale                          $locale = null,
         ?Currency                        $currency = null,
         ?ExistingCustomer                $existingStripeCustomer = null,
-        ?CustomerCreation                $customerCreation = null,
         ?InvoiceCreation                 $invoiceCreation = null,
         ?CustomTextOptions               $customTextOptions = null,
         ?StripeConnectSubscriptionConfig $stripeConnectConfig = null,
@@ -397,7 +506,7 @@ readonly class StripeClient
         ?AfterExpiration                 $afterExpiration = null,
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection           $allowedShippingLocations = null,
+        ?CountryCodeCollection           $shippingAddressCollection = null,
         ?TaxIdCollection                 $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
@@ -412,7 +521,6 @@ readonly class StripeClient
 
         $params['mode'] = SessionMode::SUBSCRIPTION->value;
         $params['line_items'] = $items->toStripeArrayForm();
-        $params['customer_creation'] = $customerCreation->value;
 
         if ($stripeConnectConfig !== null)
         {
@@ -460,10 +568,10 @@ readonly class StripeClient
         if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
         if ($taxIdCollection !== null) { $params['tax_id_collection'] = $taxIdCollection->toArray(); }
 
-        if ($allowedShippingLocations !== null)
+        if ($shippingAddressCollection !== null)
         {
             $params['shipping_address_collection'] = [
-                'allowed_countries' => $allowedShippingLocations->toStripeArrayForm()
+                'allowed_countries' => $shippingAddressCollection->toStripeArrayForm()
             ];
         }
 
