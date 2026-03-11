@@ -279,8 +279,6 @@ readonly class StripeClient
      *
      * @param CustomFieldCollection|null $customFields
      *
-     * @param PaymentIntentData|null $paymentIntent
-     *
      * @param string|null $paymentMethodConfigurationId - optionally provide the ID of the payment method configuration
      * to use with this Checkout session. https://docs.stripe.com/api/payment_methods
      *
@@ -294,7 +292,7 @@ readonly class StripeClient
      * @param SubmitType $submitType - Describes the type of transaction being performed by Checkout in order to
      * customize relevant text on the page, such as the submit button. submit_type can only be specified on Checkout
      * Sessions in payment mode.
-     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-submit_type
+     * https://docs.stripe.com/api/checkout/sessions/create
      *
      * @param Metadata|null $metadata
      *
@@ -327,7 +325,6 @@ readonly class StripeClient
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,
-        ?PaymentIntentData               $paymentIntent = null,
         ?string                          $paymentMethodConfigurationId = null,
         ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes = null,
         ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
@@ -345,31 +342,14 @@ readonly class StripeClient
             $params['customer_creation'] = $customerCreation->value;
         }
 
-        if ($stripeConnectConfig !== null)
+        if ($paymentIntentData !== null)
         {
-            if ($paymentIntentData !== null)
-            {
-                $paymentIntentDataArray = $paymentIntentData->toArray();
-                $paymentIntentDataArray = array_merge($paymentIntentDataArray, $stripeConnectConfig->getParams());
-            }
-            else
-            {
-                $paymentIntentDataArray = $stripeConnectConfig->getParams();;
-            }
-
-            $params['subscription_data'] = $paymentIntentDataArray;
+            $params['payment_intent_data'] = $paymentIntentData->toArray();
         }
 
         if ($invoiceCreation !== null)
         {
-            $invoiceCreationArray = $invoiceCreation->toArray();
-
-            if ($stripeConnectConfig !== null)
-            {
-                $invoiceCreationArray['invoice_data']['issuer'] = $stripeConnectConfig->getIssuerObj();
-            }
-
-            $params['invoice_creation'] = $invoiceCreationArray;
+            $params['invoice_creation'] = $invoiceCreation->toArray();
         }
 
         $params['submit_type'] = $submitType->value;
@@ -415,7 +395,6 @@ readonly class StripeClient
         }
 
         if ($locale !== null) { $params['locale'] = $locale->value; }
-        if ($paymentIntent !== null) { $params['payment_intent'] = $paymentIntent->toArray(); }
         if ($paymentMethodConfigurationId !== null) { $params['payment_method_configuration'] = $paymentMethodConfigurationId; }
         if ($allowedPaymentMethodTypes !== null ) { $params['payment_method_types'] = $allowedPaymentMethodTypes->toStripeArrayForm(); }
         if ($savedPaymentMethodOptions !== null) { $params['saved_payment_method_options'] = $savedPaymentMethodOptions->toArray(); }

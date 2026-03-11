@@ -19,6 +19,7 @@ readonly class PaymentIntentData implements Arrayable
      * applied to the payment and transferred to the application owner’s Stripe account. The amount of the application
      * fee collected will be capped at the total payment amount. For more information, see the PaymentIntents use case
      * for connected accounts: https://docs.stripe.com/connect/charges
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-application_fee_amount
      *
      * @param string|null $description - An arbitrary string attached to the object. Often useful for displaying to
      * users.
