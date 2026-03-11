@@ -169,8 +169,53 @@ readonly class StripeClient
 
 
     /**
+     * Returns a list of all refunds you created. We return the refunds in sorted order, with the most recent refunds
+     * appearing first. The 10 most recent refunds are always available by default on the Charge object.
+     * https://docs.stripe.com/api/refunds/list
+     * @param string|null $chargeId - optionally provide the ID of a charge, in order to only get refunds for that
+     * charge.
+     * @param string|null $paymentIntentId - optionally provide the ID of a charge, in order to only get refunds for
+     * that payment intent.
+     * @param string|null $cursorStartingAfter
+     * @param string|null $cursorEndingBefore
+     * @param TimePeriod|null $created
+     * @param int $limit
+     * @return Collection
+     * @throws ApiErrorException
+     */
+    public function listRefunds(
+        ?string $chargeId = null,
+        ?string $paymentIntentId = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?TimePeriod $created = null,
+        int $limit = 100,
+    ) : Collection
+    {
+        $params = ['limit' => $limit];
+
+        if ($chargeId !== null) { $params['charge'] = $chargeId; }
+        if ($paymentIntentId !== null) { $params['payment_intent'] = $paymentIntentId; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+
+        return $this->m_underlyingStripeClient->charges->all($params);
+    }
+
+
+    /**
      * Returns a list of charges you’ve previously created. The charges are returned in sorted order, with the most
      * recent charges appearing first.
+     * @param string|null $customerId
+     * @param string|null $cursorStartingAfter
+     * @param string|null $cursorEndingBefore
+     * @param TimePeriod|null $created
+     * @param string|null $paymentIntent
+     * @param string|null $transferGroup
+     * @param int $limit
+     * @return Collection
+     * @throws ApiErrorException
      */
     public function listCharges(
         ?string $customerId = null,
@@ -180,7 +225,7 @@ readonly class StripeClient
         ?string $paymentIntent = null,
         ?string $transferGroup = null,
         int $limit = 100,
-    )
+    ) : Collection
     {
         $params = ['limit' => $limit];
 
