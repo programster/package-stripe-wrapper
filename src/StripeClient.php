@@ -12,6 +12,7 @@ use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Enums\BillingAddressCollection;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
+use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Enums\SubmitType;
@@ -48,6 +49,7 @@ readonly class StripeClient
         $this->m_underlyingStripeClient = new \Stripe\StripeClient($secretKey);
         Stripe::setApiKey($this->secretKey);
     }
+
 
 
     /**
@@ -143,6 +145,56 @@ readonly class StripeClient
 
         $paymentIntents = $this->m_underlyingStripeClient->paymentIntents->all($params);
         return $paymentIntents;
+    }
+
+
+    /**
+     * You can list all invoices, or list the invoices for a specific customer. The invoices are returned sorted by
+     * creation date, with the most recently created invoices appearing first.
+     * https://docs.stripe.com/api/invoices/list
+     * @param string|null $customerId - optionally specify a customer ID to only fetch invoices relating to that
+     * customer.
+     * @param string|null $customerAccount - optionally specify a customer account to only fetch invoices relating to
+     * that customer.
+     * @param InvoiceStatus|null $status - optionally provide a status to only show invoices with that status.
+     * @param string|null $subscriptionId - optionally provide the ID of a subscription to only retrieve invoices
+     * related to that subscription.
+     * @param SubscriptionCollectionMethod|null $collectionMethod - optionally specify a collection method to filter by.
+     * @param string|null $cursorStartingAfter
+     * @param string|null $cursorEndingBefore
+     * @param TimePeriod|null $created
+     * @param string|null $testClock
+     * @param int $limit
+     * @return Collection
+     * @throws ApiErrorException
+     */
+    public function listInvoices(
+        ?string $customerId = null,
+        ?string $customerAccount = null,
+        ?InvoiceStatus $status = null,
+        ?string $subscriptionId = null,
+        ?SubscriptionCollectionMethod $collectionMethod = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?TimePeriod $created = null,
+        ?string $testClock = null,
+        int $limit = 100,
+    )
+    {
+        $params = ['limit' => $limit];
+
+        if ($customerId !== null) { $params['customer'] = $customerId; }
+        if ($customerAccount !== null) { $params['customer_account'] = $customerId; }
+        if ($status !== null) { $params['status'] = $status->value; }
+        if ($subscriptionId !== null) { $params['subscription'] = $subscriptionId; }
+        if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+
+        $invoices = $this->m_underlyingStripeClient->invoices->all($params);
+        return $invoices;
     }
 
 
