@@ -200,7 +200,7 @@ readonly class StripeClient
         if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
 
-        return $this->m_underlyingStripeClient->charges->all($params);
+        return $this->m_underlyingStripeClient->refunds->all($params);
     }
 
 
