@@ -15,7 +15,7 @@
     ],
     "require": {
         "php": ">=8.3.0",
-        "stripe/stripe-php": "^16.3",
+        "stripe/stripe-php": "^v19.4.0",
         "ext-curl": "*",
         "programster/collections": "^0.1.0"
     },

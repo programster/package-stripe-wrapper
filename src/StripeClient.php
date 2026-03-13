@@ -2,7 +2,6 @@
 
 namespace Programster\Stripe;
 
-use DateTime;
 use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\collections\SubscriptionLineItemCollection;
@@ -37,7 +36,6 @@ use Stripe\Checkout\Session;
 use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
-use Stripe\Subscription;
 
 readonly class StripeClient
 {
@@ -380,7 +378,7 @@ readonly class StripeClient
      * to use with this Checkout session. https://docs.stripe.com/api/payment_methods
      *
      * @param PaymentMethodTypeCollection|null $allowedPaymentMethodTypes - optionally provide a list of the payment
-     * method types you would allow the user to pay through on checkout. E.g. ['card'
+     * method types you would allow the user to pay through on checkout. E.g. ['card']
      *
      * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions - Controls saved payment method settings for
      * the session.
@@ -594,7 +592,7 @@ readonly class StripeClient
      * to use with this Checkout session. https://docs.stripe.com/api/payment_methods
      *
      * @param PaymentMethodTypeCollection|null $allowedPaymentMethodTypes - optionally provide a list of the payment
-     * method types you would allow the user to pay through on checkout. E.g. ['card'
+     * method types you would allow the user to pay through on checkout. E.g. ['card']
      *
      * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions - Controls saved payment method settings for
      * the session.
