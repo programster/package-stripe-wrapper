@@ -161,6 +161,10 @@ readonly class StripeClient
      * @param string|null $cursorStartingAfter
      * @param string|null $cursorEndingBefore
      * @param TimePeriod|null $created
+     * @param bool $expandPayments - if set to true (default), then this will include details of all the payments made
+     * against an invoice. You need this if you wish to look up the payment intents that relate to an invoice (which
+     * is generally the only way to work out which payment intents were against a subscription.
+     * E.g. subscription -> invoices -> payment intents)
      * @param string|null $testClock
      * @param int $limit
      * @return Collection
@@ -175,6 +179,7 @@ readonly class StripeClient
         ?string $cursorStartingAfter = null,
         ?string $cursorEndingBefore = null,
         ?TimePeriod $created = null,
+        bool $expandPayments = true,
         ?string $testClock = null,
         int $limit = 100,
     )
@@ -190,9 +195,9 @@ readonly class StripeClient
         if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
+        if ($expandPayments === true) { $params['expand'] = ['data.payments']; }
 
-        $invoices = $this->m_underlyingStripeClient->invoices->all($params);
-        return $invoices;
+        return $this->m_underlyingStripeClient->invoices->all($params);
     }
 
 
