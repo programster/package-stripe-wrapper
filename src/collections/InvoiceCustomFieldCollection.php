@@ -20,7 +20,7 @@ class InvoiceCustomFieldCollection extends AbstractCollection
 
         foreach ($arrayCopy as $item)
         {
-            /* @var $item \Programster\Stripe\Models\InvoiceCustomField */
+            /* @var $item InvoiceCustomField */
             $nestedArrayForm[] = $item->toArray();
         }
 

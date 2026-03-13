@@ -1,29 +1,31 @@
 <?php
 
-/*
- * Create an AfterExpiration object for a checkout session. This configures whether you will allow the user to
- * recover after a session expires, and whether this recovered session should include any promo codes the user
- * may have had.
- * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-after_expiration
- */
 
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-class InvoiceCreation implements Arrayable
+readonly class InvoiceCreation implements Arrayable
 {
-    private function __construct(private readonly bool $enabled, private readonly ?bool $allowPromotionCodesInRecovery)
+    /**
+     * Generate a post-purchase Invoice for one-time payments. This constructor is private as one needs to use
+     * one of the create static methods for creating this object.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
+     * @param bool $enabled - whether invoices should be created.
+     * @param InvoiceData - the settings for invoices, which is required if enabled is set to true (hence the need)
+     * for the two different static create methods.
+     */
+    private function __construct(private bool $enabled, private ?InvoiceData $invoiceData)
     {
 
     }
 
-    public static function createEnabled(bool $allowPromotionCodesInRecovery)
+    public static function createEnabled(InvoiceData $invoiceData): self
     {
-        return new InvoiceCreation(true, $allowPromotionCodesInRecovery);
+        return new InvoiceCreation(true, $invoiceData);
     }
 
-    public function createDisabled()
+    public static function createDisabled() : self
     {
         return new InvoiceCreation(false, null);
     }
@@ -34,17 +36,18 @@ class InvoiceCreation implements Arrayable
         return $this->enabled;
     }
 
+
     public function toArray(): array
     {
-        $recoveryObj = [
+        $arrayForm = [
             "enabled" => $this->enabled,
         ];
 
-        if ($this->allowPromotionCodesInRecovery !== null)
+        if ($this->invoiceData !== null)
         {
-            $recoveryObj["allowPromotionCodesInRecovery"] = $this->allowPromotionCodesInRecovery;
+            $arrayForm["invoice_data"] = $this->invoiceData->toArray();
         }
 
-        return ["recovery" => $recoveryObj];
+        return $arrayForm;
     }
 }

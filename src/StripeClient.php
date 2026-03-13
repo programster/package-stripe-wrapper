@@ -607,7 +607,7 @@ readonly class StripeClient
      * @throws ApiErrorException
      */
     public function createCheckoutSessionForSubscription(
-        FlowConfig                      $flowConfig,
+        FlowConfig                       $flowConfig,
         SubscriptionLineItemCollection   $items,
         ?SubscriptionData                $subscriptionData = null,
         ?string                          $customerEmail = null,
@@ -619,7 +619,6 @@ readonly class StripeClient
         ?ExistingCustomer                $existingStripeCustomer = null,
         ?InvoiceCreation                 $invoiceCreation = null,
         ?CustomTextOptions               $customTextOptions = null,
-        ?StripeConnectSubscriptionConfig $stripeConnectConfig = null,
         ?AutomaticTax                    $automaticTax = null,
         ?int                             $expiresAt = null,
         ?AfterExpiration                 $afterExpiration = null,
@@ -641,51 +640,22 @@ readonly class StripeClient
         $params['mode'] = SessionMode::SUBSCRIPTION->value;
         $params['line_items'] = $items->toStripeArrayForm();
 
-        if ($stripeConnectConfig !== null)
-        {
-            if ($subscriptionData !== null)
-            {
-                $subscriptionDataArray = $subscriptionData->toArray();
-                $subscriptionDataArray = array_merge($subscriptionDataArray, $stripeConnectConfig->getParams());
-            }
-            else
-            {
-                $subscriptionDataArray = $stripeConnectConfig->getParams();
-            }
-
-            $params['subscription_data'] = $subscriptionDataArray;
-        }
-
-        if ($invoiceCreation !== null)
-        {
-            $invoiceCreationArray = $invoiceCreation->toArray();
-
-            if ($stripeConnectConfig !== null)
-            {
-                $invoiceCreationArray['invoice_data']['issuer'] = $stripeConnectConfig->getIssuerObj();
-            }
-
-            $params['invoice_creation'] = $invoiceCreationArray;
-        }
-
-        if ($existingStripeCustomer !== null)
-        {
-            $params = array_merge($params, $existingStripeCustomer->getStripeParams() );
-        }
-
-        if ($automaticTax !== null) { $params['automatic_tax'] = $automaticTax->toArray(); }
-        if ($clientReferenceId !== null) { $params['client_reference_id'] = $clientReferenceId; }
-        if ($customerEmail !== null) { $params['customer_email'] = $customerEmail; }
-        if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
-        if ($adaptivePricing !== null) { $params['adaptive_pricing'] = $adaptivePricing; }
-        if ($afterExpiration !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
-        if ($allowPromoCodes !== null) { $params['allow_promotion_codes'] = $allowPromoCodes; }
+        if ($subscriptionData         !== null) { $params['subscription_data'] = $subscriptionData->toArray(); }
+        if ($invoiceCreation          !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
+        if ($existingStripeCustomer   !== null) { $params = array_merge($params, $existingStripeCustomer->getStripeParams() ); }
+        if ($automaticTax             !== null) { $params['automatic_tax'] = $automaticTax->toArray(); }
+        if ($clientReferenceId        !== null) { $params['client_reference_id'] = $clientReferenceId; }
+        if ($customerEmail            !== null) { $params['customer_email'] = $customerEmail; }
+        if ($metadata                 !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
+        if ($adaptivePricing          !== null) { $params['adaptive_pricing'] = $adaptivePricing; }
+        if ($afterExpiration          !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
+        if ($allowPromoCodes          !== null) { $params['allow_promotion_codes'] = $allowPromoCodes; }
         if ($billingAddressCollection !== null) { $params['billing_address_collection'] = $billingAddressCollection->value; }
-        if ($consentConfig !== null) { $params['consent_collection'] = $consentConfig->toArray(); }
-        if ($currency !== null) { $params['currency'] = $currency->value; }
-        if ($customFields !== null) { $params['custom_fields'] = $customFields->toStripeArrayForm(); }
-        if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
-        if ($taxIdCollection !== null) { $params['tax_id_collection'] = $taxIdCollection->toArray(); }
+        if ($consentConfig            !== null) { $params['consent_collection'] = $consentConfig->toArray(); }
+        if ($currency                 !== null) { $params['currency'] = $currency->value; }
+        if ($customFields             !== null) { $params['custom_fields'] = $customFields->toStripeArrayForm(); }
+        if ($customTextOptions        !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
+        if ($taxIdCollection          !== null) { $params['tax_id_collection'] = $taxIdCollection->toArray(); }
 
         if ($shippingAddressCollection !== null)
         {

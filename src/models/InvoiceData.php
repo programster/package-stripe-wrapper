@@ -1,11 +1,5 @@
 <?php
 
-/*
- * Create an AfterExpiration object for a checkout session. This configures whether you will allow the user to
- * recover after a session expires, and whether this recovered session should include any promo codes the user
- * may have had.
- * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-after_expiration
- */
 
 namespace Programster\Stripe\Models;
 
@@ -14,8 +8,9 @@ use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
+use Stripe\InvoiceRenderingTemplate;
 
-class InvoiceData implements Arrayable
+readonly class InvoiceData implements Arrayable
 {
     /**
      * Create an InvoiceData object for invoice creation. Please note that this object deliberately leaves out
@@ -26,7 +21,7 @@ class InvoiceData implements Arrayable
      * @param ?StringCollection $accountTaxIds - The account tax IDs associated with the invoice.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-account_tax_ids
      *
-     * @param CustomFieldCollection|null $customFields - Default custom fields to be displayed on invoices for this
+     * @param InvoiceCustomFieldCollection|null $customFields - Default custom fields to be displayed on invoices for this
      * customer.
      *
      * @param string|null $description - An arbitrary string attached to the object. Often useful for displaying to
@@ -38,19 +33,16 @@ class InvoiceData implements Arrayable
      * storing additional information about the object in a structured format. Individual keys can be unset by posting
      * an empty value to them. All keys can be unset by posting an empty value to metadata.
      *
-     * @param bool|null $showTax - How line-item prices and amounts will be displayed with respect to tax on invoice
-     * PDFs. One of exclude_tax (false) or include_inclusive_tax (true). include_inclusive_tax will include inclusive
-     * tax (and exclude exclusive tax) in invoice PDF amounts. exclude_tax will exclude all tax (inclusive and
-     * exclusive alike) from invoice PDF amounts.
-     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-rendering_options-amount_tax_display
+     * @param InvoiceRenderingOptions|null $renderingOptions -
      */
-    private function __construct(
-        private readonly ?StringCollection $accountTaxIds = null,
-        private readonly ?InvoiceCustomFieldCollection $customFields = null,
-        private readonly ?string $description = null,
-        private readonly ?string $footer = null,
-        private readonly ?Metadata $metadata = null,
-        private readonly ?bool $showTax,
+    public function __construct(
+        private ?StringCollection $accountTaxIds = null,
+        private ?InvoiceCustomFieldCollection $customFields = null,
+        private ?string $description = null,
+        private ?string $footer = null,
+        private ?AccountReference $issuer = null,
+        private ?Metadata $metadata = null,
+        private ?InvoiceRenderingOptions $renderingOptions = null,
     )
     {
 
@@ -59,15 +51,16 @@ class InvoiceData implements Arrayable
 
     public function toArray(): array
     {
-        $recoveryObj = [
-            "enabled" => $this->enabled,
-        ];
+        $arrayForm = [];
 
-        if ($this->allowPromotionCodesInRecovery !== null)
-        {
-            $recoveryObj["allowPromotionCodesInRecovery"] = $this->allowPromotionCodesInRecovery;
-        }
+        if ($this->accountTaxIds    !== null) { $arrayForm['account_tax_ids'] = $this->accountTaxIds->toArray(); }
+        if ($this->customFields     !== null) { $arrayForm['custom_fields'] = $this->customFields->toStripeArrayForm(); }
+        if ($this->description      !== null) { $arrayForm['description'] = $this->description; }
+        if ($this->footer           !== null) { $arrayForm['footer'] = $this->footer; }
+        if ($this->issuer           !== null) { $arrayForm['issuer'] = $this->issuer->toArray(); }
+        if ($this->metadata         !== null) { $arrayForm['metadata'] = $this->metadata; }
+        if ($this->renderingOptions !== null) { $arrayForm['rendering_options'] = $this->renderingOptions->toArray(); }
 
-        return ["recovery" => $recoveryObj];
+        return $arrayForm;
     }
 }
