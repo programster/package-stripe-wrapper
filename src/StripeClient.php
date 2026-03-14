@@ -19,6 +19,7 @@ use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
+use Programster\Stripe\Models\CancellationDetails;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\ExistingCustomer;
@@ -36,6 +37,7 @@ use Stripe\Checkout\Session;
 use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
+use Stripe\Subscription;
 
 readonly class StripeClient
 {
@@ -104,6 +106,43 @@ readonly class StripeClient
 
         $subscriptions = $this->m_underlyingStripeClient->subscriptions->all($params);
         return $subscriptions;
+    }
+
+
+    /**
+     * Cancel a subscription
+     *
+     * @param string $subscriptionId - the ID of the subscription to delete.
+     *
+     * @param CancellationDetails|null $cancellationDetails - optionally provide details of why the user canceled.
+     * https://docs.stripe.com/api/subscriptions/cancel#cancel_subscription-cancellation_details
+     *
+     * @param bool $invoiceNow - optionally set to true to generate a final invoice that invoices for any un-invoiced
+     * metered usage and new/pending proration invoice items. Defaults to false.
+     * https://docs.stripe.com/api/subscriptions/cancel#cancel_subscription-invoice_now
+     *
+     * @param bool $prorate - optionally set to true to generate a proration invoice item that credits remaining unused
+     * time until the subscription period end. Defaults to false.
+     * https://docs.stripe.com/api/subscriptions/cancel#cancel_subscription-prorate
+     *
+     * @return Subscription - the updated (canceled) subscription.
+     * @throws ApiErrorException
+     */
+    public function cancelSubscription(
+        string $subscriptionId,
+        CancellationDetails $cancellationDetails = null,
+        bool $invoiceNow = false,
+        bool $prorate = false
+    ) : Subscription
+    {
+        $params = [
+            'invoice_now' => $invoiceNow,
+            'prorate' => $prorate,
+        ];
+
+        if ($cancellationDetails !== null) { $params['cancellation_details'] = $cancellationDetails; }
+
+        return $this->m_underlyingStripeClient->subscriptions->cancel($subscriptionId, $params);
     }
 
 
