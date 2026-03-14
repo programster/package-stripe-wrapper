@@ -13,7 +13,7 @@ readonly class CancellationDetails implements Arrayable
      * Controls how prorations and invoices for subscriptions are calculated and orchestrated.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-billing_mode
      */
-    private function __construct(
+    public function __construct(
         private ?string               $userComment = null,
         private ?CancellationFeedback $feedback = null,
     )
