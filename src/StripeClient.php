@@ -140,7 +140,7 @@ readonly class StripeClient
             'prorate' => $prorate,
         ];
 
-        if ($cancellationDetails !== null) { $params['cancellation_details'] = $cancellationDetails; }
+        if ($cancellationDetails !== null) { $params['cancellation_details'] = $cancellationDetails->toArray(); }
 
         return $this->m_underlyingStripeClient->subscriptions->cancel($subscriptionId, $params);
     }
