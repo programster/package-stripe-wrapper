@@ -130,7 +130,7 @@ readonly class StripeClient
      */
     public function cancelSubscription(
         string $subscriptionId,
-        CancellationDetails $cancellationDetails = null,
+        ?CancellationDetails $cancellationDetails = null,
         bool $invoiceNow = false,
         bool $prorate = false
     ) : Subscription
