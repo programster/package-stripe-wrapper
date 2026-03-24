@@ -4,6 +4,8 @@ namespace Programster\Stripe;
 
 use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
+use Programster\Stripe\Collections\StringCollection;
+use Programster\Stripe\Collections\SubscriptionItemDiscountCollection;
 use Programster\Stripe\collections\SubscriptionLineItemCollection;
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\Metadata;
@@ -13,12 +15,15 @@ use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
 use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
+use Programster\Stripe\Enums\PaymentBehavior;
+use Programster\Stripe\Enums\ProrationBehavior;
 use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
+use Programster\Stripe\Models\BillingThresholds;
 use Programster\Stripe\Models\CancellationDetails;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
@@ -27,11 +32,12 @@ use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\ConsentConfig;
 use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\PaymentIntentData;
+use Programster\Stripe\Models\PriceDataForSubscription;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\StripeConnectPaymentConfig;
 use Programster\Stripe\Models\StripeConnectSubscriptionConfig;
 use Programster\Stripe\Models\SubscriptionData;
-use Programster\Stripe\Models\TaxIdCollection;
+use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
 use Stripe\Checkout\Session;
 use Stripe\Collection;
@@ -136,6 +142,77 @@ readonly class StripeClient
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
         return $this->m_underlyingStripeClient->subscriptionItems->all($params);
+    }
+
+
+    /**
+     * Updates the plan or quantity of an item on a current subscription.
+     * https://docs.stripe.com/api/subscription_items/update
+     * @param string $subscriptionItemId - the ID of the subscription we wish to update.
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for
+     * storing additional information about the object in a structured format. Individual keys can be unset by posting
+     * an empty value to them. All keys can be unset by posting an empty value to metadata.
+     * @param PaymentBehavior|null $paymentBehavior
+     * @param string|PriceDataForSubscription|null $priceDataOrPriceId - either the ID of a price object to use for
+     * the subscription item, or the object form that fully provides all of the details. Leave as null to not change.
+     * @param ProrationBehavior|null $prorationBehavior - Determines how to handle prorations when the billing cycle
+     * changes (e.g., when switching plans, resetting billing_cycle_anchor=now, or starting a trial), or if an item’s
+     * quantity changes. The default value is create_prorations.
+     * @param int|null $quantity - The quantity you’d like to apply to the subscription item you’re creating.
+     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
+     * subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds.
+     * @param SubscriptionItemDiscountCollection|null $discounts - The coupons to redeem into discounts for the
+     * subscription item.
+     * @param bool|null $offSession - Indicates if a customer is on or off-session while an invoice payment is
+     * attempted. Defaults to false (on-session).
+     * @param int|null $prorationDate - If set, the proration will be calculated as though the subscription was updated
+     * at the given time. This can be used to apply the same proration that was previewed with the upcoming invoice
+     * endpoint.
+     * @param StringCollection|null $taxRateIds - A list of Tax Rate IDs. These Tax Rates will override the
+     * default_tax_rates on the Subscription. When updating, pass an empty string to remove previously-defined tax rates.
+     * @return void
+     * @throws ApiErrorException
+     */
+    public function updateSubscriptionItem(
+        string                               $subscriptionItemId,
+        ?Metadata                            $metadata = null,
+        ?PaymentBehavior                     $paymentBehavior = null,
+        null|string|PriceDataForSubscription $priceDataOrPriceId = null,
+        ?ProrationBehavior                   $prorationBehavior = null,
+        ?int                                 $quantity = null,
+        ?BillingThresholds                   $billingThresholds = null,
+        ?SubscriptionItemDiscountCollection  $discounts = null,
+        ?bool                                $offSession = null,
+        ?int                                 $prorationDate = null,
+        ?StringCollection                    $taxRateIds = null,
+    ) : void
+    {
+        $params = [];
+
+        if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
+        if ($paymentBehavior !== null) { $params['payment_behavior'] = $paymentBehavior->value; }
+
+        if ($priceDataOrPriceId !== null)
+        {
+            if (is_string($priceDataOrPriceId))
+            {
+                $params['price'] = $priceDataOrPriceId;
+            }
+            else
+            {
+                $params['price_data'] = $priceDataOrPriceId->toArray();
+            }
+        }
+
+        if ($prorationBehavior !== null) { $params['proration_behavior'] = $prorationBehavior->value; }
+        if ($quantity !== null) { $params['quantity'] = $quantity; }
+        if ($billingThresholds !== null) { $params['billing_thresholds'] = $billingThresholds->toStripeForm(); }
+        if ($discounts !== null) { $params['discounts'] = $discounts->toStripeArrayForm(); }
+        if ($offSession !== null) { $params['off_session'] = $offSession; }
+        if ($prorationDate !== null) { $params['proration_date'] = $prorationDate; }
+        if ($taxRateIds !== null) {$params['tax_rates'] = $taxRateIds->toArray(); }
+
+        $this->m_underlyingStripeClient->subscriptionItems->update($subscriptionItemId, $params);
     }
 
 
@@ -435,7 +512,7 @@ readonly class StripeClient
      * customer's shipping address for the transaction. This will need to be the country codes of the countries that
      * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
      *
-     * @param TaxIdCollection|null $taxIdCollection - Details on the state of tax ID collection for the session.
+     * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
      *
      * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
@@ -490,7 +567,7 @@ readonly class StripeClient
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
         ?CountryCodeCollection           $shippingAddressCollection = null,
-        ?TaxIdCollection                 $taxIdCollection = null,
+        ?TaxIdCollectionConfig           $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,
@@ -648,7 +725,7 @@ readonly class StripeClient
      * customer's shipping address for the transaction. This will need to be the country codes of the countries that
      * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
      *
-     * @param TaxIdCollection|null $taxIdCollection - Details on the state of tax ID collection for the session.
+     * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
      *
      * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
@@ -697,7 +774,7 @@ readonly class StripeClient
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
         ?CountryCodeCollection           $shippingAddressCollection = null,
-        ?TaxIdCollection                 $taxIdCollection = null,
+        ?TaxIdCollectionConfig           $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,

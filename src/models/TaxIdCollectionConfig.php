@@ -5,7 +5,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class TaxIdCollection implements Arrayable
+readonly class TaxIdCollectionConfig implements Arrayable
 {
     /**
      * Controls tax ID collection during checkout.
