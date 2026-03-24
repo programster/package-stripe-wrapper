@@ -38,6 +38,7 @@ use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
 use Stripe\Subscription;
+use Stripe\SubscriptionItem;
 
 readonly class StripeClient
 {
@@ -106,6 +107,35 @@ readonly class StripeClient
 
         $subscriptions = $this->m_underlyingStripeClient->subscriptions->all($params);
         return $subscriptions;
+    }
+
+
+    /**
+     * List all subscription items
+     * Returns a list of your subscription items for a given subscription.
+     * @param string $subscriptionId - the ID of the subscription to get the items for.
+     * @param string|null $cursorStartingAfter
+     * @param string|null $cursorEndingBefore
+     * @param string|null $testClock
+     * @param int $limit
+     * @return Collection<SubscriptionItem>
+     * @throws ApiErrorException
+     */
+    public function listSubscriptionItems(
+        string $subscriptionId,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        ?string $testClock = null,
+        int $limit = 100,
+    ): Collection
+    {
+        $params = ['limit' => $limit];
+
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+
+        return $this->m_underlyingStripeClient->subscriptionItems->all($params);
     }
 
 
