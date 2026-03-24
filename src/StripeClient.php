@@ -3,7 +3,10 @@
 namespace Programster\Stripe;
 
 use Programster\Stripe\Collections\CountryCodeCollection;
+use Programster\Stripe\Collections\CustomerShippingDetailsCollection;
+use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
+use Programster\Stripe\Collections\LocaleCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionItemDiscountCollection;
 use Programster\Stripe\collections\SubscriptionLineItemCollection;
@@ -17,23 +20,30 @@ use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\PaymentBehavior;
 use Programster\Stripe\Enums\ProrationBehavior;
+use Programster\Stripe\Enums\ReconciliationMode;
 use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
+use Programster\Stripe\Enums\TaxExempt;
+use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
 use Programster\Stripe\Models\BillingThresholds;
 use Programster\Stripe\Models\CancellationDetails;
+use Programster\Stripe\Models\CustomerInvoiceSettings;
+use Programster\Stripe\Models\CustomerTaxConfig;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\ExistingCustomer;
 use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\ConsentConfig;
 use Programster\Stripe\Models\InvoiceCreation;
+use Programster\Stripe\Models\InvoiceSettings;
 use Programster\Stripe\Models\PaymentIntentData;
 use Programster\Stripe\Models\PriceDataForSubscription;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
+use Programster\Stripe\Models\ShippingConfig;
 use Programster\Stripe\Models\StripeConnectPaymentConfig;
 use Programster\Stripe\Models\StripeConnectSubscriptionConfig;
 use Programster\Stripe\Models\SubscriptionData;
@@ -41,6 +51,7 @@ use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
 use Stripe\Checkout\Session;
 use Stripe\Collection;
+use Stripe\Customer;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
 use Stripe\Subscription;
@@ -113,6 +124,93 @@ readonly class StripeClient
 
         $subscriptions = $this->m_underlyingStripeClient->subscriptions->all($params);
         return $subscriptions;
+    }
+
+
+    /**
+     * Create a customer - https://docs.stripe.com/api/customers/create?lang=php
+     * @param Address|null $address - the address of the customer (required if calculating taxes)
+     * @param string|null $description - An arbitrary string that you can attach to a customer object. It is displayed alongside the customer in the dashboard.
+     * @param string|null $email - Customer’s email address. It’s displayed alongside the customer in your dashboard and can be useful for searching and tracking. This may be up to 512 characters.
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+     * @param string|null $name - The customer’s full name or business name. The maximum length is 256 characters.
+     * @param string|null $paymentMethodId - The ID of the PaymentMethod to attach to the customer.
+     * @param string|null $phone - The customer’s phone number.
+     * @param CustomerShippingDetailsCollection|null $shippingDetails - The customer’s shipping information. Appears on invoices emailed to this customer.
+     * @param CustomerTaxConfig|null $taxConfig
+     * @param int|null $balance
+     * @param string|null $businessName
+     * @param ReconciliationMode|null $cashBalanceReconciliationMode
+     * @param string|null $individualName
+     * @param string|null $invoicePrefix
+     * @param CustomerInvoiceSettings|null $invoiceSettings
+     * @param int|null $nextInvoiceSequence
+     * @param LocaleCollection|null $preferredLocales
+     * @param string|null $source
+     * @param TaxExempt|null $taxExempt
+     * @param CustomerTaxIdDataCollection|null $taxIdData
+     * @param string|null $testClockId
+     * @return Customer - the created customer.
+     * @throws ApiErrorException
+     */
+    public function createCustomer(
+        ?Address $address = null,
+        ?string $description = null,
+        ?string $email = null,
+        ?Metadata $metadata = null,
+        ?string $name = null,
+        ?string $paymentMethodId = null,
+        ?string $phone = null,
+        ?CustomerShippingDetailsCollection $shippingDetails = null,
+        ?CustomerTaxConfig $taxConfig = null,
+        ?int $balance = null,
+        ?string $businessName = null,
+        ?ReconciliationMode $cashBalanceReconciliationMode = null,
+        ?string $individualName = null,
+        ?string $invoicePrefix = null,
+        ?CustomerInvoiceSettings $invoiceSettings = null,
+        ?int $nextInvoiceSequence = null,
+        ?LocaleCollection $preferredLocales = null,
+        ?string $source = null,
+        ?TaxExempt $taxExempt = null,
+        ?CustomerTaxIdDataCollection $taxIdData = null,
+        ?string $testClockId = null,
+    ) : Customer
+    {
+        $params = [];
+
+        if ($address !== null) { $params['address'] = $address; }
+        if ($description !== null) { $params['description'] = $description; }
+        if ($email !== null) { $params['email'] = $email; }
+        if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
+        if ($name !== null) { $params['name'] = $name; }
+        if ($paymentMethodId !== null) { $params['payment_method'] = $paymentMethodId; }
+        if ($phone !== null) { $params['phone'] = $phone; }
+        if ($shippingDetails !== null) { $params['shipping_details'] = $shippingDetails->toStripeArrayForm(); }
+        if ($taxConfig !== null) { $params['tax_config'] = $taxConfig; }
+        if ($balance !== null) { $params['balance'] = $balance; }
+        if ($businessName !== null) { $params['business_name'] = $businessName; }
+
+        if ($cashBalanceReconciliationMode !== null)
+        {
+            $params['cash_balance'] = [
+                'settings' => [
+                    'reconciliation_mode' => $cashBalanceReconciliationMode
+                ]
+            ];
+        }
+
+        if ($individualName !== null) { $params['individual_name'] = $individualName; }
+        if ($invoicePrefix !== null) { $params['invoice_prefix'] = $invoicePrefix; }
+        if ($invoiceSettings !== null) { $params['invoice_settings'] = $invoiceSettings; }
+        if ($nextInvoiceSequence === null) { $params['next_invoice_sequence'] = $nextInvoiceSequence; }
+        if ($preferredLocales !== null) { $params['preferred_locales'] = $preferredLocales->toStripeArrayForm(); }
+        if ($source !== null) { $params['source'] = $source; }
+        if ($taxExempt !== null) { $params['tax_exempt'] = $taxExempt->value; }
+        if ($taxIdData !== null) { $params['tax_id_data'] = $taxIdData->toStripeArrayForm(); }
+        if ($testClockId !== null) { $params['test_clock'] = $testClockId; }
+
+        return $this->m_underlyingStripeClient->customers->create($params);
     }
 
 

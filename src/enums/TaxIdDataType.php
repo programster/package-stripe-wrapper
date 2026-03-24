@@ -1,0 +1,124 @@
+<?php
+
+/*
+ * Enum of all the currencies Stripe accepts.
+ * https://docs.stripe.com/currencies
+ */
+
+namespace Programster\Stripe\Enums;
+
+enum TaxIdDataType: string
+{
+    case AD_NRT = "ad_nrt";
+    case AE_TRN = "ae_trn";
+    case AL_TIN = "al_tin";
+    case AM_TIN = "am_tin";
+    case AO_TIN = "ao_tin";
+    case AR_CUIT = "ar_cuit";
+    case AU_ABN = "au_abn";
+    case AU_ARN = "au_arn";
+    case AW_TIN = "aw_tin";
+    case AZ_TIN = "az_tin";
+    case BA_TIN = "ba_tin";
+    case BB_TIN = "bb_tin";
+    case BD_BIN = "bd_bin";
+    case BF_IFU = "bf_ifu";
+    case BG_UIC = "bg_uic";
+    case BH_VAT = "bh_vat";
+    case BJ_IFU = "bj_ifu";
+    case BO_TIN = "bo_tin";
+    case BR_CNPJ = "br_cnpj";
+    case BR_CPF = "br_cpf";
+    case BS_TIN = "bs_tin";
+    case BY_TIN = "by_tin";
+    case CA_BN = "ca_bn";
+    case CA_GST_HST = "ca_gst_hst";
+    case CA_PST_BC = "ca_pst_bc";
+    case CA_PST_MB = "ca_pst_mb";
+    case CA_PST_SK = "ca_pst_sk";
+    case CA_QST = "ca_qst";
+    case CD_NIF = "cd_nif";
+    case CH_UID = "ch_uid";
+    case CH_VAT = "ch_vat";
+    case CL_TIN = "cl_tin";
+    case CM_NIU = "cm_niu";
+    case CN_TIN = "cn_tin";
+    case CO_NIT = "co_nit";
+    case CR_TIN = "cr_tin";
+    case CV_NIF = "cv_nif";
+    case DE_STN = "de_stn";
+    case DO_RCN = "do_rcn";
+    case EC_RUC = "ec_ruc";
+    case EG_TIN = "eg_tin";
+    case ES_CIF = "es_cif";
+    case ET_TIN = "et_tin";
+    case EU_OSS_VAT = "eu_oss_vat";
+    case EU_VAT = "eu_vat";
+    case GB_VAT = "gb_vat";
+    case GE_VAT = "ge_vat";
+    case GN_NIF = "gn_nif";
+    case HK_BR = "hk_br";
+    case HR_OIB = "hr_oib";
+    case HU_TIN = "hu_tin";
+    case ID_NPWP = "id_npwp";
+    case IL_VAT = "il_vat";
+    case IN_GST = "in_gst";
+    case IS_VAT = "is_vat";
+    case JP_CN = "jp_cn";
+    case JP_RN = "jp_rn";
+    case JP_TRN = "jp_trn";
+    case KE_PIN = "ke_pin";
+    case KG_TIN = "kg_tin";
+    case KH_TIN = "kh_tin";
+    case KR_BRN = "kr_brn";
+    case KZ_BIN = "kz_bin";
+    case LA_TIN = "la_tin";
+    case LI_UID = "li_uid";
+    case LI_VAT = "li_vat";
+    case LK_VAT = "lk_vat";
+    case MA_VAT = "ma_vat";
+    case MD_VAT = "md_vat";
+    case ME_PIB = "me_pib";
+    case MK_VAT = "mk_vat";
+    case MR_NIF = "mr_nif";
+    case MX_RFC = "mx_rfc";
+    case MY_FRP = "my_frp";
+    case MY_ITN = "my_itn";
+    case MY_SST = "my_sst";
+    case NG_TIN = "ng_tin";
+    case NO_VAT = "no_vat";
+    case NO_VOEC = "no_voec";
+    case NP_PAN = "np_pan";
+    case NZ_GST = "nz_gst";
+    case OM_VAT = "om_vat";
+    case PE_RUC = "pe_ruc";
+    case PH_TIN = "ph_tin";
+    case PL_NIP = "pl_nip";
+    case RO_TIN = "ro_tin";
+    case RS_PIB = "rs_pib";
+    case RU_INN = "ru_inn";
+    case RU_KPP = "ru_kpp";
+    case SA_VAT = "sa_vat";
+    case SG_GST = "sg_gst";
+    case SG_UEN = "sg_uen";
+    case SI_TIN = "si_tin";
+    case SN_NINEA = "sn_ninea";
+    case SR_FIN = "sr_fin";
+    case SV_NIT = "sv_nit";
+    case TH_VAT = "th_vat";
+    case TJ_TIN = "tj_tin";
+    case TR_TIN = "tr_tin";
+    case TW_VAT = "tw_vat";
+    case TZ_VAT = "tz_vat";
+    case UA_VAT = "ua_vat";
+    case UG_TIN = "ug_tin";
+    case US_EIN = "us_ein";
+    case UY_RUC = "uy_ruc";
+    case UZ_TIN = "uz_tin";
+    case UZ_VAT = "uz_vat";
+    case VE_RIF = "ve_rif";
+    case VN_TIN = "vn_tin";
+    case ZA_VAT = "za_vat";
+    case ZM_TIN = "zm_tin";
+    case ZW_TIN = "zw_tin";
+}
