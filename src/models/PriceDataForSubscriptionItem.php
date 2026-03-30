@@ -11,7 +11,7 @@ readonly class PriceDataForSubscriptionItem implements Arrayable
     /**
      * @param Currency $currency
      *
-     * @param int $unitAmount - A non-negative integer in cents representing how much to charge. E.g. 500 for 5 USD.
+     * @param int $unitPriceAmount - A non-negative integer in cents representing how much to charge. E.g. 500 for 5 USD.
      *
      * @param string $productId - the ID of the product this price data is for.
      *
@@ -20,11 +20,11 @@ readonly class PriceDataForSubscriptionItem implements Arrayable
      * @param TaxBehavior|null $taxBehavior
      */
     public function __construct(
-        private Currency         $currency,
-        private int              $unitAmount,
-        private string           $productId,
-        private RecurringConfig  $recurring,
-        private ?TaxBehavior     $taxBehavior = null
+        private Currency        $currency,
+        private int             $unitPriceAmount,
+        private string          $productId,
+        private RecurringConfig $recurring,
+        private ?TaxBehavior    $taxBehavior = null
     )
     {
 
@@ -34,7 +34,7 @@ readonly class PriceDataForSubscriptionItem implements Arrayable
     {
         $arrayForm = [
             'currency' => $this->currency->value,
-            'unit_amount' => $this->unitAmount,
+            'unit_amount' => $this->unitPriceAmount,
             'product' => $this->productId,
             'recurring' => $this->recurring->toArray(),
         ];
