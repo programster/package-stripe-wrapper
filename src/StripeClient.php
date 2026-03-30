@@ -51,7 +51,7 @@ use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\InvoiceSettings;
 use Programster\Stripe\Models\PaymentIntentData;
 use Programster\Stripe\Models\PaymentSettings;
-use Programster\Stripe\Models\PriceDataForSubscription;
+use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\ShippingConfig;
@@ -296,7 +296,7 @@ readonly class StripeClient
      *
      * @param PaymentBehavior|null $paymentBehavior
      *
-     * @param string|PriceDataForSubscription|null $priceDataOrPriceId - either the ID of a price object to use for
+     * @param string|PriceDataForSubscriptionCheckoutSession|null $priceDataOrPriceId - either the ID of a price object to use for
      * the subscription item, or the object form that fully provides all of the details. Leave as null to not change.
      *
      * @param ProrationBehavior|null $prorationBehavior - Determines how to handle prorations when the billing cycle
@@ -325,17 +325,17 @@ readonly class StripeClient
      * @throws ApiErrorException
      */
     public function updateSubscriptionItem(
-        string                               $subscriptionItemId,
-        ?Metadata                            $metadata = null,
-        ?PaymentBehavior                     $paymentBehavior = null,
-        null|string|PriceDataForSubscription $priceDataOrPriceId = null,
-        ?ProrationBehavior                   $prorationBehavior = null,
-        ?int                                 $quantity = null,
-        ?BillingThresholds                   $billingThresholds = null,
-        ?DiscountCollection                  $discounts = null,
-        ?bool                                $offSession = null,
-        ?int                                 $prorationDate = null,
-        ?StringCollection                    $taxRateIds = null,
+        string                                              $subscriptionItemId,
+        ?Metadata                                           $metadata = null,
+        ?PaymentBehavior                                    $paymentBehavior = null,
+        null|string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId = null,
+        ?ProrationBehavior                                  $prorationBehavior = null,
+        ?int                                                $quantity = null,
+        ?BillingThresholds                                  $billingThresholds = null,
+        ?DiscountCollection                                 $discounts = null,
+        ?bool                                               $offSession = null,
+        ?int                                                $prorationDate = null,
+        ?StringCollection                                   $taxRateIds = null,
     ) : void
     {
         $params = [];
@@ -1157,7 +1157,8 @@ readonly class StripeClient
      *
      * @param TrialConfig|null $trialConfig
      *
-     * @return void
+     * @return Subscription
+     *
      * @throws ApiErrorException
      */
     public function createSubscription(
@@ -1168,7 +1169,7 @@ readonly class StripeClient
         ?AutomaticTax                       $automaticTax = null,
         ?string                             $defaultPaymentMethodId = null,
         ?Metadata                           $metadata = null,
-        ?PaymentBehavior                     $paymentBehavior = null, // only applies if collection_method=charge_automatically
+        ?PaymentBehavior                    $paymentBehavior = null, // only applies if collection_method=charge_automatically
         ?SubscriptionInvoiceItemCollection  $addInvoiceItems = null,
         ?int                                $applicationFeePercent = null,
         ?int                                $backdateStartDate = null, // backdate the start of the subcription to this point in time. May be the most optimal way to charge full amount for year.
@@ -1180,7 +1181,7 @@ readonly class StripeClient
         ?int                                $daysUntilDue = null,
         ?string                             $defaultSource = null,
         ?StringCollection                   $defaultTaxRates = null,
-        ?DiscountCollection                  $discounts = null,
+        ?DiscountCollection                 $discounts = null,
         InvoiceSettings                     $invoiceSettings = null,
         ?bool                               $offSession = null,
         ?string                             $onBehalfOf = null,

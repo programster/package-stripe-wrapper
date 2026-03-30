@@ -3,13 +3,13 @@
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
-use Programster\Stripe\Models\SubscriptionLineItem;
+use Programster\Stripe\Models\SubscriptionItem;
 
 class SubscriptionLineItemCollection extends AbstractCollection
 {
-    public function __construct(SubscriptionLineItem ...$fields)
+    public function __construct(SubscriptionItem ...$fields)
     {
-        parent::__construct(SubscriptionLineItem::class, ...$fields);
+        parent::__construct(SubscriptionItem::class, ...$fields);
     }
 
 
@@ -20,7 +20,7 @@ class SubscriptionLineItemCollection extends AbstractCollection
 
         foreach ($arrayCopy as $item)
         {
-            /* @var $item SubscriptionLineItem */
+            /* @var $item SubscriptionItem */
             $nestedArrayForm[] = $item->toArray();
         }
 

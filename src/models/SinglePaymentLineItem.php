@@ -12,7 +12,7 @@ readonly class SinglePaymentLineItem implements Arrayable
      *
      * @param int $quantity - the number of this item to be purhased/sold.
      *
-     * @param string|PriceDataForSubscription $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
+     * @param string|PriceDataForSinglePayment $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
      * an existing price/plan object within Stripe.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items-price
      *

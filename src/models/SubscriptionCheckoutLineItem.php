@@ -12,7 +12,7 @@ readonly class SubscriptionCheckoutLineItem implements Arrayable
      *
      * @param int $quantity - the number of this item to be purhased/sold.
      *
-     * @param string|PriceDataForSubscription $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
+     * @param string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
      * an existing price/plan object within Stripe.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items-price
      *
@@ -23,10 +23,10 @@ readonly class SubscriptionCheckoutLineItem implements Arrayable
      * depending on the customers billing/shipping address: https://docs.stripe.com/api/tax_rates
      */
     public function __construct(
-        private readonly int                             $quantity,
-        private readonly string|PriceDataForSubscription $priceDataOrPriceId,
-        private readonly ?AdjustableQuantityConfig       $adjustableQuantityConfig = null,
-        private readonly ?TaxRates                       $taxRates = null,
+        private readonly int                                            $quantity,
+        private readonly string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId,
+        private readonly ?AdjustableQuantityConfig                      $adjustableQuantityConfig = null,
+        private readonly ?TaxRates                                      $taxRates = null,
     )
     {
 

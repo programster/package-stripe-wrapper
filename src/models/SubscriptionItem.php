@@ -3,11 +3,10 @@
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Collections\Metadata;
-use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\DiscountCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class SubscriptionLineItem implements Arrayable
+readonly class SubscriptionItem implements Arrayable
 {
     /**
      * Create a line item for when creating a subscripton object.
@@ -15,7 +14,7 @@ readonly class SubscriptionLineItem implements Arrayable
      *
      * @param int $quantity - the number of this item to be purhased/sold.
      *
-     * @param string|PriceDataForSubscription $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
+     * @param string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
      * an existing price/plan object within Stripe.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items-price
      *
@@ -39,13 +38,13 @@ readonly class SubscriptionLineItem implements Arrayable
      * depending on the customers billing/shipping address: https://docs.stripe.com/api/tax_rates
      */
     public function __construct(
-        private int                             $quantity,
-        private string|PriceDataForSubscription $priceDataOrPriceId,
-        private ?AdjustableQuantityConfig       $adjustableQuantityConfig = null,
-        private ?Metadata                       $metadata = null,
-        private ?DiscountCollection             $discounts = null,
-        private ?BillingThresholds              $billingThresholds = null,
-        private ?TaxRates                       $taxRates = null,
+        private int                                 $quantity,
+        private string|PriceDataForSubscriptionItem $priceDataOrPriceId,
+        private ?AdjustableQuantityConfig           $adjustableQuantityConfig = null,
+        private ?Metadata                           $metadata = null,
+        private ?DiscountCollection                 $discounts = null,
+        private ?BillingThresholds                  $billingThresholds = null,
+        private ?TaxRates                           $taxRates = null,
     )
     {
 

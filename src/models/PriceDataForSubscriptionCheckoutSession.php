@@ -6,13 +6,19 @@ use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\TaxBehavior;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class PriceDataForSubscription implements Arrayable
+readonly class PriceDataForSubscriptionCheckoutSession implements Arrayable
 {
     /**
      * @param Currency $currency
+     *
      * @param int $unitAmount - A non-negative integer in cents representing how much to charge. E.g. 500 for 5 USD.
+     *
      * @param ProductData|string $productDataOrId - either the ID of an already registered product in Stipe, or the
      * data to create a new inline product.
+     *
+     * @param RecurringConfig|null $recurring
+     *
+     * @param TaxBehavior|null $taxBehavior
      */
     public function __construct(
         private Currency $currency,
