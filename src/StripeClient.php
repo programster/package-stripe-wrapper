@@ -16,6 +16,7 @@ use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Enums\BillingAddressCollection;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
+use Programster\Stripe\Enums\ExceptionInvalidValue;
 use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\PaymentBehavior;
@@ -573,8 +574,11 @@ readonly class StripeClient
      * @param Currency|null $currency - optionally specify the currency. This is useful if you have products listed with
      * multiple possible currencies.
      *
-     * @param ExistingCustomer|null $existingStripeCustomer - if you have an existing stripe customer ID, create one
-     * of these objects with it, and optionally a configuration for whether that customer is updatable.
+     * @param ExistingCustomer|string|null $existingStripeCustomerOrEmail - if you have an existing stripe customer ID,
+     * create one of these objects with it, and optionally a configuration for whether that customer is updatable.
+     * Alternatively, if you know the customer's email address, then provide that as a string. This parameter is a
+     * combination of the existing_customer and customer_email parameters, as only one of these can be set.
+     * WARNING - do not simply provide the string ID of the customer as this will not work
      *
      * @param CustomerCreation|null $customerCreation - specify if a customer should be created in Stripe or not for this
      * payment. The value and docs talk about "if required", which is the case for a subscription, but this method is
@@ -648,13 +652,12 @@ readonly class StripeClient
         FlowConfig                       $flowConfig,
         SinglePaymentLineItemsCollection $items,
         ?PaymentIntentData               $paymentIntentData = null,
-        ?string                          $customerEmail = null,
         ?string                          $clientReferenceId = null,
         ?Discount                        $discount = null,
         ?bool                            $allowPromoCodes = null,
         ?Locale                          $locale = null,
         ?Currency                        $currency = null,
-        ?ExistingCustomer                $existingStripeCustomer = null,
+        ExistingCustomer|string|null     $existingStripeCustomerOrEmail = null,
         ?CustomerCreation                $customerCreation = null,
         ?InvoiceCreation                 $invoiceCreation = null,
         ?CustomTextOptions               $customTextOptions = null,
@@ -698,14 +701,24 @@ readonly class StripeClient
 
         $params['submit_type'] = $submitType->value;
 
-        if ($existingStripeCustomer !== null)
+        if (is_object($existingStripeCustomerOrEmail) && get_class($existingStripeCustomerOrEmail) === ExistingCustomer::class)
         {
-            $params = array_merge($params, $existingStripeCustomer->getStripeParams() );
+            $params = array_merge($params, $existingStripeCustomerOrEmail->getStripeParams());
+        }
+        elseif (is_string($existingStripeCustomerOrEmail))
+        {
+            if (filter_var($existingStripeCustomerOrEmail, FILTER_VALIDATE_EMAIL) === false )
+            {
+                throw new ExceptionInvalidValue(
+                    "existingStripeCustomerOrEmail needs to be either an ExistingCustomer object, or the customer's email address"
+                );
+            }
+
+            $params['customer_email'] = $existingStripeCustomerOrEmail;
         }
 
         if ($automaticTax !== null) { $params['automatic_tax'] = $automaticTax->toArray(); }
         if ($clientReferenceId !== null) { $params['client_reference_id'] = $clientReferenceId; }
-        if ($customerEmail !== null) { $params['customer_email'] = $customerEmail; }
         if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
         if ($adaptivePricing !== null) { $params['adaptive_pricing'] = $adaptivePricing; }
         if ($afterExpiration !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
@@ -775,10 +788,6 @@ readonly class StripeClient
      * for Checkout Sessions in subscription mode.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data
      *
-     * @param string|null $customerEmail - optionally provide the customer's email address. If provided, this value
-     * will be used when the Customer object is created. If not provided, customers will be asked to enter their email
-     * address. Use this parameter to prefill customer data if you already have an email on file.
-     *
      * @param string|null $clientReferenceId - A unique string to reference the Checkout Session. This can be a
      * customer ID, a cart ID, or similar, and can be used to reconcile the session with your internal systems.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-client_reference_id
@@ -795,18 +804,17 @@ readonly class StripeClient
      * @param Currency|null $currency - optionally specify the currency. This is useful if you have products listed with
      * multiple possible currencies.
      *
-     * @param ExistingCustomer|null $existingStripeCustomer - if you have an existing stripe customer ID, create one
-     * of these objects with it, and optionally a configuration for whether that customer is updatable.
+     * @param ExistingCustomer|string|null $existingStripeCustomerOrEmail - if you have an existing stripe customer ID,
+     * create one of these objects with it, and optionally a configuration for whether that customer is updatable.
+     * Alternatively, if you know the customer's email address, then provide that as a string. This parameter is a
+     * combination of the existing_customer and customer_email parameters, as only one of these can be set.
+     * WARNING - do not simply provide the string ID of the customer as this will not work
      *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice for the one-time payment
      * should be created. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
      *
      * @param CustomTextOptions|null $customTextOptions - optionally provide custom text messages at various points
      * during the checkout flow.
-     *
-     * @param StripeConnectSubscriptionConfig|null $stripeConnectConfig - a configuration for configuring the various settings
-     * to do with if another account is involved, such as how much of a percentage they should get, and whether
-     * the payment is on their behalf or not etc.
      *
      * @param AutomaticTax|null $automaticTax
      *
@@ -854,45 +862,58 @@ readonly class StripeClient
      * @throws ApiErrorException
      */
     public function createCheckoutSessionForSubscription(
-        FlowConfig                       $flowConfig,
-        SubscriptionLineItemCollection   $items,
-        ?SubscriptionData                $subscriptionData = null,
-        ?string                          $customerEmail = null,
-        ?string                          $clientReferenceId = null,
-        ?Discount                        $discount = null,
-        ?bool                            $allowPromoCodes = null,
-        ?Locale                          $locale = null,
-        ?Currency                        $currency = null,
-        ?ExistingCustomer                $existingStripeCustomer = null,
-        ?InvoiceCreation                 $invoiceCreation = null,
-        ?CustomTextOptions               $customTextOptions = null,
-        ?AutomaticTax                    $automaticTax = null,
-        ?int                             $expiresAt = null,
-        ?AfterExpiration                 $afterExpiration = null,
-        ?bool                            $adaptivePricing = null,
-        BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection           $shippingAddressCollection = null,
-        ?TaxIdCollectionConfig           $taxIdCollection = null,
-        ?bool                            $enablePhoneNumberCollection = null,
+        FlowConfig                     $flowConfig,
+        SubscriptionLineItemCollection $items,
+        ?SubscriptionData              $subscriptionData = null,
+        ?string                        $clientReferenceId = null,
+        ?Discount                      $discount = null,
+        ?bool                          $allowPromoCodes = null,
+        ?Locale                        $locale = null,
+        ?Currency                      $currency = null,
+        ExistingCustomer|string|null   $existingStripeCustomerOrEmail = null,
+        ?InvoiceCreation               $invoiceCreation = null,
+        ?CustomTextOptions             $customTextOptions = null,
+        ?AutomaticTax                  $automaticTax = null,
+        ?int                           $expiresAt = null,
+        ?AfterExpiration               $afterExpiration = null,
+        ?bool                          $adaptivePricing = null,
+        BillingAddressCollection       $billingAddressCollection = BillingAddressCollection::AUTO,
+        ?CountryCodeCollection         $shippingAddressCollection = null,
+        ?TaxIdCollectionConfig         $taxIdCollection = null,
+        ?bool                          $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,
         ?string                          $paymentMethodConfigurationId = null,
         ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes = null,
         ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
         ?Metadata                        $metadata = null,
-    )
+    ) : Session
     {
         $params = $flowConfig->getStripeParams();
 
         $params['mode'] = SessionMode::SUBSCRIPTION->value;
         $params['line_items'] = $items->toStripeArrayForm();
 
+        if (is_object($existingStripeCustomerOrEmail) && get_class($existingStripeCustomerOrEmail) === ExistingCustomer::class)
+        {
+            $params = array_merge($params, $existingStripeCustomerOrEmail->getStripeParams());
+        }
+        elseif (is_string($existingStripeCustomerOrEmail))
+        {
+            if (filter_var($existingStripeCustomerOrEmail, FILTER_VALIDATE_EMAIL) === false )
+            {
+                throw new ExceptionInvalidValue(
+                    "existingStripeCustomerOrEmail needs to be either an ExistingCustomer object, or the customer's email address"
+                );
+            }
+
+            $params['customer_email'] = $existingStripeCustomerOrEmail;
+        }
+
         if ($subscriptionData         !== null) { $params['subscription_data'] = $subscriptionData->toArray(); }
         if ($invoiceCreation          !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
-        if ($existingStripeCustomer   !== null) { $params = array_merge($params, $existingStripeCustomer->getStripeParams() ); }
         if ($automaticTax             !== null) { $params['automatic_tax'] = $automaticTax->toArray(); }
         if ($clientReferenceId        !== null) { $params['client_reference_id'] = $clientReferenceId; }
-        if ($customerEmail            !== null) { $params['customer_email'] = $customerEmail; }
         if ($metadata                 !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
         if ($adaptivePricing          !== null) { $params['adaptive_pricing'] = $adaptivePricing; }
         if ($afterExpiration          !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
