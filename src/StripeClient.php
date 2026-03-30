@@ -1168,7 +1168,7 @@ readonly class StripeClient
         ?AutomaticTax                       $automaticTax = null,
         ?string                             $defaultPaymentMethodId = null,
         ?Metadata                           $metadata = null,
-        PaymentBehavior                     $paymentBehavior = null, // only applies if collection_method=charge_automatically
+        ?PaymentBehavior                     $paymentBehavior = null, // only applies if collection_method=charge_automatically
         ?SubscriptionInvoiceItemCollection  $addInvoiceItems = null,
         ?int                                $applicationFeePercent = null,
         ?int                                $backdateStartDate = null, // backdate the start of the subcription to this point in time. May be the most optimal way to charge full amount for year.
@@ -1180,7 +1180,7 @@ readonly class StripeClient
         ?int                                $daysUntilDue = null,
         ?string                             $defaultSource = null,
         ?StringCollection                   $defaultTaxRates = null,
-        DiscountCollection                  $discounts = null,
+        ?DiscountCollection                  $discounts = null,
         InvoiceSettings                     $invoiceSettings = null,
         ?bool                               $offSession = null,
         ?string                             $onBehalfOf = null,
