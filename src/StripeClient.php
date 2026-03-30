@@ -1164,7 +1164,7 @@ readonly class StripeClient
         ExistingCustomer|string             $existingCustomerOrCustomerAccount,
         SubscriptionLineItemCollection      $items,
         Currency                            $currency,
-        ?string                             $description,
+        ?string                             $description = null,
         ?AutomaticTax                       $automaticTax = null,
         ?string                             $defaultPaymentMethodId = null,
         ?Metadata                           $metadata = null,
