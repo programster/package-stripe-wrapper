@@ -6,7 +6,7 @@
 
 namespace Programster\Stripe\Enums;
 
-enum Updatable: string
+enum Updateable: string
 {
     // Checkout will automatically determine whether to update the provided Customer object using details from the session.
     case AUTO = "auto";
