@@ -203,7 +203,7 @@ readonly class StripeClient
         if ($individualName !== null) { $params['individual_name'] = $individualName; }
         if ($invoicePrefix !== null) { $params['invoice_prefix'] = $invoicePrefix; }
         if ($invoiceSettings !== null) { $params['invoice_settings'] = $invoiceSettings; }
-        if ($nextInvoiceSequence === null) { $params['next_invoice_sequence'] = $nextInvoiceSequence; }
+        if ($nextInvoiceSequence !== null) { $params['next_invoice_sequence'] = $nextInvoiceSequence; }
         if ($preferredLocales !== null) { $params['preferred_locales'] = $preferredLocales->toStripeArrayForm(); }
         if ($source !== null) { $params['source'] = $source; }
         if ($taxExempt !== null) { $params['tax_exempt'] = $taxExempt->value; }
