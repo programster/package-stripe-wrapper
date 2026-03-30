@@ -28,7 +28,7 @@ use Programster\Stripe\Models\PriceDataForSinglePayment;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SinglePaymentLineItem;
 use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
-use Programster\Stripe\Models\PriceDataForSubscription;
+use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\StripeClient;
 
@@ -98,7 +98,7 @@ use Programster\Stripe\Models\PriceDataForSinglePayment;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SinglePaymentLineItem;
 use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
-use Programster\Stripe\Models\PriceDataForSubscription;
+use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\StripeClient;
 
@@ -111,7 +111,7 @@ $client = new StripeClient(STRIPE_SECRET_KEY);
 $flowConfig = FlowConfig::createHosted(successUrl: "http://localhost/success");
 $recurringConfig = new RecurringConfig(RecurringInterval::MONTH, 1);
 
-$shirt = new PriceDataForSubscription(
+$shirt = new PriceDataForSubscriptionCheckoutSession(
     currency: Currency::GBP,
     unitAmount: 2000,
     productDataOrId: new ProductData(
@@ -121,7 +121,7 @@ $shirt = new PriceDataForSubscription(
     recurring: $recurringConfig,
 );
 
-$shorts = new PriceDataForSubscription(
+$shorts = new PriceDataForSubscriptionCheckoutSession(
     currency: Currency::GBP,
     unitAmount: 1500,
     productDataOrId: new ProductData(
