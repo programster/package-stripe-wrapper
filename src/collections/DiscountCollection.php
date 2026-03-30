@@ -5,7 +5,7 @@ namespace Programster\Stripe\Collections;
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
 
-class SubscriptionItemDiscountCollection extends AbstractCollection
+class DiscountCollection extends AbstractCollection
 {
     public function __construct(SubscriptionItemDiscount ...$discounts)
     {

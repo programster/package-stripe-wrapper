@@ -5,7 +5,7 @@ namespace Programster\Stripe\Collections;
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Enums\PaymentMethodType;
 use Programster\Stripe\Models\CustomField;
-use Programster\Stripe\Models\SubscriptionLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 
 class PaymentMethodTypeCollection extends AbstractCollection
 {

@@ -2,26 +2,32 @@
 
 namespace Programster\Stripe;
 
+use DateTime;
 use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomerShippingDetailsCollection;
 use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\LocaleCollection;
 use Programster\Stripe\Collections\StringCollection;
-use Programster\Stripe\Collections\SubscriptionItemDiscountCollection;
-use Programster\Stripe\collections\SubscriptionLineItemCollection;
+use Programster\Stripe\Collections\DiscountCollection;
+use Programster\Stripe\collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
+use Programster\Stripe\Collections\SubscriptionInvoiceItemCollection;
+use Programster\Stripe\Collections\SubscriptionLineItemCollection;
 use Programster\Stripe\Enums\BillingAddressCollection;
+use Programster\Stripe\Enums\CancelAtEnum;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
 use Programster\Stripe\Enums\ExceptionInvalidValue;
 use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\PaymentBehavior;
+use Programster\Stripe\Enums\PaymentMethodType;
 use Programster\Stripe\Enums\ProrationBehavior;
 use Programster\Stripe\Enums\ReconciliationMode;
+use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\SubscriptionCollectionMethod;
@@ -30,6 +36,8 @@ use Programster\Stripe\Enums\TaxExempt;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
+use Programster\Stripe\Models\BillingCycleAnchorConfig;
+use Programster\Stripe\Models\BillingMode;
 use Programster\Stripe\Models\BillingThresholds;
 use Programster\Stripe\Models\CancellationDetails;
 use Programster\Stripe\Models\CustomerInvoiceSettings;
@@ -42,7 +50,9 @@ use Programster\Stripe\Models\ConsentConfig;
 use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\InvoiceSettings;
 use Programster\Stripe\Models\PaymentIntentData;
+use Programster\Stripe\Models\PaymentSettings;
 use Programster\Stripe\Models\PriceDataForSubscription;
+use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\ShippingConfig;
 use Programster\Stripe\Models\StripeConnectPaymentConfig;
@@ -50,6 +60,8 @@ use Programster\Stripe\Models\StripeConnectSubscriptionConfig;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
+use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\TrialConfig;
 use Stripe\Checkout\Session;
 use Stripe\Collection;
 use Stripe\Customer;
@@ -130,28 +142,56 @@ readonly class StripeClient
 
     /**
      * Create a customer - https://docs.stripe.com/api/customers/create?lang=php
+     *
      * @param Address|null $address - the address of the customer (required if calculating taxes)
-     * @param string|null $description - An arbitrary string that you can attach to a customer object. It is displayed alongside the customer in the dashboard.
-     * @param string|null $email - Customer’s email address. It’s displayed alongside the customer in your dashboard and can be useful for searching and tracking. This may be up to 512 characters.
-     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+     *
+     * @param string|null $description - An arbitrary string that you can attach to a customer object. It is displayed
+     * alongside the customer in the dashboard.
+     *
+     * @param string|null $email - Customer’s email address. It’s displayed alongside the customer in your dashboard
+     * and can be useful for searching and tracking. This may be up to 512 characters.
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for
+     * storing additional information about the object in a structured format. Individual keys can be unset by posting
+     * an empty value to them. All keys can be unset by posting an empty value to metadata.
+     *
      * @param string|null $name - The customer’s full name or business name. The maximum length is 256 characters.
+     *
      * @param string|null $paymentMethodId - The ID of the PaymentMethod to attach to the customer.
+     *
      * @param string|null $phone - The customer’s phone number.
-     * @param CustomerShippingDetailsCollection|null $shippingDetails - The customer’s shipping information. Appears on invoices emailed to this customer.
+     *
+     * @param CustomerShippingDetailsCollection|null $shippingDetails - The customer’s shipping information. Appears on
+     * invoices emailed to this customer.
+     *
      * @param CustomerTaxConfig|null $taxConfig
+     *
      * @param int|null $balance
+     *
      * @param string|null $businessName
+     *
      * @param ReconciliationMode|null $cashBalanceReconciliationMode
+     *
      * @param string|null $individualName
+     *
      * @param string|null $invoicePrefix
+     *
      * @param CustomerInvoiceSettings|null $invoiceSettings
+     *
      * @param int|null $nextInvoiceSequence
+     *
      * @param LocaleCollection|null $preferredLocales
+     *
      * @param string|null $source
+     *
      * @param TaxExempt|null $taxExempt
+     *
      * @param CustomerTaxIdDataCollection|null $taxIdData
+     *
      * @param string|null $testClockId
+     *
      * @return Customer - the created customer.
+     *
      * @throws ApiErrorException
      */
     public function createCustomer(
@@ -247,28 +287,40 @@ readonly class StripeClient
     /**
      * Updates the plan or quantity of an item on a current subscription.
      * https://docs.stripe.com/api/subscription_items/update
+     *
      * @param string $subscriptionItemId - the ID of the subscription we wish to update.
+     *
      * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for
      * storing additional information about the object in a structured format. Individual keys can be unset by posting
      * an empty value to them. All keys can be unset by posting an empty value to metadata.
+     *
      * @param PaymentBehavior|null $paymentBehavior
+     *
      * @param string|PriceDataForSubscription|null $priceDataOrPriceId - either the ID of a price object to use for
      * the subscription item, or the object form that fully provides all of the details. Leave as null to not change.
+     *
      * @param ProrationBehavior|null $prorationBehavior - Determines how to handle prorations when the billing cycle
      * changes (e.g., when switching plans, resetting billing_cycle_anchor=now, or starting a trial), or if an item’s
      * quantity changes. The default value is create_prorations.
+     *
      * @param int|null $quantity - The quantity you’d like to apply to the subscription item you’re creating.
+     *
      * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
      * subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds.
-     * @param SubscriptionItemDiscountCollection|null $discounts - The coupons to redeem into discounts for the
+     *
+     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the
      * subscription item.
+     *
      * @param bool|null $offSession - Indicates if a customer is on or off-session while an invoice payment is
      * attempted. Defaults to false (on-session).
+     *
      * @param int|null $prorationDate - If set, the proration will be calculated as though the subscription was updated
      * at the given time. This can be used to apply the same proration that was previewed with the upcoming invoice
      * endpoint.
+     *
      * @param StringCollection|null $taxRateIds - A list of Tax Rate IDs. These Tax Rates will override the
      * default_tax_rates on the Subscription. When updating, pass an empty string to remove previously-defined tax rates.
+     *
      * @return void
      * @throws ApiErrorException
      */
@@ -280,7 +332,7 @@ readonly class StripeClient
         ?ProrationBehavior                   $prorationBehavior = null,
         ?int                                 $quantity = null,
         ?BillingThresholds                   $billingThresholds = null,
-        ?SubscriptionItemDiscountCollection  $discounts = null,
+        ?DiscountCollection                  $discounts = null,
         ?bool                                $offSession = null,
         ?int                                 $prorationDate = null,
         ?StringCollection                    $taxRateIds = null,
@@ -395,24 +447,37 @@ readonly class StripeClient
      * You can list all invoices, or list the invoices for a specific customer. The invoices are returned sorted by
      * creation date, with the most recently created invoices appearing first.
      * https://docs.stripe.com/api/invoices/list
+     *
      * @param string|null $customerId - optionally specify a customer ID to only fetch invoices relating to that
      * customer.
+     *
      * @param string|null $customerAccount - optionally specify a customer account to only fetch invoices relating to
      * that customer.
+     *
      * @param InvoiceStatus|null $status - optionally provide a status to only show invoices with that status.
+     *
      * @param string|null $subscriptionId - optionally provide the ID of a subscription to only retrieve invoices
      * related to that subscription.
+     *
      * @param SubscriptionCollectionMethod|null $collectionMethod - optionally specify a collection method to filter by.
+     *
      * @param string|null $cursorStartingAfter
+     *
      * @param string|null $cursorEndingBefore
+     *
      * @param TimePeriod|null $created
+     *
      * @param bool $expandPayments - if set to true (default), then this will include details of all the payments made
      * against an invoice. You need this if you wish to look up the payment intents that relate to an invoice (which
      * is generally the only way to work out which payment intents were against a subscription.
      * E.g. subscription -> invoices -> payment intents)
+     *
      * @param string|null $testClock
+     *
      * @param int $limit
+     *
      * @return Collection
+     *
      * @throws ApiErrorException
      */
     public function listInvoices(
@@ -427,7 +492,7 @@ readonly class StripeClient
         bool $expandPayments = true,
         ?string $testClock = null,
         int $limit = 100,
-    )
+    ) : Collection
     {
         $params = ['limit' => $limit];
 
@@ -453,7 +518,7 @@ readonly class StripeClient
         ?TimePeriod $created = null,
         ?string $testClock = null,
         int $limit = 100,
-    )
+    ) : Collection
     {
         $params = ['limit' => $limit];
 
@@ -782,7 +847,7 @@ readonly class StripeClient
      *
      * @param FlowConfig $flowConfig
      *
-     * @param SubscriptionLineItemCollection $items
+     * @param SubscriptionCheckoutLineItemCollection $items
      *
      * @param SubscriptionData|null $subscriptionData - A subset of parameters to be passed to subscription creation
      * for Checkout Sessions in subscription mode.
@@ -862,31 +927,31 @@ readonly class StripeClient
      * @throws ApiErrorException
      */
     public function createCheckoutSessionForSubscription(
-        FlowConfig                     $flowConfig,
-        SubscriptionLineItemCollection $items,
-        ?SubscriptionData              $subscriptionData = null,
-        ?string                        $clientReferenceId = null,
-        ?Discount                      $discount = null,
-        ?bool                          $allowPromoCodes = null,
-        ?Locale                        $locale = null,
-        ?Currency                      $currency = null,
-        ExistingCustomer|string|null   $existingStripeCustomerOrEmail = null,
-        ?InvoiceCreation               $invoiceCreation = null,
-        ?CustomTextOptions             $customTextOptions = null,
-        ?AutomaticTax                  $automaticTax = null,
-        ?int                           $expiresAt = null,
-        ?AfterExpiration               $afterExpiration = null,
-        ?bool                          $adaptivePricing = null,
-        BillingAddressCollection       $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection         $shippingAddressCollection = null,
-        ?TaxIdCollectionConfig         $taxIdCollection = null,
-        ?bool                          $enablePhoneNumberCollection = null,
-        ?ConsentConfig                   $consentConfig = null,
-        ?CustomFieldCollection           $customFields = null,
-        ?string                          $paymentMethodConfigurationId = null,
-        ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes = null,
-        ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
-        ?Metadata                        $metadata = null,
+        FlowConfig                              $flowConfig,
+        SubscriptionCheckoutLineItemCollection  $items,
+        ?SubscriptionData                       $subscriptionData = null,
+        ?string                                 $clientReferenceId = null,
+        ?Discount                               $discount = null,
+        ?bool                                   $allowPromoCodes = null,
+        ?Locale                                 $locale = null,
+        ?Currency                               $currency = null,
+        ExistingCustomer|string|null            $existingStripeCustomerOrEmail = null,
+        ?InvoiceCreation                        $invoiceCreation = null,
+        ?CustomTextOptions                      $customTextOptions = null,
+        ?AutomaticTax                           $automaticTax = null,
+        ?int                                    $expiresAt = null,
+        ?AfterExpiration                        $afterExpiration = null,
+        ?bool                                   $adaptivePricing = null,
+        BillingAddressCollection                $billingAddressCollection = BillingAddressCollection::AUTO,
+        ?CountryCodeCollection                  $shippingAddressCollection = null,
+        ?TaxIdCollectionConfig                  $taxIdCollection = null,
+        ?bool                                   $enablePhoneNumberCollection = null,
+        ?ConsentConfig                          $consentConfig = null,
+        ?CustomFieldCollection                  $customFields = null,
+        ?string                                 $paymentMethodConfigurationId = null,
+        ?PaymentMethodTypeCollection            $allowedPaymentMethodTypes = null,
+        ?SavedPaymentMethodOptions              $savedPaymentMethodOptions = null,
+        ?Metadata                               $metadata = null,
     ) : Session
     {
         $params = $flowConfig->getStripeParams();
@@ -977,5 +1042,227 @@ readonly class StripeClient
     public function retrieveCheckoutSession(string $checkoutSessionId) : Session
     {
         return Session::retrieve($checkoutSessionId);
+    }
+
+
+    /**
+     * Create a subscription for the user. Most of the time you will want to use the
+     * createCheckoutSessionForSubscription method instead, but in certain circumstances, you may need
+     * to just create the subscription and have it send an invoice to the customer instead.
+     *
+     * @param ExistingCustomer|string $existingCustomerOrCustomerAccount
+     *
+     * @param SubscriptionLineItemCollection $items - items that should be charged in this subscription.
+     *
+     * @param Currency $currency
+     *
+     * @param string|null $description - The subscription’s description, meant to be displayable to the customer. Use
+     * this field to optionally store an explanation of the subscription for rendering in Stripe surfaces and certain
+     * local payment methods UIs.
+     * The maximum length is 500 characters.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-description
+     *
+     * @param AutomaticTax|null $automaticTax - Automatic tax settings for this subscription.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-automatic_tax
+     *
+     * @param string|null $defaultPaymentMethodId - ID of the default payment method for the subscription. It must
+     * belong to the customer associated with the subscription. This takes precedence over default_source. If neither
+     * are set, invoices will use the customer’s invoice_settings.default_payment_method or default_source.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-default_payment_method
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for
+     * storing additional information about the object in a structured format. Individual keys can be unset by posting
+     * an empty value to them. All keys can be unset by posting an empty value to metadata.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-metadata
+     *
+     * @param PaymentBehavior|null $paymentBehavior - Only applies to subscriptions with collection method set to
+     * charge_automatically.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_behavior
+     *
+     * @param SubscriptionInvoiceItemCollection|null $addInvoiceItems - A list of prices and quantities that will
+     * generate invoice items appended to the next invoice for this subscription. You may pass up to 20 items.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items
+     *
+     * @param int|null $applicationFeePercent - A non-negative decimal between 0 and 100, with at most two decimal
+     * places. This represents the percentage of the subscription invoice total that will be transferred to the
+     * application owner’s Stripe account. The request must be made by a platform account on a connected account in
+     * order to set an application fee percentage. For more information, see the application fees documentation.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-application_fee_percent
+     *
+     * @param int|null $backdateStartDate - A past timestamp to backdate the subscription’s start date to. If set, the
+     * first invoice will contain line items for the timespan between the start date and the current time. Can be
+     * combined with trials and the billing cycle anchor.
+     *
+     * @param int|BillingCycleAnchorConfig|null $billingCycleAnchorTimestampOrConfig - Mutually exclusive with
+     * billing_cycle_anchor and only valid with monthly and yearly price intervals. When provided, the
+     * billing_cycle_anchor is set to the next occurrence of the day_of_month at the hour, minute, and second UTC.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_cycle_anchor_config
+     *
+     * @param BillingMode|null $billingMode - Controls how prorations and invoices for subscriptions are calculated and
+     * orchestrated.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_mode
+     *
+     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
+     * subscription advanced to a new billing period. When updating, pass an empty string to remove previously-defined
+     * thresholds.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_thresholds
+     *
+     * @param int|CancelAtEnum|bool|null $cancelAt - optionally provide a boolean true to specify that this should
+     * cancel at the period end. Alternatively, you can provide an integer timestamp of when to cancel. Alternatively
+     * to that, you can even provide a CancelAtEnum to specify if you wish to cancel the subscription at the maximum
+     * or the minimum of the subscription items' billing periods.
+     *
+     * @param SubscriptionCollectionMethod|null $collectionMethod - Either charge_automatically, or send_invoice. When
+     * charging automatically, Stripe will attempt to pay this subscription at the end of the cycle using the default
+     * source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with
+     * payment instructions and mark the subscription as active. Defaults to charge_automatically.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-collection_method
+     *
+     * @param int|null $daysUntilDue - Number of days a customer has to pay invoices generated by this subscription.
+     * Valid only for subscriptions where collection_method is set to send_invoice.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-days_until_due
+     *
+     * @param string|null $defaultSource - ID of the default payment source for the subscription. It must belong to the
+     * customer associated with the subscription and be in a chargeable state. If default_payment_method is also set,
+     * default_payment_method will take precedence. If neither are set, invoices will use the customer’s
+     * invoice_settings.default_payment_method or default_source.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-default_source
+     *
+     * @param StringCollection|null $defaultTaxRates - The tax rates that will apply to any subscription item that does
+     * not have tax_rates set. Invoices created will have their default_tax_rates populated from the subscription.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-default_tax_rates
+     *
+     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the subscription. If not
+     * specified or empty, inherits the discount from the subscription’s customer.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-discounts
+     *
+     * @param InvoiceSettings|null $invoiceSettings - All invoices will be billed using the specified settings.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-invoice_settings
+     *
+     * @param bool|null $offSession - Indicates if a customer is on or off-session while an invoice payment is
+     * attempted. Defaults to false (on-session).
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-off_session
+     *
+     * @param string|null $onBehalfOf - The account on behalf of which to charge, for each of the subscription’s invoices.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-on_behalf_of
+     *
+     * @param PaymentSettings|null $paymentSettings - Payment settings to pass to invoices created by the subscription.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings
+     *
+     * @param RecurringConfig|null $pendingInvoiceItemInterval
+     *
+     * @param ProrationBehavior|null $prorationBehavior
+     *
+     * @param TransferData|null $transferData
+     *
+     * @param TrialConfig|null $trialConfig
+     *
+     * @return void
+     * @throws ApiErrorException
+     */
+    public function createSubscription(
+        ExistingCustomer|string             $existingCustomerOrCustomerAccount,
+        SubscriptionLineItemCollection      $items,
+        Currency                            $currency,
+        ?string                             $description,
+        ?AutomaticTax                       $automaticTax = null,
+        ?string                             $defaultPaymentMethodId = null,
+        ?Metadata                           $metadata = null,
+        PaymentBehavior                     $paymentBehavior = null, // only applies if collection_method=charge_automatically
+        ?SubscriptionInvoiceItemCollection  $addInvoiceItems = null,
+        ?int                                $applicationFeePercent = null,
+        ?int                                $backdateStartDate = null, // backdate the start of the subcription to this point in time. May be the most optimal way to charge full amount for year.
+        null|int|BillingCycleAnchorConfig   $billingCycleAnchorTimestampOrConfig = null,
+        ?BillingMode                        $billingMode = null,
+        BillingThresholds                   $billingThresholds = null,
+        null|int|CancelAtEnum|bool          $cancelAt = null,
+        ?SubscriptionCollectionMethod       $collectionMethod = null,
+        ?int                                $daysUntilDue = null,
+        ?string                             $defaultSource = null,
+        ?StringCollection                   $defaultTaxRates = null,
+        DiscountCollection                  $discounts = null,
+        InvoiceSettings                     $invoiceSettings = null,
+        ?bool                               $offSession = null,
+        ?string                             $onBehalfOf = null,
+        ?PaymentSettings                    $paymentSettings = null,
+        ?RecurringConfig                    $pendingInvoiceItemInterval = null,
+        ?ProrationBehavior                  $prorationBehavior = null,
+        ?TransferData                       $transferData = null,
+        ?TrialConfig                        $trialConfig = null,
+    ) : Subscription
+    {
+        $params = ['items' => $items->toStripeArrayForm()];
+
+        if ($automaticTax !== null) { $params['automatic_tax'] = $automaticTax; }
+        if ($currency !== null)     { $params['currency'] = $currency->value; }
+
+        if (is_string($existingCustomerOrCustomerAccount))
+        {
+            $params['customer_account'] = $existingCustomerOrCustomerAccount;
+        }
+        else
+        {
+            $params['customer'] = $existingCustomerOrCustomerAccount->getCustomerId();
+        }
+
+        if ($defaultPaymentMethodId !== null) { $params['default_payment_method_id'] = $defaultPaymentMethodId; }
+        if ($description !== null)            { $params['description'] = $description; }
+        if ($metadata !== null)               { $params['metadata'] = $metadata; }
+        if ($paymentBehavior !== null)        { $params['payment_behavior'] = $paymentBehavior->value; }
+        if ($addInvoiceItems !== null)        { $params['add_invoice_items'] = $addInvoiceItems->toStripeArrayForm(); }
+        if ($applicationFeePercent !== null)  { $params['application_fee_percent'] = $applicationFeePercent; }
+        if ($backdateStartDate !== null)      { $params['backdate_start_date'] = $backdateStartDate; }
+
+        if ($billingCycleAnchorTimestampOrConfig !== null)
+        {
+            if (is_int($billingCycleAnchorTimestampOrConfig))
+            {
+                $params['billing_cycle_anchor'] = $billingCycleAnchorTimestampOrConfig;
+            }
+            else
+            {
+                $params['billing_cycle_anchor_config'] = $billingCycleAnchorTimestampOrConfig->toArray();
+            }
+        }
+
+        if ($billingMode !== null)       { $params['billing_mode']       = $billingMode->toArray(); }
+        if ($billingThresholds !== null) { $params['billing_thresholds'] = $billingThresholds->toStripeForm(); }
+
+        if ($cancelAt !== null)
+        {
+            if (is_int($cancelAt))
+            {
+                $params['cancel_at'] = $cancelAt;
+            }
+            elseif (is_bool($cancelAt))
+            {
+                $params['cancel_at_period_end'] = $cancelAt;
+            }
+            else
+            {
+                $params['cancel_at'] = $cancelAt->value;
+            }
+        }
+
+        if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
+        if ($daysUntilDue !== null)     { $params['days_until_due'] = $daysUntilDue; }
+        if ($defaultSource !== null)    { $params['default_source'] = $defaultSource; }
+        if ($defaultTaxRates !== null)  { $params['default_tax_rates'] = $defaultTaxRates->toArray(); }
+        if ($discounts !== null)        { $params['discounts'] = $discounts->toStripeArrayForm(); }
+        if ($invoiceSettings !== null)  { $params['invoice_settings'] = $invoiceSettings->toArray(); }
+        if ($offSession !== null)       { $params['off_session'] = $offSession; }
+        if ($onBehalfOf !== null)       { $params['on_behalf_of'] = $onBehalfOf; }
+        if ($paymentSettings !== null)  { $params['payment_settings'] = $paymentSettings->toArray(); }
+
+        if ($pendingInvoiceItemInterval !== null)
+        {
+            $params['pending_invoice_item_interval'] = $pendingInvoiceItemInterval->toArray();
+        }
+
+        if ($prorationBehavior !== null) { $params['proration_behavior'] = $prorationBehavior->value; }
+        if ($transferData !== null)      { $params['transfer_data'] = $transferData->toArray(); }
+        if ($trialConfig !== null)       { $params = array_merge($params, $trialConfig->getStripeParams()); }
+
+        return $this->m_underlyingStripeClient->subscriptions->create($params);
     }
 }

@@ -9,32 +9,45 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\EndTrialBehaviorIfMissingPaymentMethod;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class TrialConfig
+readonly class SubscriptionTrialConfig
 {
     private function __construct(
         private ?int $numDays = null,
         private ?int $endTimestamp = null,
         private ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null,
+        private ?bool $trialFromPlan = null,
     )
     {
 
     }
 
+
     public static function createForEndTimestamp(
         int $unixTimestamp,
         ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null
-    ): TrialConfig
+    ): SubscriptionTrialConfig
     {
-        return new TrialConfig(null, $unixTimestamp, $endTrialBehaviorIfMissingPaymentMethod);
+        return new SubscriptionTrialConfig(
+            null,
+            $unixTimestamp,
+            $endTrialBehaviorIfMissingPaymentMethod,
+            null
+        );
     }
 
 
     public static function createForNumDays(
         int $numDays,
-        ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null
-    ): TrialConfig
+        ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null,
+        bool $trialFromPlan = null
+    ): SubscriptionTrialConfig
     {
-        return new TrialConfig($numDays, null, $endTrialBehaviorIfMissingPaymentMethod);
+        return new SubscriptionTrialConfig(
+            $numDays,
+            null,
+            $endTrialBehaviorIfMissingPaymentMethod,
+            $trialFromPlan
+        );
     }
 
 
@@ -48,6 +61,11 @@ readonly class TrialConfig
         if ($this->endTrialBehaviorIfMissingPaymentMethod !== null)
         {
             $params['trial_settings'] = array('end_behavior' => $this->endTrialBehaviorIfMissingPaymentMethod->value);
+        }
+
+        if ($this->trialFromPlan !== null)
+        {
+            $params['trial_from_plan'] = $this->trialFromPlan;
         }
 
         return $params;

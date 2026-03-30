@@ -19,7 +19,7 @@ items they wish to purchase.
 <?php
 
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
-use Programster\Stripe\Collections\SubscriptionLineItemCollection;
+use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Models\AdjustableQuantityConfig;
@@ -27,7 +27,7 @@ use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\PriceDataForSinglePayment;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SinglePaymentLineItem;
-use Programster\Stripe\Models\SubscriptionLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\PriceDataForSubscription;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\StripeClient;
@@ -89,7 +89,7 @@ This is could be for if you were setting up your own Dollar Shave club, or Netfl
 <?php
 
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
-use Programster\Stripe\Collections\SubscriptionLineItemCollection;
+use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Models\AdjustableQuantityConfig;
@@ -97,7 +97,7 @@ use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\PriceDataForSinglePayment;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SinglePaymentLineItem;
-use Programster\Stripe\Models\SubscriptionLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\PriceDataForSubscription;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\StripeClient;
@@ -130,13 +130,13 @@ $shorts = new PriceDataForSubscription(
     recurring: $recurringConfig,
 );
 
-$items = new SubscriptionLineItemCollection(
-    new SubscriptionLineItem(
+$items = new SubscriptionCheckoutLineItemCollection(
+    new SubscriptionCheckoutLineItem(
         quantity: 1,
         priceDataOrPriceId: $shirt,
         adjustableQuantityConfig: new AdjustableQuantityConfig(1, 100)
     ),
-    new SubscriptionLineItem(
+    new SubscriptionCheckoutLineItem(
         quantity: 1,
         priceDataOrPriceId: $shorts,
         adjustableQuantityConfig: new AdjustableQuantityConfig(1, 100)

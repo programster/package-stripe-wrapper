@@ -38,4 +38,7 @@ readonly class ExistingCustomer
 
         return $params;
     }
+
+
+    public function getCustomerId() : string { return $this->customerStripeId; }
 }
