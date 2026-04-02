@@ -1266,4 +1266,33 @@ readonly class StripeClient
 
         return $this->m_underlyingStripeClient->subscriptions->create($params);
     }
+
+
+    /**
+     * Retrieve a customer's payment methods.
+     * https://docs.stripe.com/api/payment_methods/customer_list
+     * @return void
+     */
+    public function listCustomerPaymentMethods(
+        string $customerId,
+        ?PaymentMethodType $paymentMethodType = null,
+        ?string $cursorStartingAfter = null,
+        ?string $cursorEndingBefore = null,
+        int $limit = 100,
+    ) : Collection
+    {
+        $params = [
+            'limit' => $limit,
+        ];
+
+        if ($paymentMethodType !== null)
+        {
+            $params['type'] = $paymentMethodType->value;
+        }
+
+        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
+        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
+
+        return $this->m_underlyingStripeClient->customers->allPaymentMethods($customerId, $params);
+    }
 }
