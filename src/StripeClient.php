@@ -1208,7 +1208,7 @@ readonly class StripeClient
 
         if ($defaultPaymentMethodId !== null) { $params['default_payment_method'] = $defaultPaymentMethodId; }
         if ($description !== null)            { $params['description'] = $description; }
-        if ($metadata !== null)               { $params['metadata'] = $metadata; }
+        if ($metadata !== null)               { $params['metadata'] = $metadata->toStripeArrayForm(); }
         if ($paymentBehavior !== null)        { $params['payment_behavior'] = $paymentBehavior->value; }
         if ($addInvoiceItems !== null)        { $params['add_invoice_items'] = $addInvoiceItems->toStripeArrayForm(); }
         if ($applicationFeePercent !== null)  { $params['application_fee_percent'] = $applicationFeePercent; }
