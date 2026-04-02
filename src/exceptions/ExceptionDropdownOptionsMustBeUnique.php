@@ -1,6 +1,6 @@
 <?php
 
-namespace Programster\Stripe\Enums;
+namespace Programster\Stripe\Exceptions;
 class ExceptionDropdownOptionsMustBeUnique extends \Exception
 {
     public function __construct(private readonly string $value)

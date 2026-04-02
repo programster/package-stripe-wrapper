@@ -2,8 +2,8 @@
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\ExceptionInvalidKeyName;
-use Programster\Stripe\Enums\ExceptionValueTooLong;
+use Programster\Stripe\Exceptions\ExceptionInvalidKeyName;
+use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
 class MetadataItem

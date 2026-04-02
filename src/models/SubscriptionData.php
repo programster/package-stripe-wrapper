@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
-use Programster\Stripe\Enums\ExceptionMissingRequiredParameter;
+use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Enums\ProrationBehavior;
 
 class SubscriptionData implements \Programster\Stripe\Interfaces\Arrayable

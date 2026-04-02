@@ -4,7 +4,7 @@
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\ExceptionDropdownOptionsMustBeUnique;
+use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class FieldType implements Arrayable

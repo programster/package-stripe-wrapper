@@ -7,8 +7,8 @@
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\ExceptionMissingRequiredParameter;
-use Programster\Stripe\Enums\ExceptionValueTooLong;
+use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
+use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class CustomTextOptions implements Arrayable

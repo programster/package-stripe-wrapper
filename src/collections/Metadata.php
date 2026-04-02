@@ -3,7 +3,7 @@
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
-use Programster\Stripe\Enums\ExceptionInvalidValue;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Models\MetadataItem;
 
 class Metadata extends AbstractCollection

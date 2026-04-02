@@ -1,6 +1,6 @@
 <?php
 
-namespace Programster\Stripe\Enums;
+namespace Programster\Stripe\Exceptions;
 class ExceptionInvalidValue extends \Exception
 {
 }

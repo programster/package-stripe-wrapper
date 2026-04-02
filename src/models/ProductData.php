@@ -4,8 +4,8 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
-use Programster\Stripe\Enums\ExceptionInvalidValue;
-use Programster\Stripe\Enums\ExceptionValueTooLong;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
+use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class ProductData implements Arrayable

@@ -20,7 +20,7 @@ use Programster\Stripe\Enums\BillingAddressCollection;
 use Programster\Stripe\Enums\CancelAtEnum;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
-use Programster\Stripe\Enums\ExceptionInvalidValue;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\PaymentBehavior;

@@ -7,7 +7,7 @@
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\ExceptionMissingRequiredParameter;
+use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class TaxRates

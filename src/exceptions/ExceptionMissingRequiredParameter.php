@@ -1,6 +1,6 @@
 <?php
 
-namespace Programster\Stripe\Enums;
+namespace Programster\Stripe\Exceptions;
 class ExceptionMissingRequiredParameter extends \Exception
 {
     public function __construct(string $message)

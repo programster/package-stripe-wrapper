@@ -3,7 +3,7 @@
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Enums\BillingModeType;
-use Programster\Stripe\Enums\ExceptionMissingRequiredParameter;
+use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Interfaces\Arrayable;
 

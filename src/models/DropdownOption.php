@@ -4,8 +4,8 @@
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\ExceptionDropdownOptionsMustBeUnique;
-use Programster\Stripe\Enums\ExceptionValueTooLong;
+use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
+use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class DropdownOption implements Arrayable
