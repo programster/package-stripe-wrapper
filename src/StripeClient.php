@@ -1206,7 +1206,7 @@ readonly class StripeClient
             $params['customer'] = $existingCustomerOrCustomerAccount->getCustomerId();
         }
 
-        if ($defaultPaymentMethodId !== null) { $params['default_payment_method_id'] = $defaultPaymentMethodId; }
+        if ($defaultPaymentMethodId !== null) { $params['default_payment_method'] = $defaultPaymentMethodId; }
         if ($description !== null)            { $params['description'] = $description; }
         if ($metadata !== null)               { $params['metadata'] = $metadata; }
         if ($paymentBehavior !== null)        { $params['payment_behavior'] = $paymentBehavior->value; }
