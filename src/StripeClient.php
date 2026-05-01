@@ -258,6 +258,8 @@ readonly class StripeClient
     /**
      * List all subscription items
      * Returns a list of your subscription items for a given subscription.
+     * https://docs.stripe.com/api/subscription_items/list?lang=php
+     *
      * @param string $subscriptionId - the ID of the subscription to get the items for.
      * @param string|null $cursorStartingAfter
      * @param string|null $cursorEndingBefore
@@ -274,7 +276,10 @@ readonly class StripeClient
         int $limit = 100,
     ): Collection
     {
-        $params = ['limit' => $limit];
+        $params = [
+            'subscription' => $subscriptionId,
+            'limit' => $limit,
+        ];
 
         if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
         if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
