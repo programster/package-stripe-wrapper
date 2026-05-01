@@ -52,6 +52,7 @@ use Programster\Stripe\Models\InvoiceSettings;
 use Programster\Stripe\Models\PaymentIntentData;
 use Programster\Stripe\Models\PaymentSettings;
 use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
+use Programster\Stripe\Models\PriceDataForSubscriptionItem;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\ShippingConfig;
@@ -333,7 +334,7 @@ readonly class StripeClient
         string                                              $subscriptionItemId,
         ?Metadata                                           $metadata = null,
         ?PaymentBehavior                                    $paymentBehavior = null,
-        null|string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId = null,
+        null|string|PriceDataForSubscriptionItem            $priceDataOrPriceId = null,
         ?ProrationBehavior                                  $prorationBehavior = null,
         ?int                                                $quantity = null,
         ?BillingThresholds                                  $billingThresholds = null,
