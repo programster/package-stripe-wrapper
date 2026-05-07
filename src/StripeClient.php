@@ -221,7 +221,7 @@ readonly class StripeClient
     {
         $params = [];
 
-        if ($address !== null) { $params['address'] = $address; }
+        if ($address !== null) { $params['address'] = $address->toArray(); }
         if ($description !== null) { $params['description'] = $description; }
         if ($email !== null) { $params['email'] = $email; }
         if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
