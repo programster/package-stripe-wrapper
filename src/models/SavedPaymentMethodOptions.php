@@ -46,12 +46,12 @@ class SavedPaymentMethodOptions implements Arrayable
 
         if ($this->enableSavingOfPaymentMethod !== null)
         {
-            $arrayForm['payment_method_save'] = $this->enableSavingOfPaymentMethod;
+            $arrayForm['payment_method_save'] = ($this->enableSavingOfPaymentMethod) ? "enabled" : "disabled";
         }
 
         if ($this->enablePaymentMethodRemoval !== null)
         {
-            $arrayForm['payment_method_remove'] = $this->enablePaymentMethodRemoval;
+            $arrayForm['payment_method_remove'] = ($this->enablePaymentMethodRemoval) ? "enabled" : "disabled";;
         }
 
         if ($this->allowRedisplayFilters !== null)
