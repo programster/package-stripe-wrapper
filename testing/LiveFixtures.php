@@ -21,7 +21,10 @@ final class LiveFixtures
     private string $m_couponId;
     private string $m_taxRateId;
     private string $m_testClockId;
+    /** @var list<string> */
     private array $m_customerIds = [];
+
+    /** @var list<string> */
     private array $m_checkoutSessionIds = [];
 
 

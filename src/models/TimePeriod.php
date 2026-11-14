@@ -33,6 +33,9 @@ readonly class TimePeriod implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $startKey = ($this->m_isStartInclusive) ? 'gte' : 'gt';

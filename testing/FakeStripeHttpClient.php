@@ -42,9 +42,10 @@ final class FakeStripeHttpClient implements ClientInterface
      *
      * @param string $absUrl - the URL being requested.
      *
-     * @param array $headers - the headers, as full "Name: value" strings.
+     * @param list<string> $headers - the headers, as full "Name: value" strings.
      *
-     * @param array $params - the parameters, as the SDK encoded them (e.g. booleans become "true" and "false").
+     * @param array<string, mixed> $params - the parameters, as the SDK encoded them (e.g. booleans become "true" and
+     * "false").
      *
      * @param bool $hasFile - whether a file is being uploaded.
      *
@@ -52,7 +53,9 @@ final class FakeStripeHttpClient implements ClientInterface
      *
      * @param int|null $maxNetworkRetries - how many times to retry.
      *
-     * @return array - the response body, HTTP status code and headers.
+     * @return array{0: string, 1: int, 2: array<string, string>} - the response body, HTTP status code and headers.
+     *
+     * @throws \Exception - if the URL has no path, which the SDK never sends.
      */
     public function request(
         $method,
@@ -65,6 +68,12 @@ final class FakeStripeHttpClient implements ClientInterface
     ): array
     {
         $path = parse_url($absUrl, PHP_URL_PATH);
+
+        if (!is_string($path))
+        {
+            throw new \Exception("The SDK sent a request to a URL with no path: {$absUrl}");
+        }
+
         $this->m_lastRequest = new RecordedRequest($method, $path, $headers, $params);
         $lastSegment = basename($path);
 

@@ -144,3 +144,15 @@ $smoke->run("listCustomers by email", function () use ($client, $runId): void {
     $customers = $client->listCustomers(email: "jo.{$runId}@example.com", limit: 10);
     SmokeTest::assertSame(1, count($customers->data), "number of customers found");
 });
+
+$smoke->run("createCustomer with an idempotency key only creates one", function () use (
+    $client,
+    $fixtures,
+    $metadata
+): void {
+    $key = 'live-test-' . bin2hex(random_bytes(8));
+    $first = $client->createCustomer(metadata: $metadata, idempotencyKey: $key);
+    $fixtures->trackCustomer($first->id);
+    $second = $client->createCustomer(metadata: $metadata, idempotencyKey: $key);
+    SmokeTest::assertSame($first->id, $second->id, "the same customer");
+});

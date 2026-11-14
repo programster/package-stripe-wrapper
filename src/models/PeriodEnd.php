@@ -49,6 +49,9 @@ readonly class PeriodEnd implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = ['type' => $this->m_type->value];

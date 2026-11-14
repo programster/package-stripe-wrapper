@@ -108,6 +108,9 @@ readonly class PaymentIntentData implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = ['capture_method' => $this->m_captureMethod->value];

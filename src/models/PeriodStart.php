@@ -59,6 +59,9 @@ readonly class PeriodStart implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = ['type' => $this->m_type->value];

@@ -40,7 +40,7 @@ readonly class TransferData implements Arrayable
 
     /**
      * The form for a payment intent, where the amount is a fixed amount in pennies/cents.
-     * @return array
+     * @return array<string, mixed>
      */
     public function toArray() : array
     {
@@ -53,7 +53,7 @@ readonly class TransferData implements Arrayable
 
     /**
      * The form for a subscription, where Stripe takes the amount as a percentage of each invoice instead.
-     * @return array
+     * @return array<string, mixed>
      */
     public function toSubscriptionArray() : array
     {

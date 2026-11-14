@@ -89,6 +89,9 @@ readonly class SubscriptionItem implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = ['quantity' => $this->m_quantity];

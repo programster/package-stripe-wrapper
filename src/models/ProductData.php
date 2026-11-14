@@ -69,6 +69,9 @@ readonly class ProductData implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = ['name' => $this->m_name];

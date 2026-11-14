@@ -13,6 +13,7 @@ use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class PaymentSettings implements Arrayable
 {
+    /** @var array<string, mixed>|null */
     private ?array $m_paymentMethodOptions;
     private ?PaymentMethodTypeCollection $m_paymentMethodTypes;
     private ?bool $m_saveDefaultPaymentMethod;
@@ -21,7 +22,7 @@ readonly class PaymentSettings implements Arrayable
     /**
      * Payment settings to pass to invoices created by the subscription.
      *
-     * @param array|null $paymentMethodOptions - Payment-method-specific configuration to provide to invoices created
+     * @param array<string, mixed>|null $paymentMethodOptions - Payment-method-specific configuration to provide to invoices created
      * by the subscription, in the array form Stripe takes.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings-payment_method_options
      *
@@ -47,6 +48,9 @@ readonly class PaymentSettings implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = [];

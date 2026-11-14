@@ -31,6 +31,9 @@ readonly class CustomerShippingDetails implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = [

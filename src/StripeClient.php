@@ -126,7 +126,7 @@ readonly class StripeClient
      * @param int $limit - optionally specify the limit to the number of subscriptions in the result (pagination). This
      * package's default is 100, which is the maximum, so you can only override it to reduce the number.
      *
-     * @return Collection
+     * @return Collection<\Stripe\Subscription>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -222,6 +222,11 @@ readonly class StripeClient
      *
      * @param string|null $testClockId - ID of the test clock to attach to the customer, for testing.
      *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
      * @return Customer - the created customer.
      *
      * @throws ApiErrorException
@@ -249,6 +254,7 @@ readonly class StripeClient
         ?TaxExempt $taxExempt = null,
         ?CustomerTaxIdDataCollection $taxIdData = null,
         ?string $testClockId = null,
+        ?string $idempotencyKey = null,
     ) : Customer
     {
         $params = [];
@@ -298,7 +304,8 @@ readonly class StripeClient
         if ($taxIdData !== null) { $params['tax_id_data'] = $taxIdData->toStripeArrayForm(); }
         if ($testClockId !== null) { $params['test_clock'] = $testClockId; }
 
-        return $this->m_underlyingStripeClient->customers->create($params);
+        $options = $this->getRequestOptions($idempotencyKey);
+        return $this->m_underlyingStripeClient->customers->create($params, $options);
     }
 
 
@@ -383,6 +390,11 @@ readonly class StripeClient
      * @param StringCollection|null $taxRateIds - A list of Tax Rate IDs. These Tax Rates will override the
      * default_tax_rates on the Subscription.
      *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
      * @return SubscriptionItem - the updated subscription item.
      *
      * @throws ApiErrorException
@@ -399,6 +411,7 @@ readonly class StripeClient
         ?bool                                    $offSession = null,
         ?int                                     $prorationDate = null,
         ?StringCollection                        $taxRateIds = null,
+        ?string                                  $idempotencyKey = null,
     ) : SubscriptionItem
     {
         $params = [];
@@ -423,7 +436,8 @@ readonly class StripeClient
         if ($prorationDate !== null) { $params['proration_date'] = $prorationDate; }
         if ($taxRateIds !== null) { $params['tax_rates'] = $taxRateIds->toArray(); }
 
-        return $this->m_underlyingStripeClient->subscriptionItems->update($subscriptionItemId, $params);
+        $options = $this->getRequestOptions($idempotencyKey);
+        return $this->m_underlyingStripeClient->subscriptionItems->update($subscriptionItemId, $params, $options);
     }
 
 
@@ -488,7 +502,7 @@ readonly class StripeClient
      *
      * @param int $limit - A limit on the number of objects to be returned. Limit can range between 1 and 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\PaymentIntent>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -552,7 +566,7 @@ readonly class StripeClient
      *
      * @param int $limit - the maximum number of invoices to return, from 1 to 100. Defaults to 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\Invoice>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -608,7 +622,7 @@ readonly class StripeClient
      *
      * @param int $limit - the maximum number of customers to return, from 1 to 100. Defaults to 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\Customer>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -656,7 +670,7 @@ readonly class StripeClient
      *
      * @param int $limit - the maximum number of refunds to return, from 1 to 100. Defaults to 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\Refund>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -705,7 +719,7 @@ readonly class StripeClient
      *
      * @param int $limit - the maximum number of charges to return, from 1 to 100. Defaults to 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\Charge>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -834,6 +848,11 @@ readonly class StripeClient
      *
      * @param Metadata|null $metadata - Set of key-value pairs to store against the checkout session.
      *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
      * @return Session - the created checkout session.
      *
      * @throws ApiErrorException
@@ -868,6 +887,7 @@ readonly class StripeClient
         ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
         SubmitType                       $submitType = SubmitType::AUTO,
         ?Metadata                        $metadata = null,
+        ?string                          $idempotencyKey = null,
     ) : Session
     {
         $params = $flowConfig->getStripeParams();
@@ -904,7 +924,8 @@ readonly class StripeClient
         );
 
         $params = array_merge($params, $sharedParams);
-        return $this->m_underlyingStripeClient->checkout->sessions->create($params);
+        $options = $this->getRequestOptions($idempotencyKey);
+        return $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
     }
 
 
@@ -996,6 +1017,11 @@ readonly class StripeClient
      *
      * @param Metadata|null $metadata - Set of key-value pairs to store against the checkout session.
      *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
      * @return Session - the created checkout session.
      *
      * @throws ApiErrorException
@@ -1027,6 +1053,7 @@ readonly class StripeClient
         ?PaymentMethodTypeCollection            $allowedPaymentMethodTypes = null,
         ?SavedPaymentMethodOptions              $savedPaymentMethodOptions = null,
         ?Metadata                               $metadata = null,
+        ?string                                 $idempotencyKey = null,
     ) : Session
     {
         $params = $flowConfig->getStripeParams();
@@ -1061,7 +1088,8 @@ readonly class StripeClient
         );
 
         $params = array_merge($params, $sharedParams);
-        return $this->m_underlyingStripeClient->checkout->sessions->create($params);
+        $options = $this->getRequestOptions($idempotencyKey);
+        return $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
     }
 
 
@@ -1190,6 +1218,11 @@ readonly class StripeClient
      *
      * @param TrialConfig|null $trialConfig - how long a trial should last and how to behave when the trial ends.
      *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
      * @return Subscription - the created subscription.
      *
      * @throws ApiErrorException
@@ -1224,6 +1257,7 @@ readonly class StripeClient
         ?ProrationBehavior                  $prorationBehavior = null,
         ?TransferData                       $transferData = null,
         ?TrialConfig                        $trialConfig = null,
+        ?string                             $idempotencyKey = null,
     ) : Subscription
     {
         $params = [
@@ -1302,7 +1336,8 @@ readonly class StripeClient
         if ($transferData !== null) { $params['transfer_data'] = $transferData->toSubscriptionArray(); }
         if ($trialConfig !== null) { $params = array_merge($params, $trialConfig->getStripeParams()); }
 
-        return $this->m_underlyingStripeClient->subscriptions->create($params);
+        $options = $this->getRequestOptions($idempotencyKey);
+        return $this->m_underlyingStripeClient->subscriptions->create($params, $options);
     }
 
 
@@ -1322,7 +1357,7 @@ readonly class StripeClient
      *
      * @param int $limit - the maximum number of payment methods to return, from 1 to 100. Defaults to 100.
      *
-     * @return Collection
+     * @return Collection<\Stripe\PaymentMethod>
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
@@ -1346,6 +1381,32 @@ readonly class StripeClient
     }
 
 
+
+    /**
+     * Get the options for a request that changes something: just the idempotency key, if one was given.
+     * @param string|null $idempotencyKey - the key, or null for none.
+     * @return array{idempotency_key?: string}
+     * @throws ExceptionInvalidValue - if the key is empty, or longer than Stripe's 255 characters.
+     */
+    private function getRequestOptions(?string $idempotencyKey) : array
+    {
+        $options = [];
+
+        if ($idempotencyKey !== null)
+        {
+            if ($idempotencyKey === '' || strlen($idempotencyKey) > 255)
+            {
+                throw new ExceptionInvalidValue(
+                    "An idempotency key must be 1 to 255 characters, but was " . strlen($idempotencyKey) . "."
+                );
+            }
+
+            $options['idempotency_key'] = $idempotencyKey;
+        }
+
+        return $options;
+    }
+
     /**
      * Check a list method's limit is within the range Stripe allows.
      * @param int $limit - the maximum number of objects to return.
@@ -1367,7 +1428,7 @@ readonly class StripeClient
      * @param ExistingCustomer|string|null $existingStripeCustomerOrEmail - the existing customer, their email address,
      * or null for neither.
      *
-     * @return array - the parameters to add to the checkout session.
+     * @return array<string, mixed> - the parameters to add to the checkout session.
      *
      * @throws ExceptionInvalidValue - if it is a string that isn't an email address.
      */
@@ -1421,7 +1482,7 @@ readonly class StripeClient
      * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions
      * @param Metadata|null $metadata
      *
-     * @return array - the parameters to add to the checkout session.
+     * @return array<string, mixed> - the parameters to add to the checkout session.
      */
     private static function getSharedCheckoutParams(
         ?string $clientReferenceId,

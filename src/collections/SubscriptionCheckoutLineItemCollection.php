@@ -20,7 +20,7 @@ class SubscriptionCheckoutLineItemCollection extends AbstractCollection
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return array
+     * @return list<array<string, mixed>>
      */
     public function toStripeArrayForm() : array
     {

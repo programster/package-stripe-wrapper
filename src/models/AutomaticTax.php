@@ -34,6 +34,9 @@ readonly class AutomaticTax implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = [

@@ -1,9 +1,9 @@
 # PHPStan settings. Run with: vendor/bin/phpstan
-# Level 5 is clean for src/. Most of what level 6 and above report is arrays without value types in docblocks, and
-# collection elements typed as mixed (programster/collections has no generics), which the move to ramsey/collection
-# in 1.0.0 is expected to fix.
+# Level 6 is the highest that's clean. Level 7 and above also check each request array against the exact shape the
+# Stripe SDK declares, and the elements of the collections, which programster/collections 0.1.0 types as mixed. Both
+# are for 1.0.0, with its typed models and programster/collections 2.x.
 parameters:
-    level: 5
+    level: 6
     phpVersion:
         min: 80200
         max: 80599
@@ -16,6 +16,21 @@ parameters:
     # constants are loaded instead, and treated as unknown values rather than the template's defaults.
     bootstrapFiles:
         - testing/settings.php.tmpl
+    ignoreErrors:
+        # Accessors are one line, with no docblock, so these can't say what their arrays hold. The properties they
+        # return do say.
+        -
+            identifier: missingType.iterableValue
+            path: src/models/TaxRates.php
+            count: 1
+        -
+            identifier: missingType.iterableValue
+            path: testing/RecordedRequest.php
+            count: 1
+        -
+            identifier: missingType.iterableValue
+            path: testing/SmokeTest.php
+            count: 2
     dynamicConstantNames:
         - STRIPE_SECRET_KEY
         - STRIPE_TAX_IS_SET_UP

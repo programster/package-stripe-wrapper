@@ -1,6 +1,6 @@
 {
     "name": "programster/stripe-wrapper",
-    "type": "sdk",
+    "type": "library",
     "description": "A wrapper around the stipe/stripe-php SDK in order to make life easier.",
     "keywords": ["stripe","sdk"],
     "homepage": "https://github.com/programster/package-stripe-wrapper",
@@ -14,7 +14,7 @@
         }
     ],
     "require": {
-        "php": ">=8.2.0",
+        "php": "^8.2",
         "stripe/stripe-php": "^v19.4.0",
         "ext-curl": "*",
         "programster/collections": "^0.1.0"

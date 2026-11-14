@@ -11,10 +11,14 @@ namespace Programster\Stripe\Testing;
 final class SmokeTest
 {
     private int $m_numPassed = 0;
+    /** @var list<string> */
     private array $m_failures = [];
+
+    /** @var list<string> */
     private array $m_warnings = [];
 
     # Tests that couldn't run here (e.g. ones needing a Stripe feature that isn't set up), so they can be reported.
+    /** @var list<string> */
     private array $m_skipped = [];
 
 
@@ -159,7 +163,7 @@ final class SmokeTest
     public static function assertSame(mixed $expected, mixed $actual, string $what): void
     {
         $describe = function (mixed $value): string {
-            return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+            return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
         };
 
         assert($expected === $actual, "{$what}: expected {$describe($expected)}, got {$describe($actual)}");

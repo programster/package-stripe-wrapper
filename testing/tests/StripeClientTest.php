@@ -326,3 +326,26 @@ $smoke->run("listCustomerPaymentMethods", function () use ($client, $fakeHttpCli
     SmokeTest::assertSame('/v1/customers/cus_123/payment_methods', $request->getPath(), "path");
     SmokeTest::assertSame(['limit' => 100, 'type' => 'card'], $request->getParams(), "params");
 });
+
+$smoke->run("idempotency keys are sent, and checked", function () use ($client, $fakeHttpClient): void {
+    $client->createCustomer(email: 'jo@example.com', idempotencyKey: 'order-42');
+    SmokeTest::assertSame('order-42', $fakeHttpClient->takeLastRequest()->getHeader('Idempotency-Key'), "the key");
+    $client->createCustomer(email: 'jo@example.com');
+    assert(!$fakeHttpClient->takeLastRequest()->hasHeader('Idempotency-Key'), "a key was sent when none was given");
+    $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, 'price_123'));
+    $flowConfig = FlowConfig::createHosted('https://example.com/done');
+    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, idempotencyKey: 'basket-7');
+    SmokeTest::assertSame('basket-7', $fakeHttpClient->takeLastRequest()->getHeader('Idempotency-Key'), "checkout");
+
+    $useEmptyKey = function () use ($client): void {
+        $client->createCustomer(idempotencyKey: '');
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $useEmptyKey, "1 to 255");
+
+    $useLongKey = function () use ($client): void {
+        $client->createCustomer(idempotencyKey: str_repeat('k', 256));
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $useLongKey, "1 to 255");
+});

@@ -50,13 +50,17 @@ readonly class BillingMode implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = [
             'type' => $this->m_type->value,
         ];
 
-        if ($this->m_type === BillingModeType::FLEXIBLE)
+        # createFlexible() always gives a proration discount config, but check it, rather than assume it.
+        if ($this->m_type === BillingModeType::FLEXIBLE && $this->m_prorationDiscountConfig !== null)
         {
             $arrayForm['flexible'] = ['proration_discounts' => $this->m_prorationDiscountConfig->value];
         }

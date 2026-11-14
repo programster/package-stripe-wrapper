@@ -10,6 +10,9 @@ namespace Programster\Stripe\Collections;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @implements \IteratorAggregate<int, string>
+ */
 class StringCollection implements Arrayable, \Countable, \IteratorAggregate
 {
     /** @var string[] */

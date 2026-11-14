@@ -32,6 +32,13 @@ $fakeHttpClient = new FakeStripeHttpClient();
 ApiRequestor::setHttpClient($fakeHttpClient);
 
 $testFiles = glob(__DIR__ . '/tests/*Test.php');
+
+if ($testFiles === false)
+{
+    echo "Couldn't list the test files in " . __DIR__ . "/tests.\n";
+    exit(1);
+}
+
 sort($testFiles);
 
 foreach ($testFiles as $testFile)

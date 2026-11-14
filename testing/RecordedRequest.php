@@ -11,15 +11,19 @@ final readonly class RecordedRequest
 {
     private string $m_method;
     private string $m_path;
+
+    /** @var list<string> */
     private array $m_headers;
+
+    /** @var array<string, mixed> */
     private array $m_params;
 
 
     /**
      * @param string $method - "get", "post" or "delete".
      * @param string $path - the path that was requested, e.g. "/v1/customers".
-     * @param array $headers - the headers, as full "Name: value" strings.
-     * @param array $params - the parameters, as the SDK encoded them (e.g. booleans become "true" and "false").
+     * @param list<string> $headers - the headers, as full "Name: value" strings.
+     * @param array<string, mixed> $params - the parameters, as the SDK encoded them (e.g. booleans become "true").
      */
     public function __construct(string $method, string $path, array $headers, array $params)
     {
@@ -27,6 +31,54 @@ final readonly class RecordedRequest
         $this->m_path = $path;
         $this->m_headers = $headers;
         $this->m_params = $params;
+    }
+
+
+    /**
+     * Check whether the request had a header, by its name, ignoring case.
+     * @param string $name - the header's name, e.g. "Idempotency-Key".
+     * @return bool
+     */
+    public function hasHeader(string $name): bool
+    {
+        $found = false;
+
+        foreach ($this->m_headers as $header)
+        {
+            if (stripos($header, "{$name}:") === 0)
+            {
+                $found = true;
+            }
+        }
+
+        return $found;
+    }
+
+
+    /**
+     * Get the value of one of the request's headers, by its name, ignoring case.
+     * @param string $name - the header's name, e.g. "Idempotency-Key".
+     * @return string
+     * @throws \Exception - if the request had no such header.
+     */
+    public function getHeader(string $name): string
+    {
+        $value = null;
+
+        foreach ($this->m_headers as $header)
+        {
+            if ($value === null && stripos($header, "{$name}:") === 0)
+            {
+                $value = trim(substr($header, strlen($name) + 1));
+            }
+        }
+
+        if ($value === null)
+        {
+            throw new \Exception("The request had no {$name} header.");
+        }
+
+        return $value;
     }
 
 

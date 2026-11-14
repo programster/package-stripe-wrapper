@@ -77,7 +77,7 @@ readonly class TrialConfig
 
     /**
      * Get the trial's settings, as the parameters Stripe takes for them.
-     * @return array
+     * @return array<string, mixed>
      */
     public function getStripeParams() : array
     {

@@ -15,6 +15,7 @@ use Programster\Stripe\Interfaces\Arrayable;
 readonly class FieldType implements Arrayable
 {
     private CustomFieldType $m_type;
+    /** @var array<string, mixed> */
     private array $m_childConfig;
 
 
@@ -129,6 +130,9 @@ readonly class FieldType implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         return [

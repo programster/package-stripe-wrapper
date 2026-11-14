@@ -59,7 +59,7 @@ readonly class StripeConnectPaymentConfig
 
     /**
      * @deprecated - see the class's docblock.
-     * @return array
+     * @return array<string, mixed>
      */
     public function getParams() : array
     {

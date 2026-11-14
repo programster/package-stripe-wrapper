@@ -46,6 +46,9 @@ readonly class CustomerInvoiceSettings implements Arrayable
     }
 
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray() : array
     {
         $arrayForm = [];
