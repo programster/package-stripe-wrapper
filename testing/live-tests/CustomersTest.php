@@ -61,8 +61,8 @@ $smoke->run("createCustomer: address, contact details, shipping and metadata", f
     $fixtures->trackCustomer($customer->id);
     $checkoutCustomerId = $customer->id;
     SmokeTest::assertSame('N1 1AA', $customer->address->postal_code, "address");
-    SmokeTest::assertSame('Jo Bloggs', $customer->shipping->name, "shipping name");
-    SmokeTest::assertSame('London', $customer->shipping->address->city, "shipping city");
+    SmokeTest::assertSame('Jo Bloggs', $customer->shipping['name'], "shipping name");
+    SmokeTest::assertSame('London', $customer->shipping['address']['city'], "shipping city");
     SmokeTest::assertSame(LiveFixtures::METADATA['created_by'], $customer->metadata['created_by'], "metadata");
 });
 

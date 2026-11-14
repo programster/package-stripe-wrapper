@@ -160,11 +160,11 @@ $smoke->run("listSubscriptionItems", function () use ($client, $fakeHttpClient):
     SmokeTest::assertSame(['subscription' => 'sub_123', 'limit' => 5], $request->getParams(), "params");
 });
 
-$smoke->run("updateSubscriptionItem returns the updated item", function () use ($client, $fakeHttpClient): void {
+$smoke->run("updateSubscriptionItem", function () use ($client, $fakeHttpClient): void {
     $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
     $price = new PriceDataForSubscriptionItem(Currency::GBP, 500, 'prod_123', $monthly);
 
-    $item = $client->updateSubscriptionItem(
+    $client->updateSubscriptionItem(
         'si_123',
         priceDataOrPriceId: $price,
         quantity: 2,
@@ -172,7 +172,6 @@ $smoke->run("updateSubscriptionItem returns the updated item", function () use (
         taxRateIds: new StringCollection('txr_1'),
     );
 
-    assert($item instanceof \Stripe\SubscriptionItem, "it didn't return the item");
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/subscription_items/si_123', $request->getPath(), "path");
     $params = $request->getParams();
@@ -231,7 +230,7 @@ $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $
     $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, $shirt));
     $dropdown = FieldType::createDropdown(null, new DropdownOption('Red', 'red'));
 
-    $session = $client->createCheckoutSessionForSinglePayment(
+    $client->createCheckoutSessionForSinglePayment(
         FlowConfig::createHosted('https://example.com/done', cancelUrl: 'https://example.com/cancel'),
         $items,
         discount: Discount::createCoupon('coupon_1'),
@@ -241,7 +240,6 @@ $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $
         allowedPaymentMethodTypes: new PaymentMethodTypeCollection(PaymentMethodType::AFFIRM),
     );
 
-    assert($session instanceof \Stripe\Checkout\Session, "it didn't return a session");
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/checkout/sessions', $request->getPath(), "path");
     $params = $request->getParams();

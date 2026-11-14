@@ -166,6 +166,8 @@ composer install
 testing/run-all-php-versions.sh
 ```
 
+This also runs PHPStan once, on the lowest version. To run it on its own: `vendor/bin/phpstan`.
+
 Pass versions to test only those (e.g. `testing/run-all-php-versions.sh 8.2 8.5`), or `--rebuild` to rebuild the
 Docker images first, e.g. to pick up the latest patch releases. To run them once on your local PHP instead:
 

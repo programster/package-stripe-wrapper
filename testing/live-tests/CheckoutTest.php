@@ -241,9 +241,9 @@ $smoke->run("single payment: custom fields, custom text and shipping", function 
     $stored = $retrieve($session);
     SmokeTest::assertSame(3, count($stored->custom_fields), "number of custom fields");
     SmokeTest::assertSame(false, $stored->custom_fields[0]->optional, "colour is required");
-    SmokeTest::assertSame('red', $stored->custom_fields[0]->dropdown->default_value, "dropdown default");
+    SmokeTest::assertSame('red', $stored->custom_fields[0]['dropdown']['default_value'], "dropdown default");
     SmokeTest::assertSame(true, $stored->custom_fields[1]->optional, "engraving is optional");
-    SmokeTest::assertSame(10, $stored->custom_fields[2]->numeric->maximum_length, "numeric maximum length");
+    SmokeTest::assertSame(10, $stored->custom_fields[2]['numeric']['maximum_length'], "numeric maximum length");
     SmokeTest::assertSame('Pay securely', $stored->custom_text->submit->message, "submit text");
     SmokeTest::assertSame(['GB', 'US'], $stored->shipping_address_collection->allowed_countries, "countries");
 });

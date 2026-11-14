@@ -1,6 +1,7 @@
 #!/bin/sh
 # Runs lint and the smoke tests (testing/main.php) on every supported version of PHP, each in its own Docker
-# container. This catches code that only works on newer versions of PHP than the minimum this package supports.
+# container, then PHPStan once. This catches code that only works on newer versions of PHP than the minimum this
+# package supports.
 # The tests never contact Stripe: every request is caught by a fake HTTP client, which records what would have been
 # sent, so no API key or network access is needed.
 #
@@ -41,6 +42,7 @@ then
 fi
 
 failedVersions=""
+phpstanFailed=0
 
 for version in $versions
 do
@@ -67,12 +69,24 @@ do
     fi
 done
 
+# Static analysis only needs to run once. It runs on the lowest version tested, as that is the most likely to differ.
+lowestVersion=$(echo $versions | tr ' ' '\n' | sort -V | head -n 1)
 echo
-if [ -z "$failedVersions" ]
+echo "################ PHPStan (PHP ${lowestVersion})"
+
+if ! docker run --rm --network none -v "$repoDir":/src:ro "stripewrapper-php${lowestVersion}-test" \
+    sh -c 'cp -r /src /app && cd /app && php vendor/bin/phpstan --no-progress --memory-limit=1G'
+then
+    phpstanFailed=1
+fi
+
+echo
+if [ -z "$failedVersions" ] && [ "$phpstanFailed" -eq 0 ]
 then
     echo "All passed:" $versions
     exit 0
 else
-    echo "FAILED on PHP:" $failedVersions
+    [ -z "$failedVersions" ] || echo "FAILED on PHP:" $failedVersions
+    [ "$phpstanFailed" -eq 0 ] || echo "FAILED PHPStan"
     exit 1
 fi
