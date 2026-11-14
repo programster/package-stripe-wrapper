@@ -36,14 +36,14 @@ use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Models\AccountReference;
 use Programster\Stripe\Models\AdjustableQuantityConfig;
 use Programster\Stripe\Models\AfterExpiration;
-use Programster\Stripe\Models\BillingCycleAnchorConfig;
+use Programster\Stripe\Models\BillingCycleAnchor;
+use Programster\Stripe\Models\SubscriptionCheckoutCustomer;
 use Programster\Stripe\Models\BillingMode;
 use Programster\Stripe\Models\BillingThresholds;
 use Programster\Stripe\Models\ConsentConfig;
 use Programster\Stripe\Models\CustomerUpdateConfig;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\DropdownOption;
-use Programster\Stripe\Models\ExistingCustomer;
 use Programster\Stripe\Models\FieldType;
 use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\InvoiceCustomField;
@@ -58,11 +58,15 @@ use Programster\Stripe\Models\PeriodEnd;
 use Programster\Stripe\Models\PeriodStart;
 use Programster\Stripe\Models\PriceDataForInvoiceItem;
 use Programster\Stripe\Models\PriceDataForSinglePayment;
+use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
+use Programster\Stripe\Models\PriceDataForSubscriptionItem;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\ShippingConfig;
 use Programster\Stripe\Models\Address;
+use Programster\Stripe\Models\SinglePaymentLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionData;
@@ -97,14 +101,21 @@ $smoke->run("AfterExpiration", function (): void {
     SmokeTest::assertSame(['recovery' => ['enabled' => false]], $disabled, "disabled");
 });
 
-$smoke->run("BillingCycleAnchorConfig with only a day of the month", function (): void {
-    SmokeTest::assertSame(['day_of_month' => 15], (new BillingCycleAnchorConfig(15))->toArray(), "day only");
+$smoke->run("BillingCycleAnchor with only a day of the month", function (): void {
+    $dayOnly = BillingCycleAnchor::onDayOfMonth(15)->getStripeParams();
+    SmokeTest::assertSame(['billing_cycle_anchor_config' => ['day_of_month' => 15]], $dayOnly, "day only");
 
     $createWithBadMonth = function (): void {
-        new BillingCycleAnchorConfig(1, 13);
+        BillingCycleAnchor::onDayOfMonth(1, 13);
     };
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $createWithBadMonth, "Month");
+
+    $createWithBadDay = function (): void {
+        BillingCycleAnchor::onDayOfMonth(32);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithBadDay, "Day of month");
 });
 
 $smoke->run("BillingMode", function (): void {
@@ -200,13 +211,16 @@ $smoke->run("InvoiceCreation, InvoiceData, InvoiceRenderingOptions", function ()
 });
 
 $smoke->run("InvoiceItemPeriod puts the start and end the right way round", function (): void {
-    $period = (new InvoiceItemPeriod(PeriodStart::createNow(), PeriodEnd::createTimestamp(1000)))->toArray();
+    $end = PeriodEnd::createAt(new DateTimeImmutable('@1000'));
+    $period = (new InvoiceItemPeriod(PeriodStart::createNow(), $end))->toArray();
     $expected = ['end' => ['type' => 'timestamp', 'timestamp' => 1000], 'start' => ['type' => 'now']];
     SmokeTest::assertSame($expected, $period, "period");
     $maxStart = PeriodStart::createMaxItemPeriodStart()->toArray();
     SmokeTest::assertSame(['type' => 'max_item_period_start'], $maxStart, "max start");
     $minEnd = PeriodEnd::createMinItemPeriodEnd()->toArray();
     SmokeTest::assertSame(['type' => 'min_item_period_end'], $minEnd, "min end");
+    $start = PeriodStart::createAt(new DateTimeImmutable('@500'))->toArray();
+    SmokeTest::assertSame(['type' => 'timestamp', 'timestamp' => 500], $start, "start at a time");
 });
 
 $smoke->run("MetadataItem and Metadata check their keys", function (): void {
@@ -281,7 +295,7 @@ $smoke->run("ProductData checks its images", function (): void {
 
 $smoke->run("prices, quantities and intervals reject impossible values", function (): void {
     $createNegativePrice = function (): void {
-        new PriceDataForSinglePayment(Currency::GBP, -1, 'prod_1');
+        PriceDataForSinglePayment::forProduct(Currency::GBP, -1, 'prod_1');
     };
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $createNegativePrice, "negative");
@@ -314,18 +328,20 @@ $smoke->run("SavedPaymentMethodOptions", function (): void {
 
 $smoke->run("SubscriptionInvoiceItem", function (): void {
     $price = new PriceDataForInvoiceItem(Currency::GBP, 'prod_1', 300);
-    $item = new SubscriptionInvoiceItem($price, 2, taxRates: new StringCollection('txr_1'));
+    $item = SubscriptionInvoiceItem::forPriceData($price, 2, taxRates: new StringCollection('txr_1'));
     $array = (new SubscriptionInvoiceItemCollection($item))->toStripeArrayForm()[0];
     SmokeTest::assertSame(300, $array['price_data']['unit_amount'], "unit amount");
     SmokeTest::assertSame(['txr_1'], $array['tax_rates'], "tax rates");
+    $existing = SubscriptionInvoiceItem::forPrice('price_1', 1)->toArray();
+    SmokeTest::assertSame(['quantity' => 1, 'price' => 'price_1'], $existing, "an existing price");
 });
 
 $smoke->run("SubscriptionItem rejects what Stripe doesn't allow on a subscription's items", function (): void {
-    $items = (new SubscriptionLineItemCollection(new SubscriptionItem(1, 'price_1')))->toStripeArrayForm();
+    $items = (new SubscriptionLineItemCollection(SubscriptionItem::forPrice('price_1', 1)))->toStripeArrayForm();
     SmokeTest::assertSame([['quantity' => 1, 'price' => 'price_1']], $items, "items");
 
     $createWithDynamicTaxRates = function (): void {
-        new SubscriptionItem(1, 'price_1', taxRates: new TaxRates(true, 'txr_1'));
+        SubscriptionItem::forPrice('price_1', 1, taxRates: new TaxRates(true, 'txr_1'));
     };
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $createWithDynamicTaxRates, "dynamic");
@@ -339,8 +355,16 @@ $smoke->run("SubscriptionItemDiscount", function (): void {
 });
 
 $smoke->run("TimePeriod uses inclusive comparisons by default", function (): void {
-    SmokeTest::assertSame(['gte' => 1, 'lte' => 2], (new TimePeriod(1, 2))->toArray(), "inclusive");
-    SmokeTest::assertSame(['gt' => 1, 'lt' => 2], (new TimePeriod(1, 2, false, false))->toArray(), "exclusive");
+    $one = new DateTimeImmutable('@1');
+    $two = new DateTimeImmutable('@2');
+    SmokeTest::assertSame(['gte' => 1, 'lte' => 2], (new TimePeriod($one, $two))->toArray(), "inclusive");
+    SmokeTest::assertSame(['gt' => 1, 'lt' => 2], (new TimePeriod($one, $two, false, false))->toArray(), "exclusive");
+
+    $createBackwards = function () use ($one, $two): void {
+        new TimePeriod($two, $one);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $createBackwards, "before its start");
 });
 
 $smoke->run("SubscriptionData rejects a proration behaviour without a billing cycle anchor", function (): void {
@@ -350,8 +374,10 @@ $smoke->run("SubscriptionData rejects a proration behaviour without a billing cy
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $createWithoutAnchor, "billing cycle anchor");
     $none = ProrationBehavior::NONE;
-    $withAnchor = (new SubscriptionData(billingCycleAnchor: 1000, prorationBehavior: $none))->toArray();
+    $anchor = new DateTimeImmutable('@1000');
+    $withAnchor = (new SubscriptionData(billingCycleAnchor: $anchor, prorationBehavior: $none))->toArray();
     SmokeTest::assertSame('none', $withAnchor['proration_behavior'], "proration behaviour");
+    SmokeTest::assertSame(1000, $withAnchor['billing_cycle_anchor'], "anchor");
 });
 
 $smoke->run("trial configs", function (): void {
@@ -360,7 +386,7 @@ $smoke->run("trial configs", function (): void {
     $expectedSettings = ['end_behavior' => ['missing_payment_method' => 'cancel']];
     $expectedTrial = ['trial_period_days' => 14, 'trial_settings' => $expectedSettings];
     SmokeTest::assertSame($expectedTrial, $trial, "days");
-    $endTrial = TrialConfig::createForEndTimestamp(5000)->getStripeParams();
+    $endTrial = TrialConfig::createForEndTime(new DateTimeImmutable('@5000'))->getStripeParams();
     SmokeTest::assertSame(['trial_end' => 5000], $endTrial, "end timestamp");
 });
 
@@ -370,8 +396,8 @@ $smoke->run("collections of enums", function (): void {
     SmokeTest::assertSame([], (new StringCollection())->toArray(), "empty string collection");
 });
 
-$smoke->run("ExistingCustomer", function (): void {
-    $customer = new ExistingCustomer('cus_1', new CustomerUpdateConfig(name: Updateable::AUTO));
+$smoke->run("an existing checkout customer", function (): void {
+    $customer = SubscriptionCheckoutCustomer::existing('cus_1', new CustomerUpdateConfig(name: Updateable::AUTO));
     $expectedUpdate = ['address' => 'never', 'name' => 'auto', 'shipping' => 'never'];
     $expected = ['customer' => 'cus_1', 'customer_update' => $expectedUpdate];
     SmokeTest::assertSame($expected, $customer->getStripeParams(), "params");
@@ -406,4 +432,55 @@ $smoke->run("transfer data for a payment and a subscription", function (): void 
     };
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $sendTooPrecise, "two decimal places");
+});
+
+$smoke->run("line items and prices take an ID or inline data, and reject the wrong kind of ID", function (): void {
+    $product = new ProductData('Shirt');
+    $inline = PriceDataForSinglePayment::forProductData(Currency::GBP, 100, $product)->toArray();
+    SmokeTest::assertSame(['name' => 'Shirt'], $inline['product_data'], "inline product");
+    $existing = PriceDataForSinglePayment::forProduct(Currency::GBP, 100, 'my-shirt')->toArray();
+    SmokeTest::assertSame('my-shirt', $existing['product'], "a product ID of your own");
+    $item = SinglePaymentLineItem::forPrice('price_1', 2)->toArray();
+    SmokeTest::assertSame(['quantity' => 2, 'price' => 'price_1'], $item, "an existing price");
+    $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
+    $checkoutPrice = PriceDataForSubscriptionCheckoutSession::forProductData(Currency::GBP, 100, $product, $monthly);
+    $checkoutItem = SubscriptionCheckoutLineItem::forPriceData($checkoutPrice, 1)->toArray();
+    $expectedRecurring = ['interval' => 'month', 'interval_count' => 1];
+    SmokeTest::assertSame($expectedRecurring, $checkoutItem['price_data']['recurring'], "recurring");
+
+    $priceAsProductForCheckout = function (): void {
+        PriceDataForSubscriptionCheckoutSession::forProduct(Currency::GBP, 100, 'price_1');
+    };
+
+    $priceAsInvoiceItemProduct = function (): void {
+        new PriceDataForInvoiceItem(Currency::GBP, 'price_1', 100);
+    };
+
+    $priceAsSubscriptionItemProduct = function () use ($monthly): void {
+        new PriceDataForSubscriptionItem(Currency::GBP, 100, 'price_1', $monthly);
+    };
+
+    $productAsLineItemPrice = function (): void {
+        SinglePaymentLineItem::forPrice('prod_1', 1);
+    };
+
+    $emptyPrice = function (): void {
+        SubscriptionCheckoutLineItem::forPrice('', 1);
+    };
+
+    $productAsSubscriptionItemPrice = function (): void {
+        SubscriptionItem::forPrice('prod_1', 1);
+    };
+
+    $productAsInvoiceItemPrice = function (): void {
+        SubscriptionInvoiceItem::forPrice('prod_1', 1);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $priceAsProductForCheckout, "product's ID is needed");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $priceAsInvoiceItemProduct, "product's ID is needed");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $priceAsSubscriptionItemProduct, "product's ID is");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $productAsLineItemPrice, "price's ID is needed");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $emptyPrice, "can't be empty");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $productAsSubscriptionItemPrice, "price's ID is");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $productAsInvoiceItemPrice, "price's ID is needed");
 });

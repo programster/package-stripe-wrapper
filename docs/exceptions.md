@@ -6,7 +6,7 @@ as asked. They're all in the `Programster\Stripe\Exceptions` namespace:
 
 | Exception | Thrown when |
 |---|---|
-| `ExceptionInvalidValue` | A value is out of range, or can't be used, e.g. a negative price, a `ResultLimit` below 1, or a customer's ID where an email address is expected. |
+| `ExceptionInvalidValue` | A value is out of range, or can't be used, e.g. a negative price, a `ResultLimit` below 1, a customer's ID where an email address is expected, or a product's ID where a price's is. |
 | `ExceptionDuplicateKey` | The same metadata key is given twice. It extends `ExceptionInvalidValue`. |
 | `ExceptionValueTooLong` | A value is longer than Stripe allows, e.g. a metadata value over 500 characters. `getValue()` returns it. |
 | `ExceptionInvalidKeyName` | A metadata key contains square brackets. |
@@ -21,7 +21,7 @@ as asked. They're all in the `Programster\Stripe\Exceptions` namespace:
 
 ```php
 // Throws ExceptionInvalidValue
-$price = new PriceDataForSinglePayment(Currency::GBP, -1, 'prod_123');
+$price = PriceDataForSinglePayment::forProduct(Currency::GBP, -1, 'prod_123');
 ```
 
 When Stripe itself rejects a request, or can't be reached, the methods throw `stripe/stripe-php`'s

@@ -15,8 +15,8 @@ use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Collections\SubscriptionLineItemCollection;
-use Programster\Stripe\Enums\CancelAtEnum;
 use Programster\Stripe\Enums\Currency;
+use Programster\Stripe\Enums\CustomerCreation;
 use Programster\Stripe\Enums\InvoiceStatus;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\PaymentMethodType;
@@ -33,6 +33,8 @@ use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AutomaticTax;
+use Programster\Stripe\Models\BillingCycleAnchor;
+use Programster\Stripe\Models\CancelAt;
 use Programster\Stripe\Models\CancellationDetails;
 use Programster\Stripe\Models\CustomerInvoiceSettings;
 use Programster\Stripe\Models\CustomerShippingDetails;
@@ -41,7 +43,6 @@ use Programster\Stripe\Models\CustomerTaxIdData;
 use Programster\Stripe\Models\CustomField;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\DropdownOption;
-use Programster\Stripe\Models\ExistingCustomer;
 use Programster\Stripe\Models\FieldType;
 use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\MetadataItem;
@@ -50,11 +51,15 @@ use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
 use Programster\Stripe\Models\PriceDataForSubscriptionItem;
 use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\Models\RecurringConfig;
+use Programster\Stripe\Models\SinglePaymentCheckoutCustomer;
 use Programster\Stripe\Models\SinglePaymentLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutCustomer;
 use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
+use Programster\Stripe\Models\SubscriptionCustomer;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
+use Programster\Stripe\Models\SubscriptionItemPrice;
 use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\SubscriptionTransferData;
@@ -72,7 +77,7 @@ $smoke->run("each client uses its own key, including for checkout sessions", fun
     $first->retrieveCheckoutSession('cs_123');
     SmokeTest::assertSame('sk_test_first', $fakeHttpClient->takeLastRequest()->getApiKey(), "retrieve's key");
 
-    $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, 'price_123'));
+    $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
     $first->createCheckoutSessionForSinglePayment(FlowConfig::createHosted('https://example.com/done'), $items);
     SmokeTest::assertSame('sk_test_first', $fakeHttpClient->takeLastRequest()->getApiKey(), "create's key");
     $second->retrieveCheckoutSession('cs_123');
@@ -87,7 +92,7 @@ $smoke->run("the secret key isn't shown by var_dump or print_r", function (): vo
 $smoke->run("listSubscriptions", function () use ($client, $fakeHttpClient): void {
     $client->listSubscriptions(
         customerId: 'cus_123',
-        created: new TimePeriod(100, 200),
+        created: new TimePeriod(new DateTimeImmutable('@100'), new DateTimeImmutable('@200')),
         subscriptionStatus: SubscriptionStatus::CANCELLED,
         automaticTaxEnabled: true,
         collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE,
@@ -157,18 +162,29 @@ $smoke->run("updateSubscriptionItem", function () use ($client, $fakeHttpClient)
 
     $client->updateSubscriptionItem(
         'si_123',
-        priceDataOrPriceId: $price,
+        price: SubscriptionItemPrice::forPriceData($price),
         quantity: 2,
         discounts: new DiscountCollection(SubscriptionItemDiscount::createFromCouponId('coupon_1')),
+        prorationDate: new DateTimeImmutable('@1700000000'),
         taxRateIds: new StringCollection('txr_1'),
     );
 
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/subscription_items/si_123', $request->getPath(), "path");
     $params = $request->getParams();
+    SmokeTest::assertSame(1700000000, $params['proration_date'], "proration date");
     SmokeTest::assertSame('prod_123', $params['price_data']['product'], "price data");
     SmokeTest::assertSame([['coupon' => 'coupon_1']], $params['discounts'], "discounts");
     SmokeTest::assertSame(['txr_1'], $params['tax_rates'], "tax rates");
+
+    $client->updateSubscriptionItem('si_123', price: SubscriptionItemPrice::forPrice('price_456'));
+    SmokeTest::assertSame(['price' => 'price_456'], $fakeHttpClient->takeLastRequest()->getParams(), "existing price");
+
+    $changeToProduct = function (): void {
+        SubscriptionItemPrice::forPrice('prod_123');
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $changeToProduct, "product's ID");
 });
 
 $smoke->run("cancelSubscription", function () use ($client, $fakeHttpClient): void {
@@ -218,16 +234,18 @@ $smoke->run("listCustomers, listRefunds, listCharges", function () use ($client,
 });
 
 $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $fakeHttpClient): void {
-    $shirt = new PriceDataForSinglePayment(Currency::GBP, 2000, new ProductData('T-shirt', taxCodeId: 'txcd_123'));
-    $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, $shirt));
+    $shirtProduct = new ProductData('T-shirt', taxCodeId: 'txcd_123');
+    $shirt = PriceDataForSinglePayment::forProductData(Currency::GBP, 2000, $shirtProduct);
+    $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPriceData($shirt, 1));
     $dropdown = FieldType::createDropdown(null, new DropdownOption('Red', 'red'));
 
     $client->createCheckoutSessionForSinglePayment(
         FlowConfig::createHosted('https://example.com/done', cancelUrl: 'https://example.com/cancel'),
         $items,
         discount: Discount::createCoupon('coupon_1'),
-        existingStripeCustomerOrEmail: 'jo@example.com',
+        customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS),
         automaticTax: new AutomaticTax(true),
+        expiresAt: new DateTimeImmutable('@1700003600'),
         customFields: new CustomFieldCollection(new CustomField('colour', 'Colour', $dropdown, true)),
         allowedPaymentMethodTypes: new PaymentMethodTypeCollection(PaymentMethodType::AFFIRM),
     );
@@ -238,6 +256,8 @@ $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $
     SmokeTest::assertSame('payment', $params['mode'], "mode");
     SmokeTest::assertSame('https://example.com/cancel', $params['cancel_url'], "cancel URL");
     SmokeTest::assertSame('jo@example.com', $params['customer_email'], "email");
+    SmokeTest::assertSame('always', $params['customer_creation'], "customer creation");
+    SmokeTest::assertSame(1700003600, $params['expires_at'], "expires at");
     SmokeTest::assertSame([['coupon' => 'coupon_1']], $params['discounts'], "discounts");
     SmokeTest::assertSame('txcd_123', $params['line_items'][0]['price_data']['product_data']['tax_code'], "tax code");
     SmokeTest::assertSame(['affirm'], $params['payment_method_types'], "payment method types");
@@ -246,34 +266,58 @@ $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $
     SmokeTest::assertSame([['label' => 'Red', 'value' => 'red']], $customField['dropdown']['options'], "options");
 });
 
-$smoke->run("createCheckoutSessionForSinglePayment rejects a bad email", function () use ($client): void {
-    $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, 'price_123'));
+$smoke->run("checkout customers", function () use ($client, $fakeHttpClient): void {
+    $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
+    $flowConfig = FlowConfig::createHosted('https://example.com/done');
+    $customer = SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS);
+    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, customer: $customer);
+    $params = $fakeHttpClient->takeLastRequest()->getParams();
+    SmokeTest::assertSame('always', $params['customer_creation'], "creation without an email");
+    assert(!isset($params['customer']) && !isset($params['customer_email']), "a customer was sent");
 
-    $createWithCustomerId = function () use ($client, $items): void {
-        $flowConfig = FlowConfig::createHosted('https://example.com/done');
-        $client->createCheckoutSessionForSinglePayment($flowConfig, $items, existingStripeCustomerOrEmail: 'cus_123');
+    $customer = SinglePaymentCheckoutCustomer::existing('cus_123');
+    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, customer: $customer);
+    $params = $fakeHttpClient->takeLastRequest()->getParams();
+    SmokeTest::assertSame('cus_123', $params['customer'], "an existing customer");
+    assert(!isset($params['customer_creation']), "customer creation was sent with an existing customer");
+
+    $emailIsCustomerId = function (): void {
+        SinglePaymentCheckoutCustomer::withEmail('cus_123');
     };
 
-    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithCustomerId);
+    SmokeTest::expectException(ExceptionInvalidValue::class, $emailIsCustomerId, "email address");
+
+    $customerIdIsEmail = function (): void {
+        SubscriptionCheckoutCustomer::existing('jo@example.com');
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $customerIdIsEmail, "cus_");
+
+    $subscriberEmailIsCustomerId = function (): void {
+        SubscriptionCheckoutCustomer::withEmail('cus_123');
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $subscriberEmailIsCustomerId, "email address");
 });
 
 $smoke->run("createCheckoutSessionForSubscription", function () use ($client, $fakeHttpClient): void {
     $recurring = new RecurringConfig(RecurringInterval::MONTH, 1);
-    $price = new PriceDataForSubscriptionCheckoutSession(Currency::GBP, 999, 'prod_123', $recurring);
-    $items = new SubscriptionCheckoutLineItemCollection(new SubscriptionCheckoutLineItem(1, $price));
+    $price = PriceDataForSubscriptionCheckoutSession::forProduct(Currency::GBP, 999, 'prod_123', $recurring);
+    $items = new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::forPriceData($price, 1));
     $subscriptionData = new SubscriptionData(transferData: new SubscriptionTransferData('acct_1', 10));
 
     $client->createCheckoutSessionForSubscription(
         FlowConfig::createEmbedded('https://example.com/return'),
         $items,
         subscriptionData: $subscriptionData,
-        existingStripeCustomerOrEmail: new ExistingCustomer('cus_123'),
+        customer: SubscriptionCheckoutCustomer::withEmail('jo@example.com'),
     );
 
     $params = $fakeHttpClient->takeLastRequest()->getParams();
     SmokeTest::assertSame('subscription', $params['mode'], "mode");
     SmokeTest::assertSame('embedded', $params['ui_mode'], "UI mode");
-    SmokeTest::assertSame('cus_123', $params['customer'], "customer");
+    SmokeTest::assertSame('jo@example.com', $params['customer_email'], "customer email");
+    SmokeTest::assertSame('prod_123', $params['line_items'][0]['price_data']['product'], "product");
     $expectedTransfer = ['destination' => 'acct_1', 'amount_percent' => 10.0];
     SmokeTest::assertSame($expectedTransfer, $params['subscription_data']['transfer_data'], "transfer data");
 });
@@ -283,12 +327,14 @@ $smoke->run("createSubscription", function () use ($client, $fakeHttpClient): vo
     $price = new PriceDataForSubscriptionItem(Currency::GBP, 500, 'prod_123', $yearly);
 
     $client->createSubscription(
-        new ExistingCustomer('cus_123'),
-        new SubscriptionLineItemCollection(new SubscriptionItem(1, $price)),
+        SubscriptionCustomer::customer('cus_123'),
+        new SubscriptionLineItemCollection(SubscriptionItem::forPriceData($price, 1)),
         Currency::GBP,
         automaticTax: new AutomaticTax(true),
         applicationFeePercent: 12.5,
-        cancelAt: CancelAtEnum::MAX_PERIOD_END,
+        backdateStartDate: new DateTimeImmutable('@1600000000'),
+        billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1, hour: 9),
+        cancelAt: CancelAt::atLongestItemPeriodEnd(),
         transferData: new SubscriptionTransferData('acct_1', 20),
     );
 
@@ -299,17 +345,43 @@ $smoke->run("createSubscription", function () use ($client, $fakeHttpClient): vo
     SmokeTest::assertSame(['enabled' => 'true'], $params['automatic_tax'], "automatic tax");
     SmokeTest::assertSame(12.5, $params['application_fee_percent'], "application fee percent");
     SmokeTest::assertSame('max_period_end', $params['cancel_at'], "cancel at");
+    SmokeTest::assertSame(1600000000, $params['backdate_start_date'], "backdate start date");
+    $expectedAnchor = ['day_of_month' => 1, 'hour' => 9];
+    SmokeTest::assertSame($expectedAnchor, $params['billing_cycle_anchor_config'], "billing cycle anchor");
     SmokeTest::assertSame(['destination' => 'acct_1', 'amount_percent' => 20.0], $params['transfer_data'], "transfer");
 });
 
-$smoke->run("createSubscription rejects a customer ID given as a string", function () use ($client): void {
-    $items = new SubscriptionLineItemCollection(new SubscriptionItem(1, 'price_123'));
+$smoke->run("createSubscription's customer, cancellation and anchor", function () use ($client, $fakeHttpClient): void {
+    $items = new SubscriptionLineItemCollection(SubscriptionItem::forPrice('price_123', 1));
+    $anchor = BillingCycleAnchor::at(new DateTimeImmutable('@1800000000'));
+    $customer = SubscriptionCustomer::customerAccount('acct_123');
+    $client->createSubscription($customer, $items, Currency::GBP, billingCycleAnchor: $anchor);
+    $params = $fakeHttpClient->takeLastRequest()->getParams();
+    SmokeTest::assertSame('acct_123', $params['customer_account'], "customer account");
+    assert(!isset($params['customer']), "a customer was sent as well as the customer account");
+    SmokeTest::assertSame(1800000000, $params['billing_cycle_anchor'], "anchor time");
 
-    $createWithCustomerIdString = function () use ($client, $items): void {
-        $client->createSubscription('cus_123', $items, Currency::GBP);
+    $customer = SubscriptionCustomer::customer('cus_123');
+    $client->createSubscription($customer, $items, Currency::GBP, cancelAt: CancelAt::atPeriodEnd());
+    $params = $fakeHttpClient->takeLastRequest()->getParams();
+    SmokeTest::assertSame('true', $params['cancel_at_period_end'], "period end");
+    $cancelAt = CancelAt::at(new DateTimeImmutable('@1900000000'));
+    $client->createSubscription($customer, $items, Currency::GBP, cancelAt: $cancelAt);
+    SmokeTest::assertSame(1900000000, $fakeHttpClient->takeLastRequest()->getParams()['cancel_at'], "a time");
+    $client->createSubscription($customer, $items, Currency::GBP, cancelAt: CancelAt::atShortestItemPeriodEnd());
+    SmokeTest::assertSame('min_period_end', $fakeHttpClient->takeLastRequest()->getParams()['cancel_at'], "shortest");
+
+    $customerIdAsAccount = function (): void {
+        SubscriptionCustomer::customerAccount('cus_123');
     };
 
-    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithCustomerIdString, "ExistingCustomer");
+    SmokeTest::expectException(ExceptionInvalidValue::class, $customerIdAsAccount, "acct_");
+
+    $accountAsCustomer = function (): void {
+        SubscriptionCustomer::customer('acct_123');
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $accountAsCustomer, "cus_");
 });
 
 $smoke->run("listCustomerPaymentMethods", function () use ($client, $fakeHttpClient): void {
@@ -324,7 +396,7 @@ $smoke->run("idempotency keys are sent, and checked", function () use ($client, 
     SmokeTest::assertSame('order-42', $fakeHttpClient->takeLastRequest()->getHeader('Idempotency-Key'), "the key");
     $client->createCustomer(email: 'jo@example.com');
     assert(!$fakeHttpClient->takeLastRequest()->hasHeader('Idempotency-Key'), "a key was sent when none was given");
-    $items = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, 'price_123'));
+    $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
     $flowConfig = FlowConfig::createHosted('https://example.com/done');
     $client->createCheckoutSessionForSinglePayment($flowConfig, $items, idempotencyKey: 'basket-7');
     SmokeTest::assertSame('basket-7', $fakeHttpClient->takeLastRequest()->getHeader('Idempotency-Key'), "checkout");

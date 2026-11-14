@@ -73,14 +73,20 @@ if (!$page->isEmpty())
 `endingBefore` goes the other way, back towards the newest.
 
 ## Filtering by date
-A `TimePeriod` filters by when something was created, as unix timestamps. Both ends are inclusive by default:
+A `TimePeriod` filters by when something was created, between two `DateTimeImmutable`s. Both ends are inclusive by
+default, and an end before the start throws an `ExceptionInvalidValue`:
 
 ```php
-$lastWeek = new TimePeriod(start: strtotime('-7 days'), end: time());
+$lastWeek = new TimePeriod(start: new DateTimeImmutable('-7 days'), end: new DateTimeImmutable());
 $recentCharges = $client->listCharges(created: $lastWeek);
 
 // Or exclusive.
-$exclusive = new TimePeriod(start: strtotime('-7 days'), end: time(), isStartInclusive: false, isEndInclusive: false);
+$exclusive = new TimePeriod(
+    start: new DateTimeImmutable('-7 days'),
+    end: new DateTimeImmutable(),
+    isStartInclusive: false,
+    isEndInclusive: false,
+);
 ```
 
 ## Jumping ahead
@@ -93,8 +99,8 @@ no way to jump straight to "page 4". Something has to go through pages 1 to 3 fi
 
 ```php
 $lastMonth = new TimePeriod(
-    start: strtotime('first day of last month 00:00:00'),
-    end: strtotime('last day of last month 23:59:59'),
+    start: new DateTimeImmutable('first day of last month 00:00:00'),
+    end: new DateTimeImmutable('last day of last month 23:59:59'),
 );
 
 $lastMonthsCharges = $client->listCharges(created: $lastMonth, limit: ResultLimit::all());

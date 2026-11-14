@@ -11,6 +11,7 @@ use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\TaxBehavior;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
+use Programster\Stripe\Internal\StripeIds;
 
 
 final readonly class PriceDataForSubscriptionItem implements Arrayable
@@ -28,13 +29,13 @@ final readonly class PriceDataForSubscriptionItem implements Arrayable
      * @param int $unitPriceAmount - A non-negative integer in cents representing how much to charge. E.g. 500 for 5
      * USD.
      *
-     * @param string $productId - the ID of the product this price data is for.
+     * @param string $productId - the ID of the product this price data is for, e.g. "prod_123".
      *
      * @param RecurringConfig $recurring - how often the price is charged.
      *
      * @param TaxBehavior|null $taxBehavior - whether the price includes tax.
      *
-     * @throws ExceptionInvalidValue - if $unitPriceAmount is negative.
+     * @throws ExceptionInvalidValue - if $unitPriceAmount is negative, or $productId is empty or a price's ID.
      */
     public function __construct(
         Currency $currency,
@@ -48,6 +49,8 @@ final readonly class PriceDataForSubscriptionItem implements Arrayable
         {
             throw new ExceptionInvalidValue("The unit amount must not be negative, but {$unitPriceAmount} was given.");
         }
+
+        StripeIds::checkProductId($productId);
 
         $this->m_currency = $currency;
         $this->m_unitPriceAmount = $unitPriceAmount;

@@ -50,12 +50,12 @@ final readonly class PeriodStart implements Arrayable
 
     /**
      * Start the period at a given time.
-     * @param int $timestamp - the unix timestamp of the start.
+     * @param \DateTimeImmutable $time - when the period starts.
      * @return PeriodStart
      */
-    public static function createTimestamp(int $timestamp) : PeriodStart
+    public static function createAt(\DateTimeImmutable $time) : PeriodStart
     {
-        return new PeriodStart(PeriodStartType::TIMESTAMP, $timestamp);
+        return new PeriodStart(PeriodStartType::TIMESTAMP, $time->getTimestamp());
     }
 
 

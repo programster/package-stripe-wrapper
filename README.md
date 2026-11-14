@@ -48,19 +48,19 @@ require_once(__DIR__ . '/vendor/autoload.php');
 $client = new StripeClient('sk_test_...');
 $flowConfig = FlowConfig::createHosted(successUrl: "https://example.com/success");
 
-$shirt = new PriceDataForSinglePayment(
+$shirt = PriceDataForSinglePayment::forProductData(
     currency: Currency::GBP,
     unitAmount: 2000,
-    productDataOrId: new ProductData(
+    productData: new ProductData(
         name: "T-shirt",
         description: "A designer t-shirt."
     )
 );
 
 $items = new SinglePaymentLineItemsCollection(
-    new SinglePaymentLineItem(
+    SinglePaymentLineItem::forPriceData(
+        priceData: $shirt,
         quantity: 1,
-        priceDataOrPriceId: $shirt,
         adjustableQuantityConfig: new AdjustableQuantityConfig(1, 100)
     )
 );
@@ -80,9 +80,11 @@ Every class used above is in the `Programster\Stripe` namespace, e.g. `Programst
 existing customers and the other options.
 
 ## Design principles
-- **Mistakes are caught where they're made.** Options with a fixed set of values are enums, and values Stripe would
-  always reject (such as a negative price, or a minimum that's more than the maximum) throw an exception when the object
-  is created, rather than when the request reaches Stripe.
+- **Mistakes are caught where they're made.** Options with a fixed set of values are enums, a parameter that takes one
+  of several kinds of thing (such as an existing price, or one created inline) takes an object with a static creator
+  for each, and values Stripe would always reject (such as a negative price, a product's ID where a price's is needed,
+  or a minimum that's more than the maximum) throw an exception when the object is created, rather than when the
+  request reaches Stripe.
 - **Each client uses its own key.** Requests go through the client they were made with, so an application with several
   Stripe accounts can't send one account's request with another's key. The key is also kept out of `var_dump()`,
   `print_r()` and stack traces.

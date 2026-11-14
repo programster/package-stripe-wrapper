@@ -1,7 +1,8 @@
 <?php
 
 /*
- * An item in a subscription, for when creating a subscription directly, rather than through a checkout session.
+ * An item in a subscription, for when creating a subscription directly, rather than through a checkout session, for
+ * an existing price, or one created inline. Create one with forPrice() or forPriceData().
  * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
  */
 
@@ -11,12 +12,16 @@ use Programster\Stripe\Collections\DiscountCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
+use Programster\Stripe\Internal\StripeIds;
 
 
 final readonly class SubscriptionItem implements Arrayable
 {
     private int $m_quantity;
-    private string|PriceDataForSubscriptionItem $m_priceDataOrPriceId;
+
+    /** @var array<string, mixed> */
+    private array $m_priceParams;
+
     private ?Metadata $m_metadata;
     private ?DiscountCollection $m_discounts;
     private ?BillingThresholds $m_billingThresholds;
@@ -24,40 +29,29 @@ final readonly class SubscriptionItem implements Arrayable
 
 
     /**
-     * Create a line item for when creating a subscription object.
-     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
+     * This is private, so use forPrice() or forPriceData(), whose parameters of the same names this takes.
      *
-     * @param int $quantity - the number of this item to be purchased/sold.
+     * @param int $quantity
      *
-     * @param string|PriceDataForSubscriptionItem $priceDataOrPriceId - either a pricedata object to create an inline
-     * price, or the ID of an existing price/plan object within Stripe.
-     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-price
+     * @param array<string, mixed> $priceParams - the item's parameters for the price.
      *
-     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
-     * for storing additional information about the object in a structured format. Individual keys can be unset by
-     * posting an empty value to them. All keys can be unset by posting an empty value to metadata.
-     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-metadata
+     * @param Metadata|null $metadata
      *
-     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the
-     * subscription item.
-     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-discounts
+     * @param DiscountCollection|null $discounts
      *
-     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
-     * subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds.
-     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-billing_thresholds
+     * @param BillingThresholds|null $billingThresholds
      *
-     * @param TaxRates|null $taxRates - the IDs of tax rate objects that apply to the item. They can't be dynamic, as
-     * Stripe only supports dynamic tax rates on checkout line items. https://docs.stripe.com/api/tax_rates
+     * @param TaxRates|null $taxRates
      *
      * @throws ExceptionInvalidValue - if dynamic tax rates are given.
      */
-    public function __construct(
+    private function __construct(
         int $quantity,
-        string|PriceDataForSubscriptionItem $priceDataOrPriceId,
-        ?Metadata $metadata = null,
-        ?DiscountCollection $discounts = null,
-        ?BillingThresholds $billingThresholds = null,
-        ?TaxRates $taxRates = null,
+        array $priceParams,
+        ?Metadata $metadata,
+        ?DiscountCollection $discounts,
+        ?BillingThresholds $billingThresholds,
+        ?TaxRates $taxRates,
     )
     {
         // Stripe rejects these for a subscription's items, so catch them here, where the mistake was made.
@@ -69,11 +63,89 @@ final readonly class SubscriptionItem implements Arrayable
         }
 
         $this->m_quantity = $quantity;
-        $this->m_priceDataOrPriceId = $priceDataOrPriceId;
+        $this->m_priceParams = $priceParams;
         $this->m_metadata = $metadata;
         $this->m_discounts = $discounts;
         $this->m_billingThresholds = $billingThresholds;
         $this->m_taxRates = $taxRates;
+    }
+
+
+    /**
+     * Create an item for an existing price.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
+     *
+     * @param string $priceId - the price's ID, e.g. "price_123" (or a legacy plan's ID).
+     *
+     * @param int $quantity - the number of this item to be subscribed to.
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
+     * for storing additional information about the object in a structured format.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-metadata
+     *
+     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the subscription item.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-discounts
+     *
+     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
+     * subscription advanced to a new billing period.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-billing_thresholds
+     *
+     * @param TaxRates|null $taxRates - the IDs of tax rate objects that apply to the item. They can't be dynamic, as
+     * Stripe only supports dynamic tax rates on checkout line items. https://docs.stripe.com/api/tax_rates
+     *
+     * @return SubscriptionItem
+     *
+     * @throws ExceptionInvalidValue - if $priceId is empty or a product's ID, or dynamic tax rates are given.
+     */
+    public static function forPrice(
+        string $priceId,
+        int $quantity,
+        ?Metadata $metadata = null,
+        ?DiscountCollection $discounts = null,
+        ?BillingThresholds $billingThresholds = null,
+        ?TaxRates $taxRates = null,
+    ) : SubscriptionItem
+    {
+        StripeIds::checkPriceId($priceId);
+        $priceParams = ['price' => $priceId];
+        return new SubscriptionItem($quantity, $priceParams, $metadata, $discounts, $billingThresholds, $taxRates);
+    }
+
+
+    /**
+     * Create an item with a price created inline.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-price_data
+     *
+     * @param PriceDataForSubscriptionItem $priceData - the price.
+     *
+     * @param int $quantity - the number of this item to be subscribed to.
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
+     * for storing additional information about the object in a structured format.
+     *
+     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the subscription item.
+     *
+     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
+     * subscription advanced to a new billing period.
+     *
+     * @param TaxRates|null $taxRates - the IDs of tax rate objects that apply to the item. They can't be dynamic, as
+     * Stripe only supports dynamic tax rates on checkout line items. https://docs.stripe.com/api/tax_rates
+     *
+     * @return SubscriptionItem
+     *
+     * @throws ExceptionInvalidValue - if dynamic tax rates are given.
+     */
+    public static function forPriceData(
+        PriceDataForSubscriptionItem $priceData,
+        int $quantity,
+        ?Metadata $metadata = null,
+        ?DiscountCollection $discounts = null,
+        ?BillingThresholds $billingThresholds = null,
+        ?TaxRates $taxRates = null,
+    ) : SubscriptionItem
+    {
+        $priceParams = ['price_data' => $priceData->toArray()];
+        return new SubscriptionItem($quantity, $priceParams, $metadata, $discounts, $billingThresholds, $taxRates);
     }
 
 
@@ -89,14 +161,7 @@ final readonly class SubscriptionItem implements Arrayable
             $arrayForm['tax_rates'] = $this->m_taxRates->getTaxRates();
         }
 
-        if (is_string($this->m_priceDataOrPriceId))
-        {
-            $arrayForm['price'] = $this->m_priceDataOrPriceId;
-        }
-        else
-        {
-            $arrayForm['price_data'] = $this->m_priceDataOrPriceId->toArray();
-        }
+        $arrayForm = array_merge($arrayForm, $this->m_priceParams);
 
         if ($this->m_metadata !== null)
         {

@@ -40,8 +40,8 @@ final readonly class SubscriptionData implements Arrayable
      * another account, using the Stripe-Account header or an OAuth key. For more information, see the application
      * fees documentation. https://docs.stripe.com/connect/subscriptions#collecting-fees-on-subscriptions
      *
-     * @param int|null $billingCycleAnchor - A future timestamp to anchor the subscription’s billing cycle for new
-     * subscriptions. If not provided, the subscription will default to the billing cycle starting immediately.
+     * @param \DateTimeImmutable|null $billingCycleAnchor - a future time to anchor the subscription’s billing cycle
+     * to. If not provided, the subscription will default to the billing cycle starting immediately.
      *
      * @param BillingMode|null $billingMode - how prorations and invoices for the subscription are calculated.
      *
@@ -74,7 +74,7 @@ final readonly class SubscriptionData implements Arrayable
      */
     public function __construct(
         ?float $applicationFeePercent = null,
-        ?int $billingCycleAnchor = null,
+        ?\DateTimeImmutable $billingCycleAnchor = null,
         ?BillingMode $billingMode = null,
         ?StringCollection $defaultTaxRates = null,
         ?string $description = null,
@@ -95,7 +95,7 @@ final readonly class SubscriptionData implements Arrayable
         }
 
         $this->m_applicationFeePercent = $applicationFeePercent;
-        $this->m_billingCycleAnchor = $billingCycleAnchor;
+        $this->m_billingCycleAnchor = $billingCycleAnchor?->getTimestamp();
         $this->m_billingMode = $billingMode;
         $this->m_defaultTaxRates = $defaultTaxRates;
         $this->m_description = $description;

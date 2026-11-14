@@ -21,27 +21,36 @@ $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
 $price = new PriceDataForSubscriptionItem(Currency::GBP, 999, 'prod_123', $monthly);
 
 $subscription = $client->createSubscription(
-    existingCustomerOrCustomerAccount: new ExistingCustomer('cus_123'),
-    items: new SubscriptionLineItemCollection(new SubscriptionItem(1, $price)),
+    customer: SubscriptionCustomer::customer('cus_123'),
+    items: new SubscriptionLineItemCollection(SubscriptionItem::forPriceData($price, quantity: 1)),
     currency: Currency::GBP,
     defaultPaymentMethodId: 'pm_123',
+    billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1),
+    cancelAt: CancelAt::atLongestItemPeriodEnd(),
     trialConfig: TrialConfig::createForNumDays(7),
-    cancelAt: CancelAtEnum::MAX_PERIOD_END,
 );
 ```
 
-- **The customer** is an `ExistingCustomer`. A string is treated as a customer account's ID (one starting `acct_`), so
-  a customer's ID passed as a string throws an `ExceptionInvalidValue`, explaining what to pass instead (see below).
-- **`$cancelAt`** takes `true` to cancel at the end of the current period, a timestamp, or a `CancelAtEnum`.
+- **The customer** is a `SubscriptionCustomer`: a customer, with `SubscriptionCustomer::customer('cus_...')`, or a
+  customer account, with `SubscriptionCustomer::customerAccount('acct_...')`. An ID that doesn't start with the right
+  prefix throws an `ExceptionInvalidValue` (see below).
+- **An item** is for an existing price, with `SubscriptionItem::forPrice('price_...', quantity: 1)`, or one created
+  inline, with `forPriceData()`. Invoice items (`SubscriptionInvoiceItem`) work the same way.
+- **`$cancelAt`** is a `CancelAt`: `CancelAt::atPeriodEnd()`, `CancelAt::at(new DateTimeImmutable(...))`, or the
+  latest or earliest end of the items' billing periods, with `CancelAt::atLongestItemPeriodEnd()` or
+  `CancelAt::atShortestItemPeriodEnd()`.
+- **`$billingCycleAnchor`** is a `BillingCycleAnchor`: a time, with `BillingCycleAnchor::at()`, or a day of the month
+  (and optionally the month and time of day), with `BillingCycleAnchor::onDayOfMonth()`.
+- **Times are `DateTimeImmutable`s**, e.g. `backdateStartDate: new DateTimeImmutable('-1 month')`. They aren't checked
+  against the current time, as a subscription on a test clock goes by the clock's time instead.
 - **A subscription's items can't have an adjustable quantity or dynamic tax rates**, which Stripe only allows in a
   checkout session, so a `SubscriptionItem` given either throws an `ExceptionInvalidValue`.
 - **To send an invoice** rather than charge a card, pass `collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE`
   and `daysUntilDue`.
 
 ```php
-// Throws ExceptionInvalidValue
-$items = new SubscriptionLineItemCollection(new SubscriptionItem(1, $price));
-$client->createSubscription('cus_123', $items, Currency::GBP);
+// Throws ExceptionInvalidValue (a customer's ID isn't a customer account's)
+$customer = SubscriptionCustomer::customerAccount('cus_123');
 ```
 
 ## Reading a subscription
@@ -79,6 +88,9 @@ foreach ($items as $item)
         prorationBehavior: ProrationBehavior::CREATE,
     );
 }
+
+// Or change an item's price.
+$updated = $client->updateSubscriptionItem('si_123', price: SubscriptionItemPrice::forPrice('price_456'));
 ```
 
 ## Cancelling a subscription

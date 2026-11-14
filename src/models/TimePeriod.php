@@ -1,12 +1,13 @@
 <?php
 
 /*
- * A period of time between two unix timestamps, for filtering lists (e.g. by when something was created).
+ * A period of time between two times, for filtering lists (e.g. by when something was created).
  * https://docs.stripe.com/api/subscriptions/list#list_subscriptions-created
  */
 
 namespace Programster\Stripe\Models;
 
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
@@ -19,15 +20,33 @@ final readonly class TimePeriod implements Arrayable
 
 
     /**
-     * @param int $start - unix timestamp for the start of the time period.
-     * @param int $end - unix timestamp for the end of the time period.
-     * @param bool $isStartInclusive - whether start timestamp is inclusive or not.
-     * @param bool $isEndInclusive - whether end timestamp is inclusive or not.
+     * @param \DateTimeImmutable $start - the start of the time period.
+     *
+     * @param \DateTimeImmutable $end - the end of the time period.
+     *
+     * @param bool $isStartInclusive - whether the period includes its start.
+     *
+     * @param bool $isEndInclusive - whether the period includes its end.
+     *
+     * @throws ExceptionInvalidValue - if $end is before $start, which nothing could be in.
      */
-    public function __construct(int $start, int $end, bool $isStartInclusive = true, bool $isEndInclusive = true)
+    public function __construct(
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end,
+        bool $isStartInclusive = true,
+        bool $isEndInclusive = true
+    )
     {
-        $this->m_start = $start;
-        $this->m_end = $end;
+        if ($end < $start)
+        {
+            throw new ExceptionInvalidValue(
+                "A time period's end (" . $end->format(DATE_ATOM) . ") can't be before its start (" .
+                $start->format(DATE_ATOM) . ")."
+            );
+        }
+
+        $this->m_start = $start->getTimestamp();
+        $this->m_end = $end->getTimestamp();
         $this->m_isStartInclusive = $isStartInclusive;
         $this->m_isEndInclusive = $isEndInclusive;
     }

@@ -38,21 +38,22 @@ final readonly class TrialConfig
 
 
     /**
-     * Create a trial that ends at a given time.
+     * Create a trial that ends at a given time. It isn't checked against the current time, as a subscription on a
+     * test clock goes by the clock's time instead.
      *
-     * @param int $unixTimestamp - the unix timestamp the trial ends at.
+     * @param \DateTimeImmutable $endTime - when the trial ends.
      *
      * @param EndTrialBehaviorIfMissingPaymentMethod|null $endTrialBehaviorIfMissingPaymentMethod - what to do if the
      * trial ends and the customer hasn't given a payment method.
      *
      * @return TrialConfig
      */
-    public static function createForEndTimestamp(
-        int $unixTimestamp,
+    public static function createForEndTime(
+        \DateTimeImmutable $endTime,
         ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null
     ) : TrialConfig
     {
-        return new TrialConfig(null, $unixTimestamp, $endTrialBehaviorIfMissingPaymentMethod);
+        return new TrialConfig(null, $endTime->getTimestamp(), $endTrialBehaviorIfMissingPaymentMethod);
     }
 
 

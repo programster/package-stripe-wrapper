@@ -45,7 +45,6 @@ use Programster\Stripe\Models\CustomField;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\DropdownOption;
-use Programster\Stripe\Models\ExistingCustomer;
 use Programster\Stripe\Models\FieldType;
 use Programster\Stripe\Models\FlowConfig;
 use Programster\Stripe\Models\InvoiceCreation;
@@ -61,7 +60,9 @@ use Programster\Stripe\Models\ProductData;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\ShippingConfig;
+use Programster\Stripe\Models\SinglePaymentCheckoutCustomer;
 use Programster\Stripe\Models\SinglePaymentLineItem;
+use Programster\Stripe\Models\SubscriptionCheckoutCustomer;
 use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
@@ -81,14 +82,21 @@ $client = new StripeClient(STRIPE_SECRET_KEY);
 $metadata = new Metadata(new MetadataItem('created_by', LiveFixtures::METADATA['created_by']));
 $hosted = FlowConfig::createHosted('https://example.com/success', cancelUrl: 'https://example.com/cancel');
 $productData = new ProductData('Live test T-shirt', metadata: $metadata);
-$shirtPrice = new PriceDataForSinglePayment(Currency::GBP, 2000, $productData);
-$shirts = new SinglePaymentLineItemsCollection(new SinglePaymentLineItem(1, $shirtPrice));
+$shirtPrice = PriceDataForSinglePayment::forProductData(Currency::GBP, 2000, $productData);
+$shirts = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPriceData($shirtPrice, 1));
 $taxRateId = $fixtures->getTaxRateId();
 $couponId = $fixtures->getCouponId();
 $productId = $fixtures->getProductId();
 $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
-$subscriptionPrice = new PriceDataForSubscriptionCheckoutSession(Currency::GBP, 999, $productData, $monthly);
-$subscriptionItem = new SubscriptionCheckoutLineItem(1, $subscriptionPrice);
+
+$subscriptionPrice = PriceDataForSubscriptionCheckoutSession::forProductData(
+    Currency::GBP,
+    999,
+    $productData,
+    $monthly
+);
+
+$subscriptionItem = SubscriptionCheckoutLineItem::forPriceData($subscriptionPrice, 1);
 $subscriptionItems = new SubscriptionCheckoutLineItemCollection($subscriptionItem);
 
 # Track a session the package created, for expiring afterwards, and get what Stripe stored for it.
@@ -106,11 +114,11 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
 ): void {
     $images = new StringCollection('https://example.com/shirt.png');
     $product = new ProductData('Live test shirt', 'A shirt', $images, $metadata, 'txcd_99999999');
-    $price = new PriceDataForSinglePayment(Currency::GBP, 2000, $product);
+    $price = PriceDataForSinglePayment::forProductData(Currency::GBP, 2000, $product);
 
-    $item = new SinglePaymentLineItem(
-        1,
+    $item = SinglePaymentLineItem::forPriceData(
         $price,
+        1,
         new AdjustableQuantityConfig(1, 10),
         new TaxRates(false, $taxRateId)
     );
@@ -121,9 +129,8 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
         clientReferenceId: 'order-123',
         locale: Locale::FRENCH,
         currency: Currency::GBP,
-        existingStripeCustomerOrEmail: 'buyer@example.com',
-        customerCreation: CustomerCreation::ALWAYS,
-        expiresAt: time() + 60 * 60,
+        customer: SinglePaymentCheckoutCustomer::withEmail('buyer@example.com', CustomerCreation::ALWAYS),
+        expiresAt: new DateTimeImmutable('+1 hour'),
         billingAddressCollection: BillingAddressCollection::REQUIRED,
         enablePhoneNumberCollection: true,
         allowedPaymentMethodTypes: new PaymentMethodTypeCollection(PaymentMethodType::CARD),
@@ -295,7 +302,7 @@ $smoke->run("single payment: existing customer, saved payment methods, tax IDs",
     $session = $client->createCheckoutSessionForSinglePayment(
         $hosted,
         $shirts,
-        existingStripeCustomerOrEmail: new ExistingCustomer($checkoutCustomerId, $customerUpdate),
+        customer: SinglePaymentCheckoutCustomer::existing($checkoutCustomerId, $customerUpdate),
         taxIdCollection: new TaxIdCollectionConfig(true, true),
         savedPaymentMethodOptions: $savedPaymentMethods,
     );
@@ -391,7 +398,7 @@ $smoke->run("subscription: hosted flow with subscription data", function () use 
         $hosted,
         $subscriptionItems,
         $subscriptionData,
-        existingStripeCustomerOrEmail: 'subscriber@example.com',
+        customer: SubscriptionCheckoutCustomer::withEmail('subscriber@example.com'),
         metadata: $metadata,
     );
 
@@ -406,7 +413,7 @@ $smoke->run("subscription: billing cycle anchor and tax-inclusive price", functi
     $monthly,
     $productId
 ): void {
-    $inclusivePrice = new PriceDataForSubscriptionCheckoutSession(
+    $inclusivePrice = PriceDataForSubscriptionCheckoutSession::forProduct(
         Currency::GBP,
         1200,
         $productId,
@@ -414,8 +421,8 @@ $smoke->run("subscription: billing cycle anchor and tax-inclusive price", functi
         TaxBehavior::INCLUSIVE
     );
 
-    $items = new SubscriptionCheckoutLineItemCollection(new SubscriptionCheckoutLineItem(1, $inclusivePrice));
-    $nextMonth = strtotime('first day of next month');
+    $items = new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::forPriceData($inclusivePrice, 1));
+    $nextMonth = new DateTimeImmutable('first day of next month');
     $none = ProrationBehavior::NONE;
     $subscriptionData = new SubscriptionData(billingCycleAnchor: $nextMonth, prorationBehavior: $none);
     $session = $client->createCheckoutSessionForSubscription($hosted, $items, $subscriptionData);

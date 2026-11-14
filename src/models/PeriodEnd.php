@@ -40,12 +40,12 @@ final readonly class PeriodEnd implements Arrayable
 
     /**
      * End the period at a given time.
-     * @param int $timestamp - the unix timestamp of the end.
+     * @param \DateTimeImmutable $time - when the period ends.
      * @return PeriodEnd
      */
-    public static function createTimestamp(int $timestamp) : PeriodEnd
+    public static function createAt(\DateTimeImmutable $time) : PeriodEnd
     {
-        return new PeriodEnd(PeriodEndType::TIMESTAMP, $timestamp);
+        return new PeriodEnd(PeriodEndType::TIMESTAMP, $time->getTimestamp());
     }
 
 

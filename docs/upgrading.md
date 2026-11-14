@@ -3,6 +3,8 @@
 - [From 0.2.x to 1.0.0](#from-02x-to-100)
     - [What the methods return](#what-the-methods-return)
     - [Listing](#listing)
+    - [One type per parameter](#one-type-per-parameter)
+    - [Times](#times)
     - [Other changes](#other-changes)
 - [From 0.2.2 to 0.2.3](#from-022-to-023)
 - [From 0.2.1 to 0.2.2](#from-021-to-022)
@@ -42,6 +44,51 @@ fields with their getters, rather than as properties:
   filters and `$limit`. Use named arguments, e.g. `startingAfter: $page->last()->getId()`.
 - **`listInvoices()` no longer takes `$expandPayments`.** Use `listInvoicesWithPayments()`, which returns
   `InvoiceWithPayments`, or `$invoice->fetchPayments()`.
+
+### One type per parameter
+A parameter that took one of several types (e.g. a price's ID or its details) now takes one type, with a static creator
+for each option. Each creator checks what it's given, so a customer's ID given where an email address was expected, or
+a product's ID where a price's was, throws an `ExceptionInvalidValue` on the line that made the mistake.
+
+| 0.2.x | 1.0.0 |
+|---|---|
+| `existingStripeCustomerOrEmail: new ExistingCustomer('cus_123', $update)` | `customer: SinglePaymentCheckoutCustomer::existing('cus_123', $update)` (or `SubscriptionCheckoutCustomer`, for a subscription) |
+| `existingStripeCustomerOrEmail: 'jo@example.com'` | `customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com')` |
+| `customerCreation: CustomerCreation::ALWAYS` | `customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS)`, or `SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS)` without an email address |
+| `createSubscription(new ExistingCustomer('cus_123'), ...)` | `createSubscription(SubscriptionCustomer::customer('cus_123'), ...)` |
+| `createSubscription('acct_123', ...)` | `createSubscription(SubscriptionCustomer::customerAccount('acct_123'), ...)` |
+| `cancelAt: true` | `cancelAt: CancelAt::atPeriodEnd()` |
+| `cancelAt: $timestamp` | `cancelAt: CancelAt::at($time)` |
+| `cancelAt: CancelAtEnum::MAX_PERIOD_END` (or `MIN_PERIOD_END`) | `cancelAt: CancelAt::atLongestItemPeriodEnd()` (or `atShortestItemPeriodEnd()`) |
+| `billingCycleAnchorTimestampOrConfig: $timestamp` | `billingCycleAnchor: BillingCycleAnchor::at($time)` |
+| `billingCycleAnchorTimestampOrConfig: new BillingCycleAnchorConfig(1)` | `billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1)` |
+| `new SinglePaymentLineItem(1, 'price_123')` | `SinglePaymentLineItem::forPrice('price_123', 1)` |
+| `new SinglePaymentLineItem(1, $priceData)` | `SinglePaymentLineItem::forPriceData($priceData, 1)` |
+| `new PriceDataForSinglePayment(Currency::GBP, 100, 'prod_123')` | `PriceDataForSinglePayment::forProduct(Currency::GBP, 100, 'prod_123')` |
+| `new PriceDataForSinglePayment(Currency::GBP, 100, $productData)` | `PriceDataForSinglePayment::forProductData(Currency::GBP, 100, $productData)` |
+| `updateSubscriptionItem(..., priceDataOrPriceId: 'price_123')` | `updateSubscriptionItem(..., price: SubscriptionItemPrice::forPrice('price_123'))` |
+
+- **`SubscriptionCheckoutLineItem`, `SubscriptionItem` and `SubscriptionInvoiceItem`** are created with `forPrice()`
+  and `forPriceData()` in the same way, and **`PriceDataForSubscriptionCheckoutSession`** with `forProduct()` and
+  `forProductData()`. Each takes the quantity after the price, which `SinglePaymentLineItem`,
+  `SubscriptionCheckoutLineItem` and `SubscriptionItem` used to take first.
+- **`ExistingCustomer`, `BillingCycleAnchorConfig` and `CancelAtEnum` have been removed**, and so has the
+  `$customerCreation` parameter.
+- **`cancelAt: false` has gone**, as it did the same as leaving it out.
+- **A price's or product's ID** is only rejected when it's empty, or is the other one's (`prod_...` for a price, or
+  `price_...` for a product), as either can have an ID you chose. A customer's ID must start `cus_`, and an account's
+  `acct_`.
+
+### Times
+Every time a request takes is a `DateTimeImmutable`, like the times the responses give back, rather than a unix
+timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you already have, use
+`new DateTimeImmutable('@' . $timestamp)`.
+
+- The checkout methods' `$expiresAt`, `createSubscription()`'s `$backdateStartDate`, `updateSubscriptionItem()`'s
+  `$prorationDate`, and `SubscriptionData`'s `$billingCycleAnchor`.
+- `TimePeriod`'s start and end. An end before the start throws an `ExceptionInvalidValue`.
+- `TrialConfig::createForEndTimestamp()` is now `TrialConfig::createForEndTime()`, and `PeriodStart::createTimestamp()`
+  and `PeriodEnd::createTimestamp()` are now `createAt()`.
 
 ### Other changes
 - **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `listInvoicePayments()` and
