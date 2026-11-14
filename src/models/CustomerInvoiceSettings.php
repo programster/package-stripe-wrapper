@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CustomerInvoiceSettings implements Arrayable
+final readonly class CustomerInvoiceSettings implements Arrayable
 {
     private ?InvoiceCustomFieldCollection $m_customFields;
     private ?string $m_defaultPaymentMethodId;
@@ -23,7 +23,7 @@ readonly class CustomerInvoiceSettings implements Arrayable
      * https://docs.stripe.com/api/customers/create?lang=php#create_customer-invoice_settings
      *
      * @param InvoiceCustomFieldCollection|null $customFields - optionally, custom fields to show on the customer's
-     * invoices. A copy is kept, so changing the collection afterwards doesn't change these settings.
+     * invoices.
      *
      * @param string|null $defaultPaymentMethodId - optionally, the ID of the payment method to use for the customer's
      * invoices and subscriptions by default.
@@ -39,7 +39,7 @@ readonly class CustomerInvoiceSettings implements Arrayable
         ?InvoiceRenderingOptions $renderingOptions = null,
     )
     {
-        $this->m_customFields = ($customFields !== null) ? clone $customFields : null;
+        $this->m_customFields = $customFields;
         $this->m_defaultPaymentMethodId = $defaultPaymentMethodId;
         $this->m_footer = $footer;
         $this->m_renderingOptions = $renderingOptions;

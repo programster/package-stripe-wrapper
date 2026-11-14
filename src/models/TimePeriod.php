@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class TimePeriod implements Arrayable
+final readonly class TimePeriod implements Arrayable
 {
     private int $m_start;
     private int $m_end;

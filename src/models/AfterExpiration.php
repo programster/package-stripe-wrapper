@@ -11,7 +11,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-class AfterExpiration implements Arrayable
+final readonly class AfterExpiration implements Arrayable
 {
     private readonly bool $m_enabled;
     private readonly ?bool $m_allowPromotionCodesInRecovery;

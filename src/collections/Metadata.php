@@ -6,13 +6,16 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Exceptions\ExceptionDuplicateKey;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Models\MetadataItem;
 
 
-class Metadata extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<MetadataItem>
+ */
+final readonly class Metadata extends AbstractReadonlyCollection
 {
     /**
      * @param MetadataItem ...$fields - the key-value pairs. Each key can only be used once.
@@ -40,7 +43,7 @@ class Metadata extends AbstractCollection
             throw new ExceptionInvalidValue("Stripe allows up to 50 metadata keys, but {$numFields} were given.");
         }
 
-        parent::__construct(MetadataItem::class, ...$fields);
+        parent::__construct(...$fields);
     }
 
 
@@ -52,12 +55,14 @@ class Metadata extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item MetadataItem */
             $stripeArrayForm[$item->getKey()] = $item->getValue();
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return MetadataItem::class; }
 }

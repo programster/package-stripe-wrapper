@@ -13,7 +13,7 @@ use Programster\Stripe\Enums\PaymentIntentSetupFutureUsage;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class PaymentIntentData implements Arrayable
+final readonly class PaymentIntentData implements Arrayable
 {
     private ?int $m_applicationFeeAmount;
     private ?string $m_description;
@@ -96,7 +96,7 @@ readonly class PaymentIntentData implements Arrayable
         $this->m_applicationFeeAmount = $applicationFeeAmount;
         $this->m_description = $description;
         $this->m_captureMethod = $captureMethod;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_metadata = $metadata;
         $this->m_onBehalfOfStripeAccountId = $onBehalfOfStripeAccountId;
         $this->m_receiptEmail = $receiptEmail;
         $this->m_setupFutureUsage = $setupFutureUsage;

@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class TaxIdCollectionConfig implements Arrayable
+final readonly class TaxIdCollectionConfig implements Arrayable
 {
     private bool $m_enabled;
     private bool $m_required;

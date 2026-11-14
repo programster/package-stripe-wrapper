@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceSettings implements Arrayable
+final readonly class InvoiceSettings implements Arrayable
 {
     private AccountReference $m_issuer;
 

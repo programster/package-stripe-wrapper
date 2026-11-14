@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Models\CustomField;
 
 
-class CustomFieldCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<CustomField>
+ */
+final readonly class CustomFieldCollection extends AbstractReadonlyCollection
 {
     public function __construct(CustomField ...$fields)
     {
-        parent::__construct(CustomField::class, ...$fields);
+        parent::__construct(...$fields);
     }
 
 
@@ -26,12 +29,14 @@ class CustomFieldCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item CustomField */
             $stripeArrayForm[] = $item->toArray();
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return CustomField::class; }
 }

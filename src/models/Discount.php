@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\DiscountType;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class Discount implements Arrayable
+final readonly class Discount implements Arrayable
 {
     private DiscountType $m_type;
     private string $m_value;

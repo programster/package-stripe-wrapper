@@ -27,7 +27,23 @@ final class FakeStripeHttpClient implements ClientInterface
         'subscriptions' => 'subscription',
     ];
 
+    # The recorded response (in testing/fixtures/responses/) to answer with for each type of object.
+    private const FIXTURES = [
+        'charge' => 'charge',
+        'checkout.session' => 'checkout-session-hosted',
+        'customer' => 'customer',
+        'invoice' => 'invoice',
+        'payment_intent' => 'payment-intent',
+        'payment_method' => 'payment-method',
+        'refund' => 'refund',
+        'subscription' => 'subscription-active',
+        'subscription_item' => 'subscription-item',
+    ];
+
     private ?RecordedRequest $m_lastRequest = null;
+
+    /** @var list<array<string, mixed>> */
+    private array $m_queuedBodies = [];
 
 
     public function __construct()
@@ -81,26 +97,76 @@ final class FakeStripeHttpClient implements ClientInterface
         # /v1/checkout/sessions/cs_123, or a POST) is a single object, of the last type of thing named in the path.
         $isList = ($method === 'get' && isset(self::OBJECT_TYPES[$lastSegment]));
 
-        if ($isList)
+        $objectType = 'unknown';
+
+        foreach (explode('/', $path) as $segment)
         {
-            $body = ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => $path];
+            if (isset(self::OBJECT_TYPES[$segment]))
+            {
+                $objectType = self::OBJECT_TYPES[$segment];
+            }
+        }
+
+        # A test can say exactly what the next responses should be, e.g. several pages of a list. Otherwise, a list
+        # holds the recorded object of its type, and anything else is the recorded object of its type.
+        if (count($this->m_queuedBodies) > 0)
+        {
+            $body = array_shift($this->m_queuedBodies);
+        }
+        elseif ($isList)
+        {
+            $data = isset(self::FIXTURES[$objectType]) ? [self::loadFixture(self::FIXTURES[$objectType])] : [];
+            $body = ['object' => 'list', 'data' => $data, 'has_more' => false, 'url' => $path];
+        }
+        elseif (isset(self::FIXTURES[$objectType]))
+        {
+            $body = self::loadFixture(self::FIXTURES[$objectType]);
         }
         else
         {
-            $objectType = 'unknown';
-
-            foreach (explode('/', $path) as $segment)
-            {
-                if (isset(self::OBJECT_TYPES[$segment]))
-                {
-                    $objectType = self::OBJECT_TYPES[$segment];
-                }
-            }
-
-            $body = ['id' => 'fake_123', 'object' => $objectType, 'url' => 'https://checkout.stripe.com/fake'];
+            $body = ['id' => 'fake_123', 'object' => $objectType];
         }
 
         return [json_encode($body), 200, ['request-id' => 'req_fake']];
+    }
+
+
+    /**
+     * Answer the next request with this body, rather than the recorded object for its type. Queued bodies are used in
+     * the order they were queued.
+     * @param array<string, mixed> $body - the response's body, e.g. from loadFixture(), or a page of a list.
+     * @return void
+     */
+    public function queueResponse(array $body): void
+    {
+        $this->m_queuedBodies[] = $body;
+    }
+
+
+    /**
+     * Load one of the responses recorded from Stripe's test mode, in testing/fixtures/responses/.
+     * @param string $name - the fixture's name, without ".json", e.g. "customer-deleted".
+     * @return array<string, mixed>
+     * @throws \Exception - if there's no such fixture.
+     */
+    public static function loadFixture(string $name): array
+    {
+        $path = __DIR__ . "/fixtures/responses/{$name}.json";
+        $json = is_file($path) ? file_get_contents($path) : false;
+
+        if ($json === false)
+        {
+            throw new \Exception("There's no recorded response called {$name}, in testing/fixtures/responses/.");
+        }
+
+        $body = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+        if (!is_array($body))
+        {
+            throw new \Exception("The recorded response {$name} isn't an object.");
+        }
+
+        return $body;
     }
 
 

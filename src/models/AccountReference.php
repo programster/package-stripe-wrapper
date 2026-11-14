@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\AccountReferenceType;
 use Programster\Stripe\Interfaces\Arrayable;
 
-class AccountReference implements Arrayable
+final readonly class AccountReference implements Arrayable
 {
     private readonly AccountReferenceType $m_type;
     private readonly ?string $m_account;

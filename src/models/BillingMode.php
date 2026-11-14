@@ -11,7 +11,7 @@ use Programster\Stripe\Enums\BillingModeType;
 use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class BillingMode implements Arrayable
+final readonly class BillingMode implements Arrayable
 {
     private BillingModeType $m_type;
     private ?ProrationDiscountConfig $m_prorationDiscountConfig;

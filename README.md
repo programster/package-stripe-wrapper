@@ -11,7 +11,8 @@ Stripe Wrapper
 - [Checkout sessions](docs/checkout.md)
 - [Customers](docs/customers.md)
 - [Subscriptions](docs/subscriptions.md)
-- [Listing and pagination](docs/listing.md)
+- [Responses](docs/responses.md)
+- [Listing](docs/listing.md)
 - [Exceptions](docs/exceptions.md)
 - [Upgrading](docs/upgrading.md)
 - [Testing](docs/testing.md)
@@ -23,6 +24,10 @@ A wrapper around the [stripe/stripe-php](https://packagist.org/packages/stripe/s
 to use Stripe without having to read its documentation. Instead of building arrays of parameters, you fill in
 constructors whose parameters are typed and documented, and your IDE shows you the options as you type. Values with a
 fixed set of options, such as currencies, countries and statuses, are enums, so they can't be misspelt.
+
+What comes back is typed too: each method returns readonly models, such as a `Customer` or a `Subscription`, with a
+getter for each field, and the list methods return a collection of everything that matches, so there are no pages to
+handle (see [Responses](docs/responses.md)).
 
 ## Requirements
 PHP 8.2, 8.3, 8.4 or 8.5, with the `curl` extension.
@@ -67,7 +72,7 @@ $checkoutSession = $client->createCheckoutSessionForSinglePayment(
 
 # Redirect the user to the Stripe payment page.
 http_response_code(303);
-header('Location: ' . $checkoutSession->url);
+header('Location: ' . $checkoutSession->getUrl());
 ```
 
 Every class used above is in the `Programster\Stripe` namespace, e.g. `Programster\Stripe\StripeClient` and

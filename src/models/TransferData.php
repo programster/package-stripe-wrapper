@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class TransferData implements Arrayable
+final readonly class TransferData implements Arrayable
 {
     private string $m_stripeAccountId;
     private int $m_amount;

@@ -7,7 +7,7 @@
 
 namespace Programster\Stripe\Models;
 
-readonly class BillingThresholds
+final readonly class BillingThresholds
 {
     private ?int $m_usageGte;
 

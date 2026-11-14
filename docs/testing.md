@@ -2,6 +2,7 @@
 
 - [The offline tests](#the-offline-tests)
 - [The live tests, against Stripe's test mode](#the-live-tests-against-stripes-test-mode)
+- [The recorded responses](#the-recorded-responses)
 - [PHPStan](#phpstan)
 - [The documentation's examples](#the-documentations-examples)
 
@@ -44,6 +45,13 @@ Everything the tests create is cleaned up afterwards, as far as Stripe allows. S
 clock, which is deleted with everything attached to it. Other customers and the coupon are deleted, and the tax rate
 and product are archived. Products that checkout sessions create from inline product data can't be removed through
 the API, so they stay in test mode, marked with `created_by: programster-stripe-wrapper-live-tests` in their metadata.
+
+## The recorded responses
+The offline tests answer every request with a real response, recorded from Stripe's test mode, in
+`testing/fixtures/responses/`, so the response models are tested against what Stripe actually sends. To record them
+again, e.g. after moving to a new version of Stripe's API, run `php testing/record-fixtures.php`, with a test-mode key
+in `testing/settings.php`. It replaces any secrets in them (client secrets) with placeholders, and deletes everything
+it creates in Stripe.
 
 ## PHPStan
 ```bash

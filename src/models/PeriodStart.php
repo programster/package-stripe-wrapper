@@ -11,7 +11,7 @@ use Programster\Stripe\Enums\PeriodStartType;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class PeriodStart implements Arrayable
+final readonly class PeriodStart implements Arrayable
 {
     private PeriodStartType $m_type;
     private ?int $m_timestamp;

@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\EndTrialBehaviorIfMissingPaymentMethod;
 
 
-readonly class TrialConfig
+final readonly class TrialConfig
 {
     private ?int $m_numDays;
     private ?int $m_endTimestamp;

@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class Address implements Arrayable
+final readonly class Address implements Arrayable
 {
     private string $m_addressLine1;
     private ?string $m_addressLine2;

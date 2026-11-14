@@ -6,7 +6,6 @@
  * They also set $checkoutCustomerId, a plain customer that CheckoutTest.php uses.
  */
 
-use Programster\Stripe\Collections\CustomerShippingDetailsCollection;
 use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\LocaleCollection;
@@ -24,6 +23,7 @@ use Programster\Stripe\Models\CustomerTaxIdData;
 use Programster\Stripe\Models\InvoiceCustomField;
 use Programster\Stripe\Models\InvoiceRenderingOptions;
 use Programster\Stripe\Models\MetadataItem;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
 use Programster\Stripe\Testing\LiveFixtures;
 use Programster\Stripe\Testing\SmokeTest;
@@ -45,8 +45,7 @@ $smoke->run("createCustomer: address, contact details, shipping and metadata", f
     &$checkoutCustomerId
 ): void {
     $address = new Address('1 High Street', 'Flat 2', 'London', 'N1 1AA', 'Greater London', 'GB');
-    $shippingDetails = new CustomerShippingDetails($address, 'Jo Bloggs', '+447700900000');
-    $shipping = new CustomerShippingDetailsCollection($shippingDetails);
+    $shipping = new CustomerShippingDetails($address, 'Jo Bloggs', '+447700900000');
 
     $customer = $client->createCustomer(
         address: $address,
@@ -58,29 +57,34 @@ $smoke->run("createCustomer: address, contact details, shipping and metadata", f
         shippingDetails: $shipping,
     );
 
-    $fixtures->trackCustomer($customer->id);
-    $checkoutCustomerId = $customer->id;
-    SmokeTest::assertSame('N1 1AA', $customer->address->postal_code, "address");
-    SmokeTest::assertSame('Jo Bloggs', $customer->shipping['name'], "shipping name");
-    SmokeTest::assertSame('London', $customer->shipping['address']['city'], "shipping city");
-    SmokeTest::assertSame(LiveFixtures::METADATA['created_by'], $customer->metadata['created_by'], "metadata");
+    $fixtures->trackCustomer($customer->getId());
+    $checkoutCustomerId = $customer->getId();
+    SmokeTest::assertSame('N1 1AA', $customer->getAddress()?->getPostalCode(), "address");
+    SmokeTest::assertSame('Jo Bloggs', $customer->getShipping()?->getName(), "shipping name");
+    SmokeTest::assertSame('London', $customer->getShipping()?->getAddress()?->getCity(), "shipping city");
+
+    SmokeTest::assertSame(
+        LiveFixtures::METADATA['created_by'],
+        $customer->getMetadata()->toStripeArrayForm()['created_by'],
+        "metadata"
+    );
 });
 
 $smoke->run("createCustomer: tax config", function () use ($client, $fixtures, $metadata): void {
     $taxConfig = new CustomerTaxConfig('203.0.113.1', ValidateLocation::DEFERRED);
     $customer = $client->createCustomer(metadata: $metadata, taxConfig: $taxConfig);
-    $fixtures->trackCustomer($customer->id);
+    $fixtures->trackCustomer($customer->getId());
 });
 
 $smoke->run("createCustomer: tax ID data", function () use ($client, $fixtures, $metadata): void {
     $taxIds = new CustomerTaxIdDataCollection(new CustomerTaxIdData(TaxIdDataType::GB_VAT, 'GB123456789'));
     $customer = $client->createCustomer(metadata: $metadata, taxIdData: $taxIds);
-    $fixtures->trackCustomer($customer->id);
+    $fixtures->trackCustomer($customer->getId());
 });
 
 $smoke->run("createCustomer: cash balance reconciliation mode", function () use ($client, $fixtures, $metadata): void {
     $customer = $client->createCustomer(metadata: $metadata, cashBalanceReconciliationMode: ReconciliationMode::MANUAL);
-    $fixtures->trackCustomer($customer->id);
+    $fixtures->trackCustomer($customer->getId());
 });
 
 $smoke->run("createCustomer: invoice settings", function () use ($client, $fixtures, $metadata, $runId): void {
@@ -97,12 +101,18 @@ $smoke->run("createCustomer: invoice settings", function () use ($client, $fixtu
         nextInvoiceSequence: 7,
     );
 
-    $fixtures->trackCustomer($customer->id);
-    SmokeTest::assertSame('Thank you', $customer->invoice_settings->footer, "footer");
-    SmokeTest::assertSame('PO number', $customer->invoice_settings->custom_fields[0]->name, "custom field");
-    $amountTaxDisplay = $customer->invoice_settings->rendering_options->amount_tax_display;
+    $fixtures->trackCustomer($customer->getId());
+    SmokeTest::assertSame('Thank you', $customer->getStripeObject()->invoice_settings->footer, "footer");
+
+    SmokeTest::assertSame(
+        'PO number',
+        $customer->getStripeObject()->invoice_settings->custom_fields[0]->name,
+        "custom field"
+    );
+
+    $amountTaxDisplay = $customer->getStripeObject()->invoice_settings->rendering_options->amount_tax_display;
     SmokeTest::assertSame('include_inclusive_tax', $amountTaxDisplay, "rendering options");
-    SmokeTest::assertSame("LT{$runId}", $customer->invoice_prefix, "invoice prefix");
+    SmokeTest::assertSame("LT{$runId}", $customer->getInvoicePrefix(), "invoice prefix");
 });
 
 $smoke->run("createCustomer: locales, tax exemption and balance", function () use (
@@ -117,32 +127,32 @@ $smoke->run("createCustomer: locales, tax exemption and balance", function () us
         taxExempt: TaxExempt::REVERSE,
     );
 
-    $fixtures->trackCustomer($customer->id);
-    SmokeTest::assertSame(['en', 'fr'], $customer->preferred_locales, "locales");
-    SmokeTest::assertSame('reverse', $customer->tax_exempt, "tax exempt");
-    SmokeTest::assertSame(-500, $customer->balance, "balance");
+    $fixtures->trackCustomer($customer->getId());
+    SmokeTest::assertSame(['en', 'fr'], $customer->getPreferredLocales()->toArray(), "locales");
+    SmokeTest::assertSame('reverse', $customer->getTaxExempt(), "tax exempt");
+    SmokeTest::assertSame(-500, $customer->getBalance(), "balance");
 });
 
 $smoke->run("createCustomer: individual name", function () use ($client, $fixtures, $metadata): void {
     $customer = $client->createCustomer(metadata: $metadata, individualName: 'Jo Bloggs');
-    $fixtures->trackCustomer($customer->id);
+    $fixtures->trackCustomer($customer->getId());
 });
 
 $smoke->run("createCustomer: business name", function () use ($client, $fixtures, $metadata): void {
     $customer = $client->createCustomer(metadata: $metadata, businessName: 'Bloggs Ltd');
-    $fixtures->trackCustomer($customer->id);
+    $fixtures->trackCustomer($customer->getId());
 });
 
 $smoke->run("createCustomer: payment method and source", function () use ($client, $fixtures, $metadata): void {
     $withPaymentMethod = $client->createCustomer(metadata: $metadata, paymentMethodId: 'pm_card_visa');
-    $fixtures->trackCustomer($withPaymentMethod->id);
+    $fixtures->trackCustomer($withPaymentMethod->getId());
     $withSource = $client->createCustomer(metadata: $metadata, source: 'tok_visa');
-    $fixtures->trackCustomer($withSource->id);
+    $fixtures->trackCustomer($withSource->getId());
 });
 
 $smoke->run("listCustomers by email", function () use ($client, $runId): void {
-    $customers = $client->listCustomers(email: "jo.{$runId}@example.com", limit: 10);
-    SmokeTest::assertSame(1, count($customers->data), "number of customers found");
+    $customers = $client->listCustomers(email: "jo.{$runId}@example.com", limit: ResultLimit::upTo(10));
+    SmokeTest::assertSame(1, count($customers), "number of customers found");
 });
 
 $smoke->run("createCustomer with an idempotency key only creates one", function () use (
@@ -152,7 +162,7 @@ $smoke->run("createCustomer with an idempotency key only creates one", function 
 ): void {
     $key = 'live-test-' . bin2hex(random_bytes(8));
     $first = $client->createCustomer(metadata: $metadata, idempotencyKey: $key);
-    $fixtures->trackCustomer($first->id);
+    $fixtures->trackCustomer($first->getId());
     $second = $client->createCustomer(metadata: $metadata, idempotencyKey: $key);
-    SmokeTest::assertSame($first->id, $second->id, "the same customer");
+    SmokeTest::assertSame($first->getId(), $second->getId(), "the same customer");
 });

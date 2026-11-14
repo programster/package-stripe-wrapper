@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Enums\Locale;
 
 
-class LocaleCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<Locale>
+ */
+final readonly class LocaleCollection extends AbstractReadonlyCollection
 {
     public function __construct(Locale ...$countryCodes)
     {
-        parent::__construct(Locale::class, ...$countryCodes);
+        parent::__construct(...$countryCodes);
     }
 
 
@@ -26,12 +29,14 @@ class LocaleCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item Locale */
             $stripeArrayForm[] = $item->value;
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return Locale::class; }
 }

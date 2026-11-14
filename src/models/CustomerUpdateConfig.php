@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\Updateable;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CustomerUpdateConfig implements Arrayable
+final readonly class CustomerUpdateConfig implements Arrayable
 {
     private Updateable $m_address;
     private Updateable $m_name;

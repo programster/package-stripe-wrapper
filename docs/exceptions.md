@@ -1,18 +1,23 @@
 # Exceptions
 
 The package throws its own exceptions when you give it something Stripe would reject, as soon as the object or request
-is created, so the error points at the line that made the mistake. They're all in the `Programster\Stripe\Exceptions`
-namespace:
+is created, so the error points at the line that made the mistake. It also throws them when a response can't be used
+as asked. They're all in the `Programster\Stripe\Exceptions` namespace:
 
 | Exception | Thrown when |
 |---|---|
-| `ExceptionInvalidValue` | A value is out of range, or can't be used, e.g. a negative price, a limit outside 1 to 100, or a customer's ID where an email address is expected. |
+| `ExceptionInvalidValue` | A value is out of range, or can't be used, e.g. a negative price, a `ResultLimit` below 1, or a customer's ID where an email address is expected. |
 | `ExceptionDuplicateKey` | The same metadata key is given twice. It extends `ExceptionInvalidValue`. |
 | `ExceptionValueTooLong` | A value is longer than Stripe allows, e.g. a metadata value over 500 characters. `getValue()` returns it. |
 | `ExceptionInvalidKeyName` | A metadata key contains square brackets. |
 | `ExceptionMissingRequiredParameter` | An object needs at least one of its optional values, e.g. `CustomTextOptions` with no text. |
 | `ExceptionInvalidDropdownValue` | A dropdown option's value isn't alphanumeric. |
 | `ExceptionDropdownOptionsMustBeUnique` | Two dropdown options have the same value. |
+| `ExceptionTooManyResults` | A list matches more than its safety cap (1,000 by default), and no `ResultLimit` was given. See [Listing](listing.md#how-many-you-get). |
+| `ExceptionCustomerDeleted` | A customer that's been deleted is retrieved, as Stripe only gives back its ID. |
+| `ExceptionNoRelatedObject` | A `fetch...()` method is called for a related object that isn't there, e.g. a checkout session's `fetchSubscription()` before it's been completed. |
+| `ExceptionIncompleteList` | `getItems()` or `getPayments()` is called on a list Stripe cut short. Use the matching `fetch...()` method instead. |
+| `ExceptionUnexpectedResponse` | Stripe's response is missing a field the package needs, or has one of an unexpected type, e.g. because Stripe's API has changed. |
 
 ```php
 // Throws ExceptionInvalidValue

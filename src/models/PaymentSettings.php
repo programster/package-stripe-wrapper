@@ -11,7 +11,7 @@ use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class PaymentSettings implements Arrayable
+final readonly class PaymentSettings implements Arrayable
 {
     /** @var array<string, mixed>|null */
     private ?array $m_paymentMethodOptions;
@@ -22,8 +22,8 @@ readonly class PaymentSettings implements Arrayable
     /**
      * Payment settings to pass to invoices created by the subscription.
      *
-     * @param array<string, mixed>|null $paymentMethodOptions - Payment-method-specific configuration to provide to invoices created
-     * by the subscription, in the array form Stripe takes.
+     * @param array<string, mixed>|null $paymentMethodOptions - Payment-method-specific configuration to provide to
+     * invoices created by the subscription, in the array form Stripe takes.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings-payment_method_options
      *
      * @param PaymentMethodTypeCollection|null $paymentMethodTypes - The list of payment method types (e.g. card) to
@@ -43,7 +43,7 @@ readonly class PaymentSettings implements Arrayable
     )
     {
         $this->m_paymentMethodOptions = $paymentMethodOptions;
-        $this->m_paymentMethodTypes = ($paymentMethodTypes !== null) ? clone $paymentMethodTypes : null;
+        $this->m_paymentMethodTypes = $paymentMethodTypes;
         $this->m_saveDefaultPaymentMethod = $saveDefaultPaymentMethod;
     }
 

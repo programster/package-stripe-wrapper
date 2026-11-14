@@ -13,7 +13,7 @@ use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionInvoiceItemCollection;
-use Programster\Stripe\Collections\SubscriptionItemCollection;
+use Programster\Stripe\Collections\SubscriptionLineItemCollection;
 use Programster\Stripe\Enums\AllowRedisplayFilters;
 use Programster\Stripe\Enums\BillingModeType;
 use Programster\Stripe\Enums\CountryCode;
@@ -67,7 +67,6 @@ use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
-use Programster\Stripe\Models\SubscriptionTrialConfig;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TaxRates;
 use Programster\Stripe\Models\TimePeriod;
@@ -82,7 +81,6 @@ $smoke->run("enum values match Stripe's", function (): void {
     SmokeTest::assertSame("on_session", PaymentIntentSetupFutureUsage::ON_SESSION->value, "on session");
     SmokeTest::assertSame("affirm", PaymentMethodType::AFFIRM->value, "affirm");
     SmokeTest::assertSame("canceled", SubscriptionStatus::CANCELLED->value, "canceled");
-    SmokeTest::assertSame(count(PaymentMethodType::cases()), count(PaymentMethodType::getAll()), "getAll()");
 });
 
 $smoke->run("AccountReference", function (): void {
@@ -170,7 +168,7 @@ $smoke->run("FieldType", function (): void {
     SmokeTest::assertSame($expectedText, $text['text'], "an empty default isn't sent");
     $textWithDefault = FieldType::createText('Hi', 1, 20)->toArray();
     SmokeTest::assertSame('Hi', $textWithDefault['text']['default_value'], "default");
-    $numeric = FieldType::createNumeric('', 20, 1)->toArray();
+    $numeric = FieldType::createNumeric('', 1, 20)->toArray();
     SmokeTest::assertSame(20, $numeric['numeric']['maximum_length'], "numeric");
 
     $createWithDuplicateDefault = function () use ($red): void {
@@ -322,14 +320,8 @@ $smoke->run("SubscriptionInvoiceItem", function (): void {
 });
 
 $smoke->run("SubscriptionItem rejects what Stripe doesn't allow on a subscription's items", function (): void {
-    $items = (new SubscriptionItemCollection(new SubscriptionItem(1, 'price_1')))->toStripeArrayForm();
+    $items = (new SubscriptionLineItemCollection(new SubscriptionItem(1, 'price_1')))->toStripeArrayForm();
     SmokeTest::assertSame([['quantity' => 1, 'price' => 'price_1']], $items, "items");
-
-    $createWithAdjustableQuantity = function (): void {
-        new SubscriptionItem(1, 'price_1', new AdjustableQuantityConfig(1, 5));
-    };
-
-    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithAdjustableQuantity, "adjustable");
 
     $createWithDynamicTaxRates = function (): void {
         new SubscriptionItem(1, 'price_1', taxRates: new TaxRates(true, 'txr_1'));
@@ -338,17 +330,11 @@ $smoke->run("SubscriptionItem rejects what Stripe doesn't allow on a subscriptio
     SmokeTest::expectException(ExceptionInvalidValue::class, $createWithDynamicTaxRates, "dynamic");
 });
 
-$smoke->run("SubscriptionItemDiscount needs exactly one ID", function (): void {
+$smoke->run("SubscriptionItemDiscount", function (): void {
     $promotion = SubscriptionItemDiscount::createFromPromotionCode('promo_1')->toArray();
     SmokeTest::assertSame(['promotion_code' => 'promo_1'], $promotion, "promotion code");
     $discount = SubscriptionItemDiscount::createFromDiscountId('di_1')->toArray();
     SmokeTest::assertSame(['discount' => 'di_1'], $discount, "discount");
-
-    $createWithTwo = function (): void {
-        new SubscriptionItemDiscount('coupon_1', 'di_1', null);
-    };
-
-    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithTwo, "exactly one");
 });
 
 $smoke->run("TimePeriod uses inclusive comparisons by default", function (): void {
@@ -373,8 +359,8 @@ $smoke->run("trial configs", function (): void {
     $expectedSettings = ['end_behavior' => ['missing_payment_method' => 'cancel']];
     $expectedTrial = ['trial_period_days' => 14, 'trial_settings' => $expectedSettings];
     SmokeTest::assertSame($expectedTrial, $trial, "days");
-    $subscriptionTrial = SubscriptionTrialConfig::createForEndTimestamp(5000)->getStripeParams();
-    SmokeTest::assertSame(['trial_end' => 5000], $subscriptionTrial, "end timestamp");
+    $endTrial = TrialConfig::createForEndTimestamp(5000)->getStripeParams();
+    SmokeTest::assertSame(['trial_end' => 5000], $endTrial, "end timestamp");
 });
 
 $smoke->run("collections of enums", function (): void {

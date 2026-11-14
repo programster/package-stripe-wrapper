@@ -1,0 +1,175 @@
+{
+    "id": "sub_1UbfGeQwd7RuG7g3MlbEUpo7",
+    "object": "subscription",
+    "application": null,
+    "application_fee_percent": null,
+    "automatic_tax": {
+        "disabled_reason": null,
+        "enabled": false,
+        "liability": null
+    },
+    "billing_cycle_anchor": 1795865824,
+    "billing_cycle_anchor_config": null,
+    "billing_mode": {
+        "flexible": {
+            "proration_discounts": "included"
+        },
+        "type": "flexible",
+        "updated_at": 1794656224
+    },
+    "billing_thresholds": null,
+    "cancel_at": 1795865824,
+    "cancel_at_period_end": true,
+    "canceled_at": 1794656224,
+    "cancellation_details": {
+        "comment": null,
+        "feedback": null,
+        "feedback_option": null,
+        "reason": "cancellation_requested"
+    },
+    "collection_method": "charge_automatically",
+    "created": 1794656224,
+    "currency": "gbp",
+    "customer": "cus_Vcv62j7U3D6Vfw",
+    "customer_account": null,
+    "days_until_due": null,
+    "default_payment_method": null,
+    "default_source": null,
+    "default_tax_rates": [],
+    "description": null,
+    "discounts": [],
+    "ended_at": null,
+    "invoice_settings": {
+        "account_tax_ids": null,
+        "custom_fields": null,
+        "description": null,
+        "footer": null,
+        "issuer": {
+            "type": "self"
+        }
+    },
+    "items": {
+        "object": "list",
+        "data": [
+            {
+                "id": "si_Vcv6kJ6kaEHzs4",
+                "object": "subscription_item",
+                "billing_thresholds": null,
+                "created": 1794656224,
+                "current_period_end": 1795865824,
+                "current_period_start": 1794656224,
+                "current_trial": null,
+                "discounts": [],
+                "metadata": {},
+                "plan": {
+                    "id": "price_1UbfGeQwd7RuG7g3S6AXnB0K",
+                    "object": "plan",
+                    "active": false,
+                    "amount": 999,
+                    "amount_decimal": "999",
+                    "billing_scheme": "per_unit",
+                    "created": 1794656232,
+                    "currency": "gbp",
+                    "interval": "month",
+                    "interval_count": 1,
+                    "livemode": false,
+                    "metadata": {},
+                    "meter": null,
+                    "nickname": null,
+                    "product": "prod_Vcv6mgW9eWd2p4",
+                    "tiers_mode": null,
+                    "transform_usage": null,
+                    "trial_period_days": null,
+                    "usage_type": "licensed"
+                },
+                "price": {
+                    "id": "price_1UbfGeQwd7RuG7g3S6AXnB0K",
+                    "object": "price",
+                    "active": false,
+                    "billing_scheme": "per_unit",
+                    "created": 1794656232,
+                    "currency": "gbp",
+                    "custom_unit_amount": null,
+                    "livemode": false,
+                    "lookup_key": null,
+                    "metadata": {},
+                    "nickname": null,
+                    "product": "prod_Vcv6mgW9eWd2p4",
+                    "recurring": {
+                        "interval": "month",
+                        "interval_count": 1,
+                        "meter": null,
+                        "trial_period_days": null,
+                        "usage_type": "licensed"
+                    },
+                    "tax_behavior": "unspecified",
+                    "tiers_mode": null,
+                    "transform_quantity": null,
+                    "type": "recurring",
+                    "unit_amount": 999,
+                    "unit_amount_decimal": "999"
+                },
+                "quantity": 1,
+                "subscription": "sub_1UbfGeQwd7RuG7g3MlbEUpo7",
+                "tax_rates": []
+            }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/subscription_items?subscription=sub_1UbfGeQwd7RuG7g3MlbEUpo7"
+    },
+    "latest_invoice": "in_1UbfGfQwd7RuG7g3FRIK42K9",
+    "livemode": false,
+    "managed_payments": {
+        "enabled": false
+    },
+    "metadata": {
+        "created_by": "programster-stripe-wrapper-live-tests"
+    },
+    "next_pending_invoice_item_invoice": null,
+    "on_behalf_of": null,
+    "pause_collection": null,
+    "payment_settings": {
+        "payment_method_options": null,
+        "payment_method_types": null,
+        "save_default_payment_method": "off"
+    },
+    "pending_invoice_item_interval": null,
+    "pending_setup_intent": null,
+    "pending_update": null,
+    "plan": {
+        "id": "price_1UbfGeQwd7RuG7g3S6AXnB0K",
+        "object": "plan",
+        "active": false,
+        "amount": 999,
+        "amount_decimal": "999",
+        "billing_scheme": "per_unit",
+        "created": 1794656232,
+        "currency": "gbp",
+        "interval": "month",
+        "interval_count": 1,
+        "livemode": false,
+        "metadata": {},
+        "meter": null,
+        "nickname": null,
+        "product": "prod_Vcv6mgW9eWd2p4",
+        "tiers_mode": null,
+        "transform_usage": null,
+        "trial_period_days": null,
+        "usage_type": "licensed"
+    },
+    "quantity": 1,
+    "schedule": null,
+    "start_date": 1794656224,
+    "status": "trialing",
+    "test_clock": "clock_1UbfGWQwd7RuG7g3BSrmDaso",
+    "transfer_data": null,
+    "trial_end": 1795865824,
+    "trial_settings": {
+        "end_behavior": {
+            "billing_cycle_anchor": "now",
+            "missing_payment_method": "create_invoice"
+        }
+    },
+    "trial_start": 1794656224
+}

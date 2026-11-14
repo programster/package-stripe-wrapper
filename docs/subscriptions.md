@@ -1,6 +1,7 @@
 # Subscriptions
 
 - [Creating a subscription](#creating-a-subscription)
+- [Reading a subscription](#reading-a-subscription)
 - [Listing subscriptions](#listing-subscriptions)
 - [Changing a subscription's items](#changing-a-subscriptions-items)
 - [Cancelling a subscription](#cancelling-a-subscription)
@@ -10,9 +11,11 @@ they enter their own payment details. Creating one directly is for when you alre
 the customer an invoice instead.
 
 ## Creating a subscription
-`createSubscription()` returns Stripe's `\Stripe\Subscription`:
+`createSubscription()` returns a [`Subscription`](responses.md):
 
 ```php
+use Programster\Stripe\Models\SubscriptionItem;
+
 $client = new StripeClient('sk_test_...');
 $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
 $price = new PriceDataForSubscriptionItem(Currency::GBP, 999, 'prod_123', $monthly);
@@ -41,6 +44,21 @@ $items = new SubscriptionLineItemCollection(new SubscriptionItem(1, $price));
 $client->createSubscription('cus_123', $items, Currency::GBP);
 ```
 
+## Reading a subscription
+```php
+$subscription = $client->retrieveSubscription('sub_123');
+$hasAccess = $subscription->isActive() || $subscription->isTrialing();
+
+foreach ($subscription->fetchItems() as $item)
+{
+    $renews = $item->getCurrentPeriodEnd();    // Each item has its own billing period.
+}
+
+$customer = $subscription->fetchCustomer();
+```
+
+See [Responses](responses.md) for statuses, and the difference between `getItems()` and `fetchItems()`.
+
 ## Listing subscriptions
 ```php
 $subscriptions = $client->listSubscriptions(
@@ -53,10 +71,10 @@ $subscriptions = $client->listSubscriptions(
 ```php
 $items = $client->listSubscriptionItems('sub_123');
 
-foreach ($items->data as $item)
+foreach ($items as $item)
 {
     $updated = $client->updateSubscriptionItem(
-        $item->id,
+        $item->getId(),
         quantity: 2,
         prorationBehavior: ProrationBehavior::CREATE,
     );

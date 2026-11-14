@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\ValidateLocation;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CustomerTaxConfig implements Arrayable
+final readonly class CustomerTaxConfig implements Arrayable
 {
     private ?string $m_ipAddress;
     private ?ValidateLocation $m_validateLocation;

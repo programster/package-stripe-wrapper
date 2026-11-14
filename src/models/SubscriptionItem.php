@@ -13,7 +13,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class SubscriptionItem implements Arrayable
+final readonly class SubscriptionItem implements Arrayable
 {
     private int $m_quantity;
     private string|PriceDataForSubscriptionItem $m_priceDataOrPriceId;
@@ -33,10 +33,6 @@ readonly class SubscriptionItem implements Arrayable
      * price, or the ID of an existing price/plan object within Stripe.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-price
      *
-     * @param AdjustableQuantityConfig|null $adjustableQuantityConfig - must be left as null, as Stripe doesn't support
-     * an adjustable quantity on a subscription's items. It is only here so that existing code keeps working, and will
-     * be removed in the next major version.
-     *
      * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
      * for storing additional information about the object in a structured format. Individual keys can be unset by
      * posting an empty value to them. All keys can be unset by posting an empty value to metadata.
@@ -53,12 +49,11 @@ readonly class SubscriptionItem implements Arrayable
      * @param TaxRates|null $taxRates - the IDs of tax rate objects that apply to the item. They can't be dynamic, as
      * Stripe only supports dynamic tax rates on checkout line items. https://docs.stripe.com/api/tax_rates
      *
-     * @throws ExceptionInvalidValue - if an adjustable quantity, or dynamic tax rates, are given.
+     * @throws ExceptionInvalidValue - if dynamic tax rates are given.
      */
     public function __construct(
         int $quantity,
         string|PriceDataForSubscriptionItem $priceDataOrPriceId,
-        ?AdjustableQuantityConfig $adjustableQuantityConfig = null,
         ?Metadata $metadata = null,
         ?DiscountCollection $discounts = null,
         ?BillingThresholds $billingThresholds = null,
@@ -66,13 +61,6 @@ readonly class SubscriptionItem implements Arrayable
     )
     {
         // Stripe rejects these for a subscription's items, so catch them here, where the mistake was made.
-        if ($adjustableQuantityConfig !== null)
-        {
-            throw new ExceptionInvalidValue(
-                "Stripe doesn't support an adjustable quantity on a subscription's items, only on checkout line items."
-            );
-        }
-
         if ($taxRates !== null && $taxRates->getIsDynamic())
         {
             throw new ExceptionInvalidValue(
@@ -82,8 +70,8 @@ readonly class SubscriptionItem implements Arrayable
 
         $this->m_quantity = $quantity;
         $this->m_priceDataOrPriceId = $priceDataOrPriceId;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
-        $this->m_discounts = ($discounts !== null) ? clone $discounts : null;
+        $this->m_metadata = $metadata;
+        $this->m_discounts = $discounts;
         $this->m_billingThresholds = $billingThresholds;
         $this->m_taxRates = $taxRates;
     }

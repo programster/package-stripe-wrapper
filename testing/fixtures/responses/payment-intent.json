@@ -1,0 +1,83 @@
+{
+    "id": "pi_3UbfGaQwd7RuG7g30d6zWwi8",
+    "object": "payment_intent",
+    "allowed_payment_method_types": [
+        "blik",
+        "card",
+        "klarna",
+        "link",
+        "revolut_pay",
+        "twint"
+    ],
+    "amount": 1998,
+    "amount_capturable": 0,
+    "amount_details": {
+        "tip": {}
+    },
+    "amount_received": 1998,
+    "application": null,
+    "application_fee_amount": null,
+    "automatic_payment_methods": null,
+    "canceled_at": null,
+    "cancellation_reason": null,
+    "capture_method": "automatic",
+    "client_secret": "redacted_client_secret",
+    "confirmation_method": "automatic",
+    "created": 1794656228,
+    "currency": "gbp",
+    "customer": "cus_Vcv62j7U3D6Vfw",
+    "customer_account": null,
+    "description": "Subscription creation",
+    "excluded_payment_method_types": null,
+    "last_payment_error": null,
+    "latest_charge": "ch_3UbfGaQwd7RuG7g30FsagncI",
+    "livemode": false,
+    "managed_payments": {
+        "enabled": false
+    },
+    "metadata": {},
+    "next_action": null,
+    "on_behalf_of": null,
+    "payment_details": {
+        "customer_reference": null,
+        "order_reference": "in_1UbfGaQwd7RuG7g34UZbtmLP"
+    },
+    "payment_method": "pm_1UbfGYQwd7RuG7g3Py7c9T8M",
+    "payment_method_configuration_details": null,
+    "payment_method_options": {
+        "blik": {},
+        "card": {
+            "installments": null,
+            "mandate_options": null,
+            "network": null,
+            "request_three_d_secure": "automatic"
+        },
+        "klarna": {
+            "preferred_locale": null
+        },
+        "link": {
+            "persistent_token": null
+        },
+        "revolut_pay": {},
+        "twint": {}
+    },
+    "payment_method_types": [
+        "card",
+        "klarna",
+        "link",
+        "revolut_pay"
+    ],
+    "payment_record": null,
+    "processing": null,
+    "receipt_email": null,
+    "review": null,
+    "setup_future_usage": "off_session",
+    "shared_payment_granted_token": null,
+    "shipping": null,
+    "source": null,
+    "statement_descriptor": null,
+    "statement_descriptor_suffix": null,
+    "status": "succeeded",
+    "transfer_data": null,
+    "transfer_group": null
+}

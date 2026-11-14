@@ -3,7 +3,6 @@
 namespace Programster\Stripe;
 
 use Programster\Stripe\Collections\CountryCodeCollection;
-use Programster\Stripe\Collections\CustomerShippingDetailsCollection;
 use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\DiscountCollection;
@@ -30,8 +29,12 @@ use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Enums\TaxExempt;
+use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
+use Programster\Stripe\Exceptions\ExceptionIncompleteList;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
+use Programster\Stripe\Exceptions\ExceptionTooManyResults;
 use Programster\Stripe\Models\Address;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
 use Programster\Stripe\Models\BillingCycleAnchorConfig;
@@ -40,6 +43,7 @@ use Programster\Stripe\Models\BillingThresholds;
 use Programster\Stripe\Models\CancellationDetails;
 use Programster\Stripe\Models\ConsentConfig;
 use Programster\Stripe\Models\CustomerInvoiceSettings;
+use Programster\Stripe\Models\CustomerShippingDetails;
 use Programster\Stripe\Models\CustomerTaxConfig;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
@@ -52,21 +56,36 @@ use Programster\Stripe\Models\PaymentSettings;
 use Programster\Stripe\Models\PriceDataForSubscriptionItem;
 use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SavedPaymentMethodOptions;
-use Programster\Stripe\Models\StripeConnectPaymentConfig;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\TransferData;
 use Programster\Stripe\Models\TrialConfig;
-use Stripe\Checkout\Session;
+use Programster\Stripe\Responses\Charge;
+use Programster\Stripe\Responses\ChargeCollection;
+use Programster\Stripe\Responses\CheckoutSession;
+use Programster\Stripe\Responses\Customer;
+use Programster\Stripe\Responses\CustomerCollection;
+use Programster\Stripe\Responses\Invoice;
+use Programster\Stripe\Responses\InvoiceCollection;
+use Programster\Stripe\Responses\InvoicePayment;
+use Programster\Stripe\Responses\InvoicePaymentCollection;
+use Programster\Stripe\Responses\InvoiceWithPayments;
+use Programster\Stripe\Responses\InvoiceWithPaymentsCollection;
+use Programster\Stripe\Responses\PaymentIntent;
+use Programster\Stripe\Responses\PaymentIntentCollection;
+use Programster\Stripe\Responses\PaymentMethod;
+use Programster\Stripe\Responses\PaymentMethodCollection;
+use Programster\Stripe\Responses\Refund;
+use Programster\Stripe\Responses\RefundCollection;
+use Programster\Stripe\Responses\Subscription;
+use Programster\Stripe\Responses\SubscriptionCollection;
+use Programster\Stripe\Responses\SubscriptionItem;
+use Programster\Stripe\Responses\SubscriptionItemCollection;
 use Stripe\Collection;
-use Stripe\Customer;
 use Stripe\Exception\ApiErrorException;
-use Stripe\Stripe;
-use Stripe\Subscription;
-use Stripe\SubscriptionItem;
 
-readonly class StripeClient
+final readonly class StripeClient
 {
     private \Stripe\StripeClient $m_underlyingStripeClient;
 
@@ -74,10 +93,6 @@ readonly class StripeClient
     public function __construct(#[\SensitiveParameter] string $secretKey)
     {
         $this->m_underlyingStripeClient = new \Stripe\StripeClient($secretKey);
-
-        // This package no longer relies on the global key, but it is still set for anyone who relies on it being
-        // set as a side effect of creating this client.
-        Stripe::setApiKey($secretKey);
     }
 
 
@@ -92,49 +107,59 @@ readonly class StripeClient
 
 
     /**
-     * List subscriptions - https://docs.stripe.com/api/subscriptions/list?lang=php
+     * The client can't be serialized, as it holds the secret key.
+     * @return array<string, mixed>
+     * @throws \LogicException - always.
+     */
+    public function __serialize() : array
+    {
+        throw new \LogicException("The StripeClient can't be serialized, as it holds the secret key.");
+    }
+
+
+    /**
+     * List subscriptions, newest first, asking Stripe for as many pages as it takes.
+     * https://docs.stripe.com/api/subscriptions/list
      *
-     * @param string|null $customerId - optionally pass the ID of a customer to filter subscriptions to those belonging
-     * to a specific customer.
+     * @param string|null $customerId - optionally, only list this customer's subscriptions.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * subscriptions after this pointer.
+     * @param string|null $priceId - optionally, only list subscriptions with this recurring price.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * subscriptions before this pointer.
+     * @param TimePeriod|null $created - optionally, only list subscriptions created in this time period.
      *
-     * @param string|null $priceId - optionally filter for subscriptions that contain this recurring price ID.
+     * @param TimePeriod|null $currentPeriodEnd - optionally, only list subscriptions whose current period ends in this
+     * time period.
      *
-     * @param TimePeriod|null $created - optionally filter subscriptions created within a certain time period.
+     * @param TimePeriod|null $currentPeriodStart - optionally, only list subscriptions whose current period started
+     * in this time period.
      *
-     * @param TimePeriod|null $currentPeriodEnd - Only return subscriptions whose current_period_end falls within the
-     * given date interval.
+     * @param SubscriptionStatus|null $subscriptionStatus - optionally, only list subscriptions with this status, or
+     * SubscriptionStatus::ALL for every status. Without one, Stripe lists every subscription that isn't cancelled.
      *
-     * @param TimePeriod|null $currentPeriodStart - Only return subscriptions whose current_period_start falls within
-     * the given date interval.
+     * @param bool|null $automaticTaxEnabled - optionally, only list subscriptions with automatic tax on, or off.
      *
-     * @param SubscriptionStatus|null $subscriptionStatus - filter subscriptions by their status.
+     * @param SubscriptionCollectionMethod|null $collectionMethod - optionally, only list subscriptions that are
+     * charged automatically, or sent an invoice.
      *
-     * @param bool|null $automaticTaxEnabled - filter subscriptions based on whether they have auto tax enabled or not.
+     * @param string|null $testClock - optionally, only list subscriptions on this test clock.
      *
-     * @param SubscriptionCollectionMethod|null $collectionMethod - filter subscriptions based on whether they auto
-     * charge or send an invoice to be paid.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $testClock - optionally filter subscriptions that have the specified test clock in
-     * development.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - optionally specify the limit to the number of subscriptions in the result (pagination). This
-     * package's default is 100, which is the maximum, so you can only override it to reduce the number.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\Subscription>
+     * @return SubscriptionCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listSubscriptions(
         ?string $customerId = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?string $priceId = null,
         ?TimePeriod $created = null,
         ?TimePeriod $currentPeriodEnd = null,
@@ -143,16 +168,15 @@ readonly class StripeClient
         ?bool $automaticTaxEnabled = null,
         ?SubscriptionCollectionMethod $collectionMethod = null,
         ?string $testClock = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : SubscriptionCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($customerId !== null) { $params['customer'] = $customerId; }
         if ($priceId !== null) { $params['price'] = $priceId; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($currentPeriodEnd !== null) { $params['current_period_end'] = $currentPeriodEnd->toArray(); }
         if ($currentPeriodStart !== null) { $params['current_period_start'] = $currentPeriodStart->toArray(); }
@@ -161,7 +185,18 @@ readonly class StripeClient
         if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        return $this->m_underlyingStripeClient->subscriptions->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->subscriptions->all($pageParams);
+        };
+
+        $subscriptions = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'subscriptions') as $object)
+        {
+            $subscriptions[] = Subscription::createFromStripeObject($object, $this);
+        }
+
+        return new SubscriptionCollection(...$subscriptions);
     }
 
 
@@ -185,9 +220,8 @@ readonly class StripeClient
      *
      * @param string|null $phone - The customer’s phone number.
      *
-     * @param CustomerShippingDetailsCollection|null $shippingDetails - The customer’s shipping information, which
-     * appears on invoices emailed to this customer. Stripe only allows one, so the collection must contain exactly
-     * one item.
+     * @param CustomerShippingDetails|null $shippingDetails - The customer’s shipping information, which appears on
+     * invoices emailed to this customer.
      *
      * @param CustomerTaxConfig|null $taxConfig - tax details about the customer, such as their IP address for tax
      * location inference.
@@ -230,7 +264,6 @@ readonly class StripeClient
      * @return Customer - the created customer.
      *
      * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $shippingDetails doesn't contain exactly one item.
      */
     public function createCustomer(
         ?Address $address = null,
@@ -240,7 +273,7 @@ readonly class StripeClient
         ?string $name = null,
         ?string $paymentMethodId = null,
         ?string $phone = null,
-        ?CustomerShippingDetailsCollection $shippingDetails = null,
+        ?CustomerShippingDetails $shippingDetails = null,
         ?CustomerTaxConfig $taxConfig = null,
         ?int $balance = null,
         ?string $businessName = null,
@@ -267,19 +300,7 @@ readonly class StripeClient
         if ($paymentMethodId !== null) { $params['payment_method'] = $paymentMethodId; }
         if ($phone !== null) { $params['phone'] = $phone; }
 
-        if ($shippingDetails !== null)
-        {
-            // Stripe only takes a single shipping address for a customer, under "shipping".
-            if (count($shippingDetails) !== 1)
-            {
-                throw new ExceptionInvalidValue(
-                    "A customer can only have one set of shipping details, but " . count($shippingDetails) .
-                    " were provided."
-                );
-            }
-
-            $params['shipping'] = $shippingDetails->toStripeArrayForm()[0];
-        }
+        if ($shippingDetails !== null) { $params['shipping'] = $shippingDetails->toArray(); }
 
         if ($taxConfig !== null) { $params['tax'] = $taxConfig->toArray(); }
         if ($balance !== null) { $params['balance'] = $balance; }
@@ -305,51 +326,54 @@ readonly class StripeClient
         if ($testClockId !== null) { $params['test_clock'] = $testClockId; }
 
         $options = $this->getRequestOptions($idempotencyKey);
-        return $this->m_underlyingStripeClient->customers->create($params, $options);
+        $customer = $this->m_underlyingStripeClient->customers->create($params, $options);
+        return Customer::createFromStripeObject($customer, $this);
     }
 
 
     /**
-     * List all subscription items. Returns a list of your subscription items for a given subscription.
-     * https://docs.stripe.com/api/subscription_items/list?lang=php
+     * List a subscription's items, asking Stripe for as many pages as it takes.
+     * https://docs.stripe.com/api/subscription_items/list
      *
-     * @param string $subscriptionId - the ID of the subscription to get the items for.
+     * @param string $subscriptionId - the ID of the subscription to list the items of.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * items after this pointer.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * items before this pointer.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param string|null $testClock - optionally filter by the specified test clock in development.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @param int $limit - the maximum number of items to return, from 1 to 100. Defaults to 100.
+     * @return SubscriptionItemCollection
      *
-     * @return Collection<SubscriptionItem>
-     *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listSubscriptionItems(
         string $subscriptionId,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
-        ?string $testClock = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : SubscriptionItemCollection
     {
-        self::assertValidLimit($limit);
+        $params = self::getPagingParams($startingAfter, $endingBefore);
+        $params['subscription'] = $subscriptionId;
 
-        $params = [
-            'subscription' => $subscriptionId,
-            'limit' => $limit,
-        ];
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->subscriptionItems->all($pageParams);
+        };
 
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
-        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+        $items = [];
 
-        return $this->m_underlyingStripeClient->subscriptionItems->all($params);
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'subscription items') as $object)
+        {
+            $items[] = SubscriptionItem::createFromStripeObject($object, $this);
+        }
+
+        return new SubscriptionItemCollection(...$items);
     }
 
 
@@ -437,7 +461,8 @@ readonly class StripeClient
         if ($taxRateIds !== null) { $params['tax_rates'] = $taxRateIds->toArray(); }
 
         $options = $this->getRequestOptions($idempotencyKey);
-        return $this->m_underlyingStripeClient->subscriptionItems->update($subscriptionItemId, $params, $options);
+        $item = $this->m_underlyingStripeClient->subscriptionItems->update($subscriptionItemId, $params, $options);
+        return SubscriptionItem::createFromStripeObject($item, $this);
     }
 
 
@@ -476,100 +501,104 @@ readonly class StripeClient
 
         if ($cancellationDetails !== null) { $params['cancellation_details'] = $cancellationDetails->toArray(); }
 
-        return $this->m_underlyingStripeClient->subscriptions->cancel($subscriptionId, $params);
+        $subscription = $this->m_underlyingStripeClient->subscriptions->cancel($subscriptionId, $params);
+        return Subscription::createFromStripeObject($subscription, $this);
     }
 
 
     /**
-     * Retrieve payment intents in the account.
+     * List payment intents, newest first, asking Stripe for as many pages as it takes.
      * https://docs.stripe.com/api/payment_intents/list
      *
-     * @param string|null $customerId - optionally specify the (Stripe) ID of a customer to retrieve payment intents
-     * specific to them.
+     * @param string|null $customerId - optionally, only list this customer's payment intents.
      *
-     * @param string|null $customerAccountId - optionally specify the Stripe account ID to retrieve payments related
-     * to them.
+     * @param string|null $customerAccountId - optionally, only list this customer account's payment intents.
      *
-     * @param TimePeriod|null $created - optionally only return payment intents created within this time period.
+     * @param TimePeriod|null $created - optionally, only list payment intents created in this time period.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * payment intents after this pointer.
+     * @param string|null $testClock - optionally, only list payment intents on this test clock.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * payment intents before this pointer.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $testClock - optionally filter by the specified test clock in development.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - A limit on the number of objects to be returned. Limit can range between 1 and 100.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\PaymentIntent>
+     * @return PaymentIntentCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listPaymentIntents(
         ?string $customerId = null,
         ?string $customerAccountId = null,
         ?TimePeriod $created = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?string $testClock = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : PaymentIntentCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($customerId !== null) { $params['customer'] = $customerId; }
         if ($customerAccountId !== null) { $params['customer_account'] = $customerAccountId; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        return $this->m_underlyingStripeClient->paymentIntents->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->paymentIntents->all($pageParams);
+        };
+
+        $paymentIntents = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'payment intents') as $object)
+        {
+            $paymentIntents[] = PaymentIntent::createFromStripeObject($object, $this);
+        }
+
+        return new PaymentIntentCollection(...$paymentIntents);
     }
 
 
     /**
-     * You can list all invoices, or list the invoices for a specific customer. The invoices are returned sorted by
-     * creation date, with the most recently created invoices appearing first.
+     * List invoices, newest first, asking Stripe for as many pages as it takes. They don't include their payments:
+     * use listInvoicesWithPayments() for that.
      * https://docs.stripe.com/api/invoices/list
      *
-     * @param string|null $customerId - optionally specify a customer ID to only fetch invoices relating to that
-     * customer.
+     * @param string|null $customerId - optionally, only list this customer's invoices.
      *
-     * @param string|null $customerAccount - optionally specify a customer account to only fetch invoices relating to
-     * that customer.
+     * @param string|null $customerAccount - optionally, only list this customer account's invoices.
      *
-     * @param InvoiceStatus|null $status - optionally provide a status to only show invoices with that status.
+     * @param InvoiceStatus|null $status - optionally, only list invoices with this status.
      *
-     * @param string|null $subscriptionId - optionally provide the ID of a subscription to only retrieve invoices
-     * related to that subscription.
+     * @param string|null $subscriptionId - optionally, only list this subscription's invoices.
      *
-     * @param SubscriptionCollectionMethod|null $collectionMethod - optionally specify a collection method to filter by.
+     * @param SubscriptionCollectionMethod|null $collectionMethod - optionally, only list invoices that are charged
+     * automatically, or sent to the customer.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * invoices after this pointer.
+     * @param TimePeriod|null $created - optionally, only list invoices created in this time period.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * invoices before this pointer.
+     * @param string|null $testClock - optionally, only list invoices on this test clock.
      *
-     * @param TimePeriod|null $created - optionally only return invoices created within this time period.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param bool $expandPayments - if set to true (default), then this will include details of all the payments made
-     * against an invoice. You need this if you wish to look up the payment intents that relate to an invoice (which
-     * is generally the only way to work out which payment intents were against a subscription.
-     * E.g. subscription -> invoices -> payment intents)
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param string|null $testClock - optionally filter by the specified test clock in development.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @param int $limit - the maximum number of invoices to return, from 1 to 100. Defaults to 100.
+     * @return InvoiceCollection
      *
-     * @return Collection<\Stripe\Invoice>
-     *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listInvoices(
         ?string $customerId = null,
@@ -577,174 +606,341 @@ readonly class StripeClient
         ?InvoiceStatus $status = null,
         ?string $subscriptionId = null,
         ?SubscriptionCollectionMethod $collectionMethod = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?TimePeriod $created = null,
-        bool $expandPayments = true,
         ?string $testClock = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : InvoiceCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($customerId !== null) { $params['customer'] = $customerId; }
         if ($customerAccount !== null) { $params['customer_account'] = $customerAccount; }
         if ($status !== null) { $params['status'] = $status->value; }
         if ($subscriptionId !== null) { $params['subscription'] = $subscriptionId; }
         if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
-        if ($expandPayments === true) { $params['expand'] = ['data.payments']; }
 
-        return $this->m_underlyingStripeClient->invoices->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->invoices->all($pageParams);
+        };
+
+        $invoices = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoices') as $object)
+        {
+            $invoices[] = Invoice::createFromStripeObject($object, $this);
+        }
+
+        return new InvoiceCollection(...$invoices);
     }
 
 
     /**
-     * Returns a list of your customers. The customers are returned sorted by creation date, with the most recent
-     * customers appearing first.
+     * List invoices with their payments, newest first, asking Stripe for as many pages as it takes. This is the way to
+     * find the payment intents that paid for a subscription: its invoices, then their payments.
+     * https://docs.stripe.com/api/invoices/list
+     *
+     * @param string|null $customerId - optionally, only list this customer's invoices.
+     *
+     * @param string|null $customerAccount - optionally, only list this customer account's invoices.
+     *
+     * @param InvoiceStatus|null $status - optionally, only list invoices with this status.
+     *
+     * @param string|null $subscriptionId - optionally, only list this subscription's invoices.
+     *
+     * @param SubscriptionCollectionMethod|null $collectionMethod - optionally, only list invoices that are charged
+     * automatically, or sent to the customer.
+     *
+     * @param TimePeriod|null $created - optionally, only list invoices created in this time period.
+     *
+     * @param string|null $testClock - optionally, only list invoices on this test clock.
+     *
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
+     *
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
+     *
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
+     *
+     * @return InvoiceWithPaymentsCollection
+     *
+     * @throws ExceptionIncompleteList - if Stripe left some of an invoice's payments out. Use
+     * Invoice::fetchPayments() for that invoice instead.
+     *
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function listInvoicesWithPayments(
+        ?string $customerId = null,
+        ?string $customerAccount = null,
+        ?InvoiceStatus $status = null,
+        ?string $subscriptionId = null,
+        ?SubscriptionCollectionMethod $collectionMethod = null,
+        ?TimePeriod $created = null,
+        ?string $testClock = null,
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : InvoiceWithPaymentsCollection
+    {
+        $params = self::getPagingParams($startingAfter, $endingBefore);
+
+        if ($customerId !== null) { $params['customer'] = $customerId; }
+        if ($customerAccount !== null) { $params['customer_account'] = $customerAccount; }
+        if ($status !== null) { $params['status'] = $status->value; }
+        if ($subscriptionId !== null) { $params['subscription'] = $subscriptionId; }
+        if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
+        if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($testClock !== null) { $params['test_clock'] = $testClock; }
+        $params['expand'] = ['data.payments'];
+
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->invoices->all($pageParams);
+        };
+
+        $invoices = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoices') as $object)
+        {
+            $invoices[] = InvoiceWithPayments::createFromStripeObject($object, $this);
+        }
+
+        return new InvoiceWithPaymentsCollection(...$invoices);
+    }
+
+
+    /**
+     * List the payments made against an invoice, asking Stripe for as many pages as it takes.
+     * https://docs.stripe.com/api/invoice-payment/list
+     *
+     * @param string $invoiceId - the ID of the invoice.
+     *
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
+     *
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
+     *
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
+     *
+     * @return InvoicePaymentCollection
+     *
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function listInvoicePayments(
+        string $invoiceId,
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : InvoicePaymentCollection
+    {
+        $params = self::getPagingParams($startingAfter, $endingBefore);
+        $params['invoice'] = $invoiceId;
+
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->invoicePayments->all($pageParams);
+        };
+
+        $payments = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoice payments') as $object)
+        {
+            $payments[] = InvoicePayment::createFromStripeObject($object, $this);
+        }
+
+        return new InvoicePaymentCollection(...$payments);
+    }
+
+
+    /**
+     * Retrieve an invoice by ID.
+     * https://docs.stripe.com/api/invoices/retrieve
+     * @param string $invoiceId - the ID of the invoice, e.g. "in_123".
+     * @return Invoice
+     * @throws ApiErrorException - if there's no such invoice, or Stripe can't be reached.
+     */
+    public function retrieveInvoice(string $invoiceId) : Invoice
+    {
+        $invoice = $this->m_underlyingStripeClient->invoices->retrieve($invoiceId);
+        return Invoice::createFromStripeObject($invoice, $this);
+    }
+
+
+    /**
+     * List customers, newest first, asking Stripe for as many pages as it takes.
      * https://docs.stripe.com/api/customers/list
      *
-     * @param string|null $email - optionally only return customers with this exact email address (case-sensitive).
+     * @param string|null $email - optionally, only list customers with this exact email address (case-sensitive).
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * customers after this pointer.
+     * @param TimePeriod|null $created - optionally, only list customers created in this time period.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * customers before this pointer.
+     * @param string|null $testClock - optionally, only list customers on this test clock.
      *
-     * @param TimePeriod|null $created - optionally only return customers created within this time period.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $testClock - optionally only return customers attached to this test clock.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - the maximum number of customers to return, from 1 to 100. Defaults to 100.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\Customer>
+     * @return CustomerCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listCustomers(
         ?string $email = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?TimePeriod $created = null,
         ?string $testClock = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : CustomerCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($email !== null) { $params['email'] = $email; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        return $this->m_underlyingStripeClient->customers->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->customers->all($pageParams);
+        };
+
+        $customers = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'customers') as $object)
+        {
+            $customers[] = Customer::createFromStripeObject($object, $this);
+        }
+
+        return new CustomerCollection(...$customers);
     }
 
 
     /**
-     * Returns a list of all refunds you created. We return the refunds in sorted order, with the most recent refunds
-     * appearing first. The 10 most recent refunds are always available by default on the Charge object.
+     * List refunds, newest first, asking Stripe for as many pages as it takes.
      * https://docs.stripe.com/api/refunds/list
      *
-     * @param string|null $chargeId - optionally provide the ID of a charge, in order to only get refunds for that
-     * charge.
+     * @param string|null $chargeId - optionally, only list this charge's refunds.
      *
-     * @param string|null $paymentIntentId - optionally provide the ID of a payment intent, in order to only get
-     * refunds for that payment intent.
+     * @param string|null $paymentIntentId - optionally, only list this payment intent's refunds.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * refunds after this pointer.
+     * @param TimePeriod|null $created - optionally, only list refunds created in this time period.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * refunds before this pointer.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param TimePeriod|null $created - optionally only return refunds created within this time period.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - the maximum number of refunds to return, from 1 to 100. Defaults to 100.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\Refund>
+     * @return RefundCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listRefunds(
         ?string $chargeId = null,
         ?string $paymentIntentId = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?TimePeriod $created = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : RefundCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($chargeId !== null) { $params['charge'] = $chargeId; }
         if ($paymentIntentId !== null) { $params['payment_intent'] = $paymentIntentId; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
 
-        return $this->m_underlyingStripeClient->refunds->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->refunds->all($pageParams);
+        };
+
+        $refunds = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'refunds') as $object)
+        {
+            $refunds[] = Refund::createFromStripeObject($object, $this);
+        }
+
+        return new RefundCollection(...$refunds);
     }
 
 
     /**
-     * Returns a list of charges you’ve previously created. The charges are returned in sorted order, with the most
-     * recent charges appearing first.
+     * List charges, newest first, asking Stripe for as many pages as it takes.
      * https://docs.stripe.com/api/charges/list
      *
-     * @param string|null $customerId - optionally only return charges for the customer with this ID.
+     * @param string|null $customerId - optionally, only list this customer's charges.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * charges after this pointer.
+     * @param TimePeriod|null $created - optionally, only list charges created in this time period.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * charges before this pointer.
+     * @param string|null $paymentIntent - optionally, only list this payment intent's charges.
      *
-     * @param TimePeriod|null $created - optionally only return charges created within this time period.
+     * @param string|null $transferGroup - optionally, only list charges in this transfer group.
      *
-     * @param string|null $paymentIntent - optionally only return charges that were created by the payment intent with
-     * this ID.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $transferGroup - optionally only return charges for this transfer group.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - the maximum number of charges to return, from 1 to 100. Defaults to 100.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\Charge>
+     * @return ChargeCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listCharges(
         ?string $customerId = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
         ?TimePeriod $created = null,
         ?string $paymentIntent = null,
         ?string $transferGroup = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : ChargeCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($customerId !== null) { $params['customer'] = $customerId; }
-        if ($paymentIntent !== null) { $params['payment_intent'] = $paymentIntent; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
+        if ($paymentIntent !== null) { $params['payment_intent'] = $paymentIntent; }
         if ($transferGroup !== null) { $params['transfer_group'] = $transferGroup; }
 
-        return $this->m_underlyingStripeClient->charges->all($params);
+        $requestPage = function (array $pageParams): Collection {
+            return $this->m_underlyingStripeClient->charges->all($pageParams);
+        };
+
+        $charges = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'charges') as $object)
+        {
+            $charges[] = Charge::createFromStripeObject($object, $this);
+        }
+
+        return new ChargeCollection(...$charges);
     }
 
 
@@ -794,10 +990,6 @@ readonly class StripeClient
      *
      * @param CustomTextOptions|null $customTextOptions - optionally provide custom text messages at various points
      * during the checkout flow.
-     *
-     * @param StripeConnectPaymentConfig|null $stripeConnectConfig - NOTE: this currently has no effect, and can only
-     * be null, as a StripeConnectPaymentConfig can't be created yet. It is planned to be redesigned in the next major
-     * version. Use $paymentIntentData (on_behalf_of, transfer_data, application_fee_amount) for Stripe Connect.
      *
      * @param AutomaticTax|null $automaticTax - Details on the state of automatic tax for the session, including the
      * status of the latest tax calculation.
@@ -853,7 +1045,7 @@ readonly class StripeClient
      * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
      * https://docs.stripe.com/api/idempotent_requests
      *
-     * @return Session - the created checkout session.
+     * @return CheckoutSession - the created checkout session.
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $existingStripeCustomerOrEmail is a string that isn't an email address.
@@ -871,7 +1063,6 @@ readonly class StripeClient
         ?CustomerCreation                $customerCreation = null,
         ?InvoiceCreation                 $invoiceCreation = null,
         ?CustomTextOptions               $customTextOptions = null,
-        ?StripeConnectPaymentConfig      $stripeConnectConfig = null,
         ?AutomaticTax                    $automaticTax = null,
         ?int                             $expiresAt = null,
         ?AfterExpiration                 $afterExpiration = null,
@@ -888,7 +1079,7 @@ readonly class StripeClient
         SubmitType                       $submitType = SubmitType::AUTO,
         ?Metadata                        $metadata = null,
         ?string                          $idempotencyKey = null,
-    ) : Session
+    ) : CheckoutSession
     {
         $params = $flowConfig->getStripeParams();
         $params['mode'] = SessionMode::PAYMENT->value;
@@ -925,7 +1116,8 @@ readonly class StripeClient
 
         $params = array_merge($params, $sharedParams);
         $options = $this->getRequestOptions($idempotencyKey);
-        return $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        return CheckoutSession::createFromStripeObject($session, $this);
     }
 
 
@@ -1022,7 +1214,7 @@ readonly class StripeClient
      * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
      * https://docs.stripe.com/api/idempotent_requests
      *
-     * @return Session - the created checkout session.
+     * @return CheckoutSession - the created checkout session.
      *
      * @throws ApiErrorException
      * @throws ExceptionInvalidValue - if $existingStripeCustomerOrEmail is a string that isn't an email address.
@@ -1054,7 +1246,7 @@ readonly class StripeClient
         ?SavedPaymentMethodOptions              $savedPaymentMethodOptions = null,
         ?Metadata                               $metadata = null,
         ?string                                 $idempotencyKey = null,
-    ) : Session
+    ) : CheckoutSession
     {
         $params = $flowConfig->getStripeParams();
         $params['mode'] = SessionMode::SUBSCRIPTION->value;
@@ -1089,19 +1281,50 @@ readonly class StripeClient
 
         $params = array_merge($params, $sharedParams);
         $options = $this->getRequestOptions($idempotencyKey);
-        return $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        return CheckoutSession::createFromStripeObject($session, $this);
     }
 
 
     /**
      * Retrieve a Stripe checkout session by ID.
      * @param string $checkoutSessionId - the ID of the session to retrieve.
-     * @return Session - The Stripe checkout session.
+     * @return CheckoutSession - the checkout session.
      * @throws ApiErrorException
      */
-    public function retrieveCheckoutSession(string $checkoutSessionId) : Session
+    public function retrieveCheckoutSession(string $checkoutSessionId) : CheckoutSession
     {
-        return $this->m_underlyingStripeClient->checkout->sessions->retrieve($checkoutSessionId);
+        $session = $this->m_underlyingStripeClient->checkout->sessions->retrieve($checkoutSessionId);
+        return CheckoutSession::createFromStripeObject($session, $this);
+    }
+
+
+    /**
+     * Retrieve a customer by ID.
+     * https://docs.stripe.com/api/customers/retrieve
+     * @param string $customerId - the ID of the customer, e.g. "cus_123".
+     * @return Customer
+     * @throws ExceptionCustomerDeleted - if the customer has been deleted, as Stripe then only sends its ID.
+     * @throws ApiErrorException - if there's no such customer, or Stripe can't be reached.
+     */
+    public function retrieveCustomer(string $customerId) : Customer
+    {
+        $customer = $this->m_underlyingStripeClient->customers->retrieve($customerId);
+        return Customer::createFromStripeObject($customer, $this);
+    }
+
+
+    /**
+     * Retrieve a subscription by ID.
+     * https://docs.stripe.com/api/subscriptions/retrieve
+     * @param string $subscriptionId - the ID of the subscription, e.g. "sub_123".
+     * @return Subscription
+     * @throws ApiErrorException - if there's no such subscription, or Stripe can't be reached.
+     */
+    public function retrieveSubscription(string $subscriptionId) : Subscription
+    {
+        $subscription = $this->m_underlyingStripeClient->subscriptions->retrieve($subscriptionId);
+        return Subscription::createFromStripeObject($subscription, $this);
     }
 
 
@@ -1337,50 +1560,148 @@ readonly class StripeClient
         if ($trialConfig !== null) { $params = array_merge($params, $trialConfig->getStripeParams()); }
 
         $options = $this->getRequestOptions($idempotencyKey);
-        return $this->m_underlyingStripeClient->subscriptions->create($params, $options);
+        $subscription = $this->m_underlyingStripeClient->subscriptions->create($params, $options);
+        return Subscription::createFromStripeObject($subscription, $this);
     }
 
 
     /**
-     * Retrieve a customer's payment methods.
+     * List a customer's payment methods, asking Stripe for as many pages as it takes.
      * https://docs.stripe.com/api/payment_methods/customer_list
      *
-     * @param string $customerId - the ID of the customer whose payment methods to list.
+     * @param string $customerId - the ID of the customer.
      *
-     * @param PaymentMethodType|null $paymentMethodType - optionally only list payment methods of this type.
+     * @param PaymentMethodType|null $paymentMethodType - optionally, only list payment methods of this type.
      *
-     * @param string|null $cursorStartingAfter - optionally provide a cursor for use in pagination. This will find
-     * payment methods after this pointer.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
+     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
+     * is thrown if more match, rather than quietly giving back only some of them.
      *
-     * @param string|null $cursorEndingBefore - optionally provide a cursor for use in pagination. This will find
-     * payment methods before this pointer.
+     * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
+     * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
      *
-     * @param int $limit - the maximum number of payment methods to return, from 1 to 100. Defaults to 100.
+     * @param string|null $endingBefore - optionally, the ID of the object to end before, to page back towards the
+     * newest.
      *
-     * @return Collection<\Stripe\PaymentMethod>
+     * @return PaymentMethodCollection
      *
-     * @throws ApiErrorException
-     * @throws ExceptionInvalidValue - if $limit isn't from 1 to 100.
+     * @throws ExceptionTooManyResults - if more than the limit match, and no limit was given.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
     public function listCustomerPaymentMethods(
         string $customerId,
         ?PaymentMethodType $paymentMethodType = null,
-        ?string $cursorStartingAfter = null,
-        ?string $cursorEndingBefore = null,
-        int $limit = 100,
-    ) : Collection
+        ?ResultLimit $limit = null,
+        ?string $startingAfter = null,
+        ?string $endingBefore = null,
+    ) : PaymentMethodCollection
     {
-        self::assertValidLimit($limit);
-        $params = ['limit' => $limit];
+        $params = self::getPagingParams($startingAfter, $endingBefore);
 
         if ($paymentMethodType !== null) { $params['type'] = $paymentMethodType->value; }
-        if ($cursorStartingAfter !== null) { $params['starting_after'] = $cursorStartingAfter; }
-        if ($cursorEndingBefore !== null) { $params['ending_before'] = $cursorEndingBefore; }
 
-        return $this->m_underlyingStripeClient->customers->allPaymentMethods($customerId, $params);
+        $requestPage = function (array $pageParams) use ($customerId): Collection {
+            return $this->m_underlyingStripeClient->customers->allPaymentMethods($customerId, $pageParams);
+        };
+
+        $paymentMethods = [];
+
+        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'payment methods') as $object)
+        {
+            $paymentMethods[] = PaymentMethod::createFromStripeObject($object, $this);
+        }
+
+        return new PaymentMethodCollection(...$paymentMethods);
     }
 
 
+
+
+    /**
+     * Get every object a list request matches, up to its limit, asking Stripe for up to 100 at a time (its maximum),
+     * with the SDK's own paging, which carries the filters and cursor from one page to the next.
+     *
+     * @param callable(array<string, mixed>): Collection<covariant \Stripe\StripeObject> $requestPage - asks Stripe
+     * for one page, with the parameters given.
+     *
+     * @param array<string, mixed> $params - the list's filters and cursor.
+     *
+     * @param ResultLimit|null $limit - how many to get, or null for up to the safety cap, which throws if more match.
+     *
+     * @param string $whatIsListed - what's being listed, for the exception's message, e.g. "customers".
+     *
+     * @return list<\Stripe\StripeObject>
+     *
+     * @throws ExceptionTooManyResults - if no limit was given, and more than the safety cap match.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses a request.
+     */
+    private function fetchEveryPage(
+        callable $requestPage,
+        array $params,
+        ?ResultLimit $limit,
+        string $whatIsListed
+    ) : array
+    {
+        if ($limit === null)
+        {
+            $maximum = ResultLimit::DEFAULT_SAFETY_CAP;
+            $throwIfMore = true;
+        }
+        elseif ($limit->isUnlimited())
+        {
+            $maximum = null;
+            $throwIfMore = false;
+        }
+        else
+        {
+            $maximum = $limit->getMaximum();
+            $throwIfMore = false;
+        }
+
+        # Don't ask for more than are wanted, though up to the safety cap, a full page is asked for, to find out if
+        # there are more.
+        $params['limit'] = ($maximum === null || $throwIfMore) ? 100 : min(100, $maximum);
+        $objects = [];
+        $isOverLimit = false;
+
+        foreach ($requestPage($params)->autoPagingIterator() as $object)
+        {
+            if ($maximum !== null && count($objects) >= $maximum)
+            {
+                $isOverLimit = true;
+                break;
+            }
+
+            $objects[] = $object;
+        }
+
+        if ($isOverLimit && $throwIfMore)
+        {
+            throw new ExceptionTooManyResults(
+                "More than {$maximum} {$whatIsListed} match. Narrow the filters, or pass a limit: " .
+                "ResultLimit::upTo() a number, or ResultLimit::all()."
+            );
+        }
+
+        return $objects;
+    }
+
+
+    /**
+     * Get the parameters for where a list should start or end, for paging through it.
+     * @param string|null $startingAfter - the ID of the object to start after, or null.
+     * @param string|null $endingBefore - the ID of the object to end before, or null.
+     * @return array<string, mixed>
+     */
+    private static function getPagingParams(?string $startingAfter, ?string $endingBefore) : array
+    {
+        $params = [];
+
+        if ($startingAfter !== null) { $params['starting_after'] = $startingAfter; }
+        if ($endingBefore !== null) { $params['ending_before'] = $endingBefore; }
+
+        return $params;
+    }
 
     /**
      * Get the options for a request that changes something: just the idempotency key, if one was given.
@@ -1405,20 +1726,6 @@ readonly class StripeClient
         }
 
         return $options;
-    }
-
-    /**
-     * Check a list method's limit is within the range Stripe allows.
-     * @param int $limit - the maximum number of objects to return.
-     * @return void
-     * @throws ExceptionInvalidValue - if it isn't from 1 to 100.
-     */
-    private static function assertValidLimit(int $limit) : void
-    {
-        if ($limit < 1 || $limit > 100)
-        {
-            throw new ExceptionInvalidValue("The limit must be from 1 to 100, but {$limit} was given.");
-        }
     }
 
 

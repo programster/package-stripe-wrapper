@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class AdjustableQuantityConfig implements Arrayable
+final readonly class AdjustableQuantityConfig implements Arrayable
 {
     private int $m_minimum;
     private int $m_maximum;

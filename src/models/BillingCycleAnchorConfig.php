@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class BillingCycleAnchorConfig implements Arrayable
+final readonly class BillingCycleAnchorConfig implements Arrayable
 {
     private int $m_dayOfMonth;
     private ?int $m_month;

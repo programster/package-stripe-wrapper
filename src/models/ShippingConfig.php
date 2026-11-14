@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class ShippingConfig implements Arrayable
+final readonly class ShippingConfig implements Arrayable
 {
     private string $m_recipientName;
     private Address $m_shippingAddress;

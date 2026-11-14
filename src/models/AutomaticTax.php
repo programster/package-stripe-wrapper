@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class AutomaticTax implements Arrayable
+final readonly class AutomaticTax implements Arrayable
 {
     private bool $m_enabled;
     private ?AccountReference $m_liability;

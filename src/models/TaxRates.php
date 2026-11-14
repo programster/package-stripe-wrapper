@@ -11,7 +11,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 
 
-readonly class TaxRates
+final readonly class TaxRates
 {
     private bool $m_isDynamic;
 

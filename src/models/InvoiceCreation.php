@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceCreation implements Arrayable
+final readonly class InvoiceCreation implements Arrayable
 {
     private bool $m_enabled;
     private ?InvoiceData $m_invoiceData;

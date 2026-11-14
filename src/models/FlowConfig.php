@@ -11,7 +11,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\RedirectOnCompletion;
 use Programster\Stripe\Enums\UiMode;
 
-class FlowConfig
+final readonly class FlowConfig
 {
     private readonly UiMode $m_mode;
     private readonly ?string $m_successUrl;

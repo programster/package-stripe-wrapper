@@ -1,5 +1,9 @@
 # Upgrading
 
+- [From 0.2.x to 1.0.0](#from-02x-to-100)
+    - [What the methods return](#what-the-methods-return)
+    - [Listing](#listing)
+    - [Other changes](#other-changes)
 - [From 0.2.2 to 0.2.3](#from-022-to-023)
 - [From 0.2.1 to 0.2.2](#from-021-to-022)
 - [From 0.2.0 to 0.2.1](#from-020-to-021)
@@ -11,6 +15,60 @@ What changed in each release, and what, if anything, you need to change in your 
 
 Composer treats each `0.x` minor version like a major one, so a project requiring `^0.1.0` won't be upgraded to
 `0.2.0` by itself: change it to `^0.2`.
+
+## From 0.2.x to 1.0.0
+1.0.0 returns this package's own typed models, rather than the Stripe SDK's objects, and gets every result from a list,
+rather than one page. Upgrade to the latest 0.2.x first, then make the changes below.
+
+### What the methods return
+Every method returns a readonly model from `Programster\Stripe\Responses` (see [Responses](responses.md)), so read
+fields with their getters, rather than as properties:
+
+- `$session->url` becomes `$session->getUrl()`, `$customer->id` becomes `$customer->getId()`, and so on. Fields Stripe
+  can leave empty return `null`.
+- **Statuses are strings**, as Stripe sent them, from `getStatus()`. Compare them with `hasStatus()`, which takes the
+  enum (e.g. `$subscription->hasStatus(SubscriptionStatus::ACTIVE)`), or a shortcut such as `isActive()`.
+- **Times are `DateTimeImmutable`s, and amounts are `Money`**, rather than unix timestamps and plain ints.
+- **For a field the models don't have yet**, `getStripeObject()` returns a copy of the SDK's object, as before.
+- **The models can't be serialized**, as they hold the client, and so your secret key. Store IDs instead.
+
+### Listing
+- **Each list method returns a readonly collection of everything that matches** (e.g. `CustomerCollection`), rather
+  than a `\Stripe\Collection` of one page, so `->data` and `->has_more` go: loop over the collection itself.
+- **`$limit` is a `ResultLimit`**: `ResultLimit::upTo(50)`, or `ResultLimit::all()`, rather than an int from 1 to 100.
+  Without one, up to 1,000 are got, and an `ExceptionTooManyResults` is thrown if more match. See
+  [Listing](listing.md#how-many-you-get).
+- **`$cursorStartingAfter` and `$cursorEndingBefore` are now `$startingAfter` and `$endingBefore`**, and come after the
+  filters and `$limit`. Use named arguments, e.g. `startingAfter: $page->last()->getId()`.
+- **`listInvoices()` no longer takes `$expandPayments`.** Use `listInvoicesWithPayments()`, which returns
+  `InvoiceWithPayments`, or `$invoice->fetchPayments()`.
+
+### Other changes
+- **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `listInvoicePayments()` and
+  `listInvoicesWithPayments()`, and `fetch...()` methods on the models for their related objects, e.g.
+  `$subscription->fetchCustomer()`.
+- **The request collections are readonly**, built on `programster/collections` 2.0's readonly collections, so they
+  can't be changed after they're created: `append()`, `$collection[] = ...` and the other `ArrayObject` methods are
+  gone. Create the collection with everything in it instead.
+- **`SubscriptionItemCollection` has been removed** from `Programster\Stripe\Collections`, as it was a copy of
+  `SubscriptionLineItemCollection`, which `createSubscription()` takes. The name is now the response collection, in
+  `Programster\Stripe\Responses`.
+- **The client can't be serialized**, as it holds the secret key.
+- **The global API key isn't set any more.** Creating a `StripeClient` used to also call `\Stripe\Stripe::setApiKey()`,
+  for the SDK's static methods. If your code uses those (e.g. `\Stripe\Customer::retrieve()`), set the key yourself,
+  or use the client's methods.
+- **`createCustomer()` takes one `CustomerShippingDetails`**, rather than a collection that could only hold one, so
+  `CustomerShippingDetailsCollection` has been removed.
+- **`FieldType::createNumeric()` takes the minimum length before the maximum**, like `createText()`. Swap the last two
+  arguments.
+- **`SubscriptionItem` no longer takes `$adjustableQuantityConfig`**, which Stripe never allowed on a subscription's
+  items, so it always threw. Use named arguments for the parameters after it.
+- **`SubscriptionItemDiscount` can only be created with its `createFrom...()` methods**, as each gives exactly one ID.
+- **These have been removed**, as they never worked, or weren't used: `OnBehalfOfConfig`, `StripeConnectPaymentConfig`
+  and `StripeConnectSubscriptionConfig` (and the `$stripeConnectConfig` parameter they were for),
+  `SubscriptionTrialConfig` (use `TrialConfig`), and `PaymentMethodType::getAll()` (use `PaymentMethodType::cases()`).
+  For Stripe Connect, pass a `TransferData` in `PaymentIntentData` or `SubscriptionData`.
+- **The models and the client are `final`**, and readonly.
 
 ## From 0.2.2 to 0.2.3
 Nothing needs to change in your code.

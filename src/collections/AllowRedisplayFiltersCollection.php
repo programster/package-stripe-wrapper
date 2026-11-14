@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Enums\AllowRedisplayFilters;
 
 
-class AllowRedisplayFiltersCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<AllowRedisplayFilters>
+ */
+final readonly class AllowRedisplayFiltersCollection extends AbstractReadonlyCollection
 {
     public function __construct(AllowRedisplayFilters ...$filters)
     {
-        parent::__construct(AllowRedisplayFilters::class, ...$filters);
+        parent::__construct(...$filters);
     }
 
 
@@ -26,12 +29,14 @@ class AllowRedisplayFiltersCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item AllowRedisplayFilters */
             $stripeArrayForm[] = $item->value;
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return AllowRedisplayFilters::class; }
 }

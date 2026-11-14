@@ -11,7 +11,7 @@ use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CustomTextOptions implements Arrayable
+final readonly class CustomTextOptions implements Arrayable
 {
     private ?string $m_afterSubmit;
     private ?string $m_shippingAddress;

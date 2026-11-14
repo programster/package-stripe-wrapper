@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceRenderingOptions implements Arrayable
+final readonly class InvoiceRenderingOptions implements Arrayable
 {
     private ?bool $m_includeTax;
     private ?string $m_templateId;

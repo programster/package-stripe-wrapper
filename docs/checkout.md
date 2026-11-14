@@ -46,7 +46,7 @@ $items = new SinglePaymentLineItemsCollection(
 );
 
 $session = $client->createCheckoutSessionForSinglePayment(flowConfig: $hosted, items: $items);
-$paymentPageUrl = $session->url;
+$paymentPageUrl = $session->getUrl();
 ```
 
 A price can't be negative, and an `AdjustableQuantityConfig`'s minimum can't be more than its maximum, so mistakes like
@@ -133,5 +133,5 @@ For example, on the success page, to check what was paid:
 
 ```php
 $session = $client->retrieveCheckoutSession('cs_test_123');
-$status = $session->status;
+$isPaid = $session->isPaid();
 ```

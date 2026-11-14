@@ -152,15 +152,4 @@ enum PaymentMethodType: string
 
     // Zip is a Buy now, pay later Payment Method
     case ZIP = "zip";
-
-
-    /**
-     * Get all of the payment method types.
-     * @deprecated - use PaymentMethodType::cases() instead, which this now just returns.
-     * @return PaymentMethodType[]
-     */
-    public static function getAll() : array
-    {
-        return self::cases();
-    }
 }

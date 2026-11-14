@@ -11,7 +11,7 @@ use Programster\Stripe\Enums\CancellationFeedback;
 use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CancellationDetails implements Arrayable
+final readonly class CancellationDetails implements Arrayable
 {
     private ?string $m_userComment;
     private ?CancellationFeedback $m_feedback;

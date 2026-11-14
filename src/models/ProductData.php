@@ -13,7 +13,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class ProductData implements Arrayable
+final readonly class ProductData implements Arrayable
 {
     private string $m_name;
     private ?string $m_description;
@@ -63,8 +63,8 @@ readonly class ProductData implements Arrayable
 
         $this->m_name = $name;
         $this->m_description = $description;
-        $this->m_images = ($images !== null) ? clone $images : null;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_images = $images;
+        $this->m_metadata = $metadata;
         $this->m_taxCodeId = $taxCodeId;
     }
 

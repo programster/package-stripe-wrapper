@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Enums\PaymentMethodType;
 
 
-class PaymentMethodTypeCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<PaymentMethodType>
+ */
+final readonly class PaymentMethodTypeCollection extends AbstractReadonlyCollection
 {
     public function __construct(PaymentMethodType ...$fields)
     {
-        parent::__construct(PaymentMethodType::class, ...$fields);
+        parent::__construct(...$fields);
     }
 
 
@@ -26,12 +29,14 @@ class PaymentMethodTypeCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item PaymentMethodType */
             $stripeArrayForm[] = $item->value;
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return PaymentMethodType::class; }
 }

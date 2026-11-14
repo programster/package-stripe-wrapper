@@ -5,7 +5,6 @@
  * calls a method, and checks the request that would have been sent to Stripe.
  */
 
-use Programster\Stripe\Collections\CustomerShippingDetailsCollection;
 use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\DiscountCollection;
@@ -28,6 +27,10 @@ use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Enums\TaxIdDataType;
 use Programster\Stripe\Enums\ValidateLocation;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
+use Programster\Stripe\Testing\FakeStripeHttpClient;
+use Programster\Stripe\Exceptions\ExceptionTooManyResults;
+use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
+use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AutomaticTax;
 use Programster\Stripe\Models\CancellationDetails;
@@ -52,6 +55,7 @@ use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\TransferData;
 use Programster\Stripe\StripeClient;
@@ -87,19 +91,19 @@ $smoke->run("listSubscriptions", function () use ($client, $fakeHttpClient): voi
         subscriptionStatus: SubscriptionStatus::CANCELLED,
         automaticTaxEnabled: true,
         collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE,
-        limit: 10,
+        limit: ResultLimit::upTo(10),
     );
 
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/subscriptions', $request->getPath(), "path");
 
     $expected = [
-        'limit' => 10,
         'customer' => 'cus_123',
         'created' => ['gte' => 100, 'lte' => 200],
         'status' => 'canceled',
         'automatic_tax' => ['enabled' => 'true'],
         'collection_method' => 'send_invoice',
+        'limit' => 10,
     ];
 
     SmokeTest::assertSame($expected, $request->getParams(), "params");
@@ -107,7 +111,7 @@ $smoke->run("listSubscriptions", function () use ($client, $fakeHttpClient): voi
 
 $smoke->run("createCustomer", function () use ($client, $fakeHttpClient): void {
     $address = new Address('1 High Street', city: 'London', postcodeOrZip: 'N1 1AA', country: 'GB');
-    $shipping = new CustomerShippingDetailsCollection(new CustomerShippingDetails($address, 'Jo Bloggs'));
+    $shipping = new CustomerShippingDetails($address, 'Jo Bloggs');
     $taxIds = new CustomerTaxIdDataCollection(new CustomerTaxIdData(TaxIdDataType::GB_VAT, 'GB123456789'));
 
     $client->createCustomer(
@@ -138,26 +142,13 @@ $smoke->run("createCustomer", function () use ($client, $fakeHttpClient): void {
     SmokeTest::assertSame([['type' => 'gb_vat', 'value' => 'GB123456789']], $params['tax_id_data'], "tax IDs");
 });
 
-$smoke->run("createCustomer rejects more than one set of shipping details", function () use ($client): void {
-    $address = new Address('1 High Street');
-
-    $shipping = new CustomerShippingDetailsCollection(
-        new CustomerShippingDetails($address, 'Jo'),
-        new CustomerShippingDetails($address, 'Sam')
-    );
-
-    $createWithTwoAddresses = function () use ($client, $shipping): void {
-        $client->createCustomer(shippingDetails: $shipping);
-    };
-
-    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithTwoAddresses, "only have one");
-});
-
 $smoke->run("listSubscriptionItems", function () use ($client, $fakeHttpClient): void {
-    $client->listSubscriptionItems('sub_123', limit: 5);
+    $items = $client->listSubscriptionItems('sub_123', limit: ResultLimit::upTo(5));
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/subscription_items', $request->getPath(), "path");
     SmokeTest::assertSame(['subscription' => 'sub_123', 'limit' => 5], $request->getParams(), "params");
+    SmokeTest::assertSame(1, count($items), "the recorded item");
+    SmokeTest::assertSame(2, $items->first()->getQuantity(), "its quantity");
 });
 
 $smoke->run("updateSubscriptionItem", function () use ($client, $fakeHttpClient): void {
@@ -194,7 +185,7 @@ $smoke->run("listPaymentIntents", function () use ($client, $fakeHttpClient): vo
     $client->listPaymentIntents(customerId: 'cus_123');
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/payment_intents', $request->getPath(), "path");
-    SmokeTest::assertSame(['limit' => 100, 'customer' => 'cus_123'], $request->getParams(), "params");
+    SmokeTest::assertSame(['customer' => 'cus_123', 'limit' => 100], $request->getParams(), "params");
 });
 
 $smoke->run("listInvoices sends the customer account", function () use ($client, $fakeHttpClient): void {
@@ -205,24 +196,25 @@ $smoke->run("listInvoices sends the customer account", function () use ($client,
     SmokeTest::assertSame('cus_123', $params['customer'], "customer");
     SmokeTest::assertSame('acct_456', $params['customer_account'], "customer account");
     SmokeTest::assertSame('paid', $params['status'], "status");
-    SmokeTest::assertSame(['data.payments'], $params['expand'], "expand");
+    assert(!isset($params['expand']), "listInvoices() asked for the payments");
 });
 
 $smoke->run("listCustomers, listRefunds, listCharges", function () use ($client, $fakeHttpClient): void {
-    $client->listCustomers(email: 'jo@example.com');
+    $customers = $client->listCustomers(email: 'jo@example.com');
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/customers', $request->getPath(), "customers path");
-    SmokeTest::assertSame(['limit' => 100, 'email' => 'jo@example.com'], $request->getParams(), "customers params");
+    SmokeTest::assertSame(['email' => 'jo@example.com', 'limit' => 100], $request->getParams(), "customers params");
+    SmokeTest::assertSame('jo@example.com', $customers->first()->getEmail(), "the recorded customer");
 
     $client->listRefunds(chargeId: 'ch_123');
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/refunds', $request->getPath(), "refunds path");
-    SmokeTest::assertSame(['limit' => 100, 'charge' => 'ch_123'], $request->getParams(), "refunds params");
+    SmokeTest::assertSame(['charge' => 'ch_123', 'limit' => 100], $request->getParams(), "refunds params");
 
     $client->listCharges(paymentIntent: 'pi_123');
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/charges', $request->getPath(), "charges path");
-    SmokeTest::assertSame(['limit' => 100, 'payment_intent' => 'pi_123'], $request->getParams(), "charges params");
+    SmokeTest::assertSame(['payment_intent' => 'pi_123', 'limit' => 100], $request->getParams(), "charges params");
 });
 
 $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $fakeHttpClient): void {
@@ -324,7 +316,7 @@ $smoke->run("listCustomerPaymentMethods", function () use ($client, $fakeHttpCli
     $client->listCustomerPaymentMethods('cus_123', PaymentMethodType::CARD);
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/customers/cus_123/payment_methods', $request->getPath(), "path");
-    SmokeTest::assertSame(['limit' => 100, 'type' => 'card'], $request->getParams(), "params");
+    SmokeTest::assertSame(['type' => 'card', 'limit' => 100], $request->getParams(), "params");
 });
 
 $smoke->run("idempotency keys are sent, and checked", function () use ($client, $fakeHttpClient): void {
@@ -348,4 +340,176 @@ $smoke->run("idempotency keys are sent, and checked", function () use ($client, 
     };
 
     SmokeTest::expectException(ExceptionInvalidValue::class, $useLongKey, "1 to 255");
+});
+
+# Make a page of a customer list, of copies of the recorded customer, numbered so each has its own ID.
+$makeCustomerPage = function (int $firstNumber, int $count, bool $hasMore): array {
+    $customers = [];
+
+    for ($number = $firstNumber; $number < $firstNumber + $count; $number++)
+    {
+        $customer = FakeStripeHttpClient::loadFixture('customer');
+        $customer['id'] = "cus_{$number}";
+        $customers[] = $customer;
+    }
+
+    return ['object' => 'list', 'data' => $customers, 'has_more' => $hasMore, 'url' => '/v1/customers'];
+};
+
+$smoke->run("lists get every page, carrying on from the last object", function () use (
+    $client,
+    $fakeHttpClient,
+    $makeCustomerPage
+): void {
+    $fakeHttpClient->queueResponse($makeCustomerPage(1, 100, true));
+    $fakeHttpClient->queueResponse($makeCustomerPage(101, 100, true));
+    $fakeHttpClient->queueResponse($makeCustomerPage(201, 30, false));
+    $customers = $client->listCustomers(email: 'jo@example.com');
+    SmokeTest::assertSame(230, count($customers), "every customer");
+    SmokeTest::assertSame('cus_230', $customers->last()->getId(), "the last customer");
+    $lastRequest = $fakeHttpClient->takeLastRequest();
+    SmokeTest::assertSame('cus_200', $lastRequest->getParams()['starting_after'], "the last page carried on");
+    SmokeTest::assertSame('jo@example.com', $lastRequest->getParams()['email'], "the last page kept the filter");
+});
+
+$smoke->run("lists throw rather than quietly stop at the safety cap", function () use (
+    $client,
+    $fakeHttpClient,
+    $makeCustomerPage
+): void {
+    for ($page = 0; $page < 11; $page++)
+    {
+        $fakeHttpClient->queueResponse($makeCustomerPage($page * 100 + 1, 100, true));
+    }
+
+    $listEveryone = function () use ($client): void {
+        $client->listCustomers();
+    };
+
+    SmokeTest::expectException(ExceptionTooManyResults::class, $listEveryone, "More than 1000 customers");
+});
+
+$smoke->run("lists stop quietly at a limit that was asked for", function () use (
+    $client,
+    $fakeHttpClient,
+    $makeCustomerPage
+): void {
+    $fakeHttpClient->queueResponse($makeCustomerPage(1, 100, true));
+    $fakeHttpClient->queueResponse($makeCustomerPage(101, 100, true));
+    $customers = $client->listCustomers(limit: ResultLimit::upTo(150));
+    SmokeTest::assertSame(150, count($customers), "the first 150");
+
+    for ($page = 0; $page < 12; $page++)
+    {
+        $fakeHttpClient->queueResponse($makeCustomerPage($page * 100 + 1, 100, $page < 11));
+    }
+
+    SmokeTest::assertSame(1200, count($client->listCustomers(limit: ResultLimit::all())), "every customer");
+
+    $useZeroLimit = function (): void {
+        ResultLimit::upTo(0);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $useZeroLimit, "at least 1");
+});
+
+$smoke->run("create, retrieve and fetch methods return the response models", function () use (
+    $client,
+    $fakeHttpClient
+): void {
+    $customer = $client->createCustomer(email: 'jo@example.com');
+    SmokeTest::assertSame('Jo Bloggs', $customer->getName(), "createCustomer()");
+    SmokeTest::assertSame('London', $customer->getAddress()?->getCity(), "the customer's address");
+    $subscription = $client->retrieveSubscription('sub_123');
+    assert($subscription->isActive(), "the recorded subscription isn't active");
+    SmokeTest::assertSame(1, count($subscription->getItems()), "its items");
+    $fetched = $subscription->fetchCustomer();
+
+    SmokeTest::assertSame(
+        '/v1/customers/' . $subscription->getCustomerId(),
+        $fakeHttpClient->takeLastRequest()->getPath(),
+        "fetchCustomer()"
+    );
+
+    SmokeTest::assertSame('jo@example.com', $fetched->getEmail(), "the fetched customer");
+    $fakeHttpClient->queueResponse(FakeStripeHttpClient::loadFixture('customer-deleted'));
+
+    $retrieveDeleted = function () use ($client): void {
+        $client->retrieveCustomer('cus_123');
+    };
+
+    SmokeTest::expectException(ExceptionCustomerDeleted::class, $retrieveDeleted, "has been deleted");
+});
+
+$smoke->run("the client and its models can't be serialized", function () use ($client): void {
+    $serializeClient = function () use ($client): void {
+        serialize($client);
+    };
+
+    SmokeTest::expectException(\LogicException::class, $serializeClient, "secret key");
+
+    $serializeCustomer = function () use ($client): void {
+        serialize($client->retrieveCustomer('cus_123'));
+    };
+
+    SmokeTest::expectException(\LogicException::class, $serializeCustomer, "secret key");
+});
+
+$smoke->run("listInvoicesWithPayments includes the payments, and Invoice can fetch them", function () use (
+    $client,
+    $fakeHttpClient
+): void {
+    $withPayments = FakeStripeHttpClient::loadFixture('invoice-with-payments');
+    $fakeHttpClient->queueResponse(['object' => 'list', 'data' => [$withPayments], 'has_more' => false, 'url' => '/']);
+    $invoices = $client->listInvoicesWithPayments(customerId: 'cus_123');
+    SmokeTest::assertSame(['data.payments'], $fakeHttpClient->takeLastRequest()->getParams()['expand'], "expand");
+    $payment = $invoices->first()->getPayments()->first();
+    SmokeTest::assertSame('pi_3UbfGaQwd7RuG7g30d6zWwi8', $payment->getPaymentIntentId(), "the payment's intent");
+    SmokeTest::assertSame(1998, $payment->getAmountPaid()?->getAmount(), "the amount paid");
+
+    $invoice = $client->retrieveInvoice('in_123');
+
+    $fakeHttpClient->queueResponse(
+        ['object' => 'list', 'data' => $withPayments['payments']['data'], 'has_more' => false, 'url' => '/']
+    );
+
+    $fetched = $invoice->fetchPayments();
+
+    SmokeTest::assertSame(
+        ['invoice' => $invoice->getId(), 'limit' => 100],
+        $fakeHttpClient->takeLastRequest()->getParams(),
+        "fetchPayments()"
+    );
+
+    SmokeTest::assertSame(1, count($fetched), "the fetched payments");
+
+    $invoiceWithoutPayments = FakeStripeHttpClient::loadFixture('invoice');
+
+    $fakeHttpClient->queueResponse(
+        ['object' => 'list', 'data' => [$invoiceWithoutPayments], 'has_more' => false, 'url' => '/']
+    );
+
+    $listWithoutPayments = function () use ($client): void {
+        $client->listInvoicesWithPayments();
+    };
+
+    SmokeTest::expectException(ExceptionUnexpectedResponse::class, $listWithoutPayments, "payments");
+});
+
+$smoke->run("the payment models read what Stripe sent", function () use ($client): void {
+    $invoice = $client->retrieveInvoice('in_123');
+    assert($invoice->isPaid(), "the recorded invoice isn't paid");
+    SmokeTest::assertSame(1998, $invoice->getAmountPaid()->getAmount(), "the invoice's amount paid");
+    assert($invoice->getAmountPaid()->hasCurrency(Currency::GBP), "the invoice isn't in pounds");
+    assert($invoice->getSubscriptionId() !== null, "the invoice has no subscription");
+    $paymentIntent = $client->listPaymentIntents()->first();
+    assert($paymentIntent->isSucceeded(), "the payment intent didn't succeed");
+    $charge = $client->listCharges()->first();
+    assert($charge->isSucceeded() && $charge->isPaid(), "the charge didn't succeed");
+    SmokeTest::assertSame($paymentIntent->getLatestChargeId(), $charge->getId(), "the payment intent's charge");
+    $refund = $client->listRefunds()->first();
+    SmokeTest::assertSame(500, $refund->getAmount()->getAmount(), "the refund's amount");
+    $card = $client->listCustomerPaymentMethods('cus_123')->first();
+    assert($card->hasType(PaymentMethodType::CARD), "the payment method isn't a card");
+    SmokeTest::assertSame('4242', $card->getCard()?->getLast4(), "the card's last 4 digits");
 });

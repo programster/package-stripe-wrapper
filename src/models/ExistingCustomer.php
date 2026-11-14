@@ -7,7 +7,7 @@
 
 namespace Programster\Stripe\Models;
 
-readonly class ExistingCustomer
+final readonly class ExistingCustomer
 {
     private string $m_customerStripeId;
     private ?CustomerUpdateConfig $m_customerUpdateConfig;

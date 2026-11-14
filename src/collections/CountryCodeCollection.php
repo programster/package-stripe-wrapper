@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Enums\CountryCode;
 
 
-class CountryCodeCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<CountryCode>
+ */
+final readonly class CountryCodeCollection extends AbstractReadonlyCollection
 {
     public function __construct(CountryCode ...$countryCodes)
     {
-        parent::__construct(CountryCode::class, ...$countryCodes);
+        parent::__construct(...$countryCodes);
     }
 
 
@@ -26,12 +29,14 @@ class CountryCodeCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item CountryCode */
             $stripeArrayForm[] = $item->value;
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return CountryCode::class; }
 }

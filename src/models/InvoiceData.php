@@ -12,7 +12,7 @@ use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceData implements Arrayable
+final readonly class InvoiceData implements Arrayable
 {
     private ?StringCollection $m_accountTaxIds;
     private ?InvoiceCustomFieldCollection $m_customFields;
@@ -31,7 +31,7 @@ readonly class InvoiceData implements Arrayable
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-account_tax_ids
      *
      * @param InvoiceCustomFieldCollection|null $customFields - Default custom fields to be displayed on invoices for
-     * this customer. A copy is kept, so changing the collection afterwards doesn't change this object.
+     * this customer.
      *
      * @param string|null $description - An arbitrary string attached to the object. Often useful for displaying to
      * users.
@@ -41,8 +41,7 @@ readonly class InvoiceData implements Arrayable
      * @param AccountReference|null $issuer - the connected account that issues the invoice, if using Stripe Connect.
      *
      * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful for
-     * storing additional information about the object in a structured format. A copy is kept, so changing the
-     * collection afterwards doesn't change this object.
+     * storing additional information about the object in a structured format.
      *
      * @param InvoiceRenderingOptions|null $renderingOptions - optionally, how the invoice PDF is rendered.
      */
@@ -57,11 +56,11 @@ readonly class InvoiceData implements Arrayable
     )
     {
         $this->m_accountTaxIds = $accountTaxIds;
-        $this->m_customFields = ($customFields !== null) ? clone $customFields : null;
+        $this->m_customFields = $customFields;
         $this->m_description = $description;
         $this->m_footer = $footer;
         $this->m_issuer = $issuer;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_metadata = $metadata;
         $this->m_renderingOptions = $renderingOptions;
     }
 

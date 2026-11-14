@@ -11,7 +11,7 @@ use Programster\Stripe\Enums\PeriodEndType;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class PeriodEnd implements Arrayable
+final readonly class PeriodEnd implements Arrayable
 {
     private PeriodEndType $m_type;
     private ?int $m_timestamp;

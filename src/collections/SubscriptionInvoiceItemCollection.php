@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Models\SubscriptionInvoiceItem;
 
 
-class SubscriptionInvoiceItemCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<SubscriptionInvoiceItem>
+ */
+final readonly class SubscriptionInvoiceItemCollection extends AbstractReadonlyCollection
 {
     public function __construct(SubscriptionInvoiceItem ...$fields)
     {
-        parent::__construct(SubscriptionInvoiceItem::class, ...$fields);
+        parent::__construct(...$fields);
     }
 
 
@@ -26,12 +29,14 @@ class SubscriptionInvoiceItemCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item SubscriptionInvoiceItem */
             $stripeArrayForm[] = $item->toArray();
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return SubscriptionInvoiceItem::class; }
 }

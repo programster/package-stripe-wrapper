@@ -11,7 +11,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidDropdownValue;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class DropdownOption implements Arrayable
+final readonly class DropdownOption implements Arrayable
 {
     private string $m_label;
     private string $m_value;

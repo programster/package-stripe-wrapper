@@ -11,7 +11,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidKeyName;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 
-class MetadataItem
+final readonly class MetadataItem
 {
     private readonly string $m_key;
     private readonly string $m_value;

@@ -12,7 +12,7 @@ use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-class SavedPaymentMethodOptions implements Arrayable
+final readonly class SavedPaymentMethodOptions implements Arrayable
 {
     private readonly ?bool $m_enableSavingOfPaymentMethod;
     private readonly ?bool $m_enablePaymentMethodRemoval;
@@ -59,7 +59,7 @@ class SavedPaymentMethodOptions implements Arrayable
 
         $this->m_enableSavingOfPaymentMethod = $enableSavingOfPaymentMethod;
         $this->m_enablePaymentMethodRemoval = $enablePaymentMethodRemoval;
-        $this->m_allowRedisplayFilters = ($allowRedisplayFilters !== null) ? clone $allowRedisplayFilters : null;
+        $this->m_allowRedisplayFilters = $allowRedisplayFilters;
     }
 
 

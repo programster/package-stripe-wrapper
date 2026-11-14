@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class SubscriptionCheckoutLineItem implements Arrayable
+final readonly class SubscriptionCheckoutLineItem implements Arrayable
 {
     private int $m_quantity;
     private string|PriceDataForSubscriptionCheckoutSession $m_priceDataOrPriceId;

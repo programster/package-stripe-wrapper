@@ -12,7 +12,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class SubscriptionItemDiscount implements Arrayable
+final readonly class SubscriptionItemDiscount implements Arrayable
 {
     private ?string $m_couponId;
     private ?string $m_discountId;
@@ -31,7 +31,7 @@ readonly class SubscriptionItemDiscount implements Arrayable
      *
      * @throws ExceptionInvalidValue - if not exactly one of the IDs is given.
      */
-    public function __construct(
+    private function __construct(
         ?string $couponId,
         ?string $discountId,
         ?string $promotionCodeId,

@@ -4,7 +4,8 @@
  * Turns a document's examples into a script and runs it, so the docs can't drift from what the code does:
  *
  * - its php code blocks run in order, as one script, in a separate PHP process (so each document can declare its own
- *   classes), with a use statement added for every class in the package.
+ *   classes), with a use statement added for every class in the package, apart from those whose short name is shared
+ *   by another (e.g. the request and response Address), which an example must import itself.
  *
  * - nothing is sent to Stripe: every request is caught by a FakeStripeHttpClient, as in the offline smoke tests.
  *
@@ -106,7 +107,12 @@ final readonly class DocsExampleRunner
         $script = "<?php\n\nrequire_once(" . var_export($this->m_repositoryDirectory . '/vendor/autoload.php', true)
             . ");\n\n" . implode("\n", $packageUses) . "\n\n"
             . "\$smoke = new \\Programster\\Stripe\\Testing\\SmokeTest();\n"
-            . "\\Stripe\\ApiRequestor::setHttpClient(new \\Programster\\Stripe\\Testing\\FakeStripeHttpClient());\n\n";
+            . "\\Stripe\\ApiRequestor::setHttpClient(new \\Programster\\Stripe\\Testing\\FakeStripeHttpClient());\n"
+            # Any warning, notice or deprecation fails the example, as it does a test.
+            . "error_reporting(-1);\n"
+            . "set_error_handler(function (int \$number, string \$message, string \$file, int \$line): bool {\n"
+            . "    throw new \\ErrorException(\$message, 0, \$number, \$file, \$line);\n"
+            . "});\n\n";
 
         foreach ($blocks as $block)
         {
@@ -188,11 +194,23 @@ final readonly class DocsExampleRunner
                     throw new \Exception("Couldn't read the namespace of " . $file->getPathname() . ".");
                 }
 
-                $uses[] = "use {$matches[1]}\\" . $file->getBasename('.php') . ";";
+                $uses[$file->getBasename('.php')][] = "use {$matches[1]}\\" . $file->getBasename('.php') . ";";
             }
         }
 
-        sort($uses);
-        return $uses;
+        # A short name used by more than one class (e.g. the request and response Address) can't be imported for
+        # both, so neither is, and an example using one imports it itself.
+        $uniqueUses = [];
+
+        foreach ($uses as $usesOfName)
+        {
+            if (count($usesOfName) === 1)
+            {
+                $uniqueUses[] = $usesOfName[0];
+            }
+        }
+
+        sort($uniqueUses);
+        return $uniqueUses;
     }
 }

@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class SinglePaymentLineItem implements Arrayable
+final readonly class SinglePaymentLineItem implements Arrayable
 {
     private int $m_quantity;
     private string|PriceDataForSinglePayment $m_priceDataOrPriceId;

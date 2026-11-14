@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class ConsentConfig implements Arrayable
+final readonly class ConsentConfig implements Arrayable
 {
     private bool $m_showTermsOfServiceCheckbox;
     private ?bool $m_hidePaymentMethodReuseAgreement;

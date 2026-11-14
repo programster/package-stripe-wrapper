@@ -12,7 +12,7 @@ use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class FieldType implements Arrayable
+final readonly class FieldType implements Arrayable
 {
     private CustomFieldType $m_type;
     /** @var array<string, mixed> */
@@ -32,22 +32,22 @@ readonly class FieldType implements Arrayable
 
 
     /**
-     * Create a numeric field. Note that this takes the maximum length before the minimum, unlike createText().
+     * Create a numeric field.
      *
      * @param string $defaultValue - the value that will pre-fill the field on the payment page. If you don't want to
      * provide a default value, then just provide an empty string, and none is sent to Stripe (which rejects an empty
      * one).
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-custom_fields-numeric-default_value
      *
-     * @param int $maxLength - the most digits the customer can enter.
-     *
      * @param int $minLength - the fewest digits the customer can enter.
+     *
+     * @param int $maxLength - the most digits the customer can enter.
      *
      * @return FieldType
      *
      * @throws ExceptionInvalidValue - if the lengths are out of range, or the minimum is more than the maximum.
      */
-    public static function createNumeric(string $defaultValue, int $maxLength, int $minLength) : FieldType
+    public static function createNumeric(string $defaultValue, int $minLength, int $maxLength) : FieldType
     {
         self::assertValidLengths($minLength, $maxLength);
 
@@ -179,7 +179,7 @@ readonly class FieldType implements Arrayable
         {
             throw new ExceptionInvalidValue(
                 "A field's lengths must be from 0 to 255, with the minimum ({$minLength}) no more than the maximum " .
-                "({$maxLength}). Note that createNumeric() takes the maximum before the minimum."
+                "({$maxLength})."
             );
         }
     }

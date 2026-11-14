@@ -7,53 +7,27 @@
 
 namespace Programster\Stripe\Collections;
 
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
 /**
- * @implements \IteratorAggregate<int, string>
+ * @extends AbstractReadonlyCollection<string>
  */
-class StringCollection implements Arrayable, \Countable, \IteratorAggregate
+final readonly class StringCollection extends AbstractReadonlyCollection implements Arrayable
 {
-    /** @var string[] */
-    private array $m_elements = [];
-
-
+    /**
+     * @param string|\Stringable ...$elements - the strings. Anything Stringable is turned into a string.
+     */
     public function __construct(string|\Stringable ...$elements)
     {
-        foreach ($elements as $element)
-        {
-            $this->m_elements[] = (string)$element;
-        }
+        $toString = function (string|\Stringable $element): string {
+            return (string)$element;
+        };
+
+        parent::__construct(...array_map($toString, $elements));
     }
 
 
-    /**
-     * Get the strings as a list.
-     * @return string[]
-     */
-    public function toArray() : array
-    {
-        return $this->m_elements;
-    }
-
-
-    /**
-     * Get the number of strings in the collection.
-     * @return int
-     */
-    public function count() : int
-    {
-        return count($this->m_elements);
-    }
-
-
-    /**
-     * Iterate over the strings, in the order they were given.
-     * @return \ArrayIterator<int, string>
-     */
-    public function getIterator() : \ArrayIterator
-    {
-        return new \ArrayIterator($this->m_elements);
-    }
+    public function getType(): string { return 'string'; }
 }

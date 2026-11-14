@@ -13,7 +13,7 @@ use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class SubscriptionInvoiceItem implements Arrayable
+final readonly class SubscriptionInvoiceItem implements Arrayable
 {
     private string|PriceDataForInvoiceItem $m_priceIdOrPriceData;
     private int $m_quantity;
@@ -57,10 +57,10 @@ readonly class SubscriptionInvoiceItem implements Arrayable
     {
         $this->m_priceIdOrPriceData = $priceIdOrPriceData;
         $this->m_quantity = $quantity;
-        $this->m_discounts = ($discounts !== null) ? clone $discounts : null;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_discounts = $discounts;
+        $this->m_metadata = $metadata;
         $this->m_period = $period;
-        $this->m_taxRates = ($taxRates !== null) ? clone $taxRates : null;
+        $this->m_taxRates = $taxRates;
     }
 
 

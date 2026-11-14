@@ -41,6 +41,7 @@ use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\TransferData;
 use Programster\Stripe\Models\TrialConfig;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
 use Programster\Stripe\Testing\LiveFixtures;
 use Programster\Stripe\Testing\SmokeTest;
@@ -70,10 +71,10 @@ $smoke->run("createCustomer on a test clock, and listCustomerPaymentMethods", fu
         testClockId: $fixtures->getTestClockId(),
     );
 
-    $subscriberId = $customer->id;
-    $paymentMethods = $client->listCustomerPaymentMethods($customer->id, PaymentMethodType::CARD);
-    SmokeTest::assertSame(1, count($paymentMethods->data), "number of payment methods");
-    $paymentMethodId = $paymentMethods->data[0]->id;
+    $subscriberId = $customer->getId();
+    $paymentMethods = $client->listCustomerPaymentMethods($customer->getId(), PaymentMethodType::CARD);
+    SmokeTest::assertSame(1, count($paymentMethods), "number of payment methods");
+    $paymentMethodId = $paymentMethods->first()->getId();
 });
 
 $smoke->run("createSubscription: trial, metadata and description", function () use (
@@ -95,10 +96,15 @@ $smoke->run("createSubscription: trial, metadata and description", function () u
         trialConfig: TrialConfig::createForNumDays(7, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
     );
 
-    $trialSubscriptionId = $subscription->id;
-    SmokeTest::assertSame('trialing', $subscription->status, "status");
-    SmokeTest::assertSame(true, $subscription->cancel_at_period_end, "cancel at period end");
-    SmokeTest::assertSame('cancel', $subscription->trial_settings->end_behavior->missing_payment_method, "trial end");
+    $trialSubscriptionId = $subscription->getId();
+    SmokeTest::assertSame('trialing', $subscription->getStatus(), "status");
+    SmokeTest::assertSame(true, $subscription->isCancelAtPeriodEnd(), "cancel at period end");
+
+    SmokeTest::assertSame(
+        'cancel',
+        $subscription->getStripeObject()->trial_settings->end_behavior->missing_payment_method,
+        "trial end"
+    );
 });
 
 $smoke->run("createSubscription: billing, discounts, tax rates and invoice items", function () use (
@@ -131,10 +137,21 @@ $smoke->run("createSubscription: billing, discounts, tax rates and invoice items
         prorationBehavior: ProrationBehavior::NONE,
     );
 
-    SmokeTest::assertSame('active', $subscription->status, "status");
-    SmokeTest::assertSame('on_subscription', $subscription->payment_settings->save_default_payment_method, "save");
-    SmokeTest::assertSame('flexible', $subscription->billing_mode->type, "billing mode");
-    SmokeTest::assertSame($fixtures->getTaxRateId(), $subscription->default_tax_rates[0]->id, "tax rate");
+    SmokeTest::assertSame('active', $subscription->getStatus(), "status");
+
+    SmokeTest::assertSame(
+        'on_subscription',
+        $subscription->getStripeObject()->payment_settings->save_default_payment_method,
+        "save"
+    );
+
+    SmokeTest::assertSame('flexible', $subscription->getStripeObject()->billing_mode->type, "billing mode");
+
+    SmokeTest::assertSame(
+        $fixtures->getTaxRateId(),
+        $subscription->getStripeObject()->default_tax_rates[0]->id,
+        "tax rate"
+    );
 });
 
 $smoke->run("createSubscription: sent as an invoice", function () use (
@@ -154,9 +171,9 @@ $smoke->run("createSubscription: sent as an invoice", function () use (
         pendingInvoiceItemInterval: new RecurringConfig(RecurringInterval::WEEK, 1),
     );
 
-    $invoicedSubscriptionId = $subscription->id;
-    SmokeTest::assertSame('send_invoice', $subscription->collection_method, "collection method");
-    SmokeTest::assertSame(30, $subscription->days_until_due, "days until due");
+    $invoicedSubscriptionId = $subscription->getId();
+    SmokeTest::assertSame('send_invoice', $subscription->getCollectionMethod(), "collection method");
+    SmokeTest::assertSame(30, $subscription->getDaysUntilDue(), "days until due");
 });
 
 if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
@@ -170,18 +187,22 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
         # A customer of its own, without the test clock, as a fourth subscription would be over the clock's limit.
         # Deleting the customer afterwards cancels the subscription.
         $customer = $client->createCustomer(metadata: $metadata, paymentMethodId: 'pm_card_visa');
-        $fixtures->trackCustomer($customer->id);
-        $paymentMethods = $client->listCustomerPaymentMethods($customer->id, PaymentMethodType::CARD);
+        $fixtures->trackCustomer($customer->getId());
+        $paymentMethods = $client->listCustomerPaymentMethods($customer->getId(), PaymentMethodType::CARD);
 
         $subscription = $client->createSubscription(
-            new ExistingCustomer($customer->id),
+            new ExistingCustomer($customer->getId()),
             $items,
             Currency::GBP,
-            defaultPaymentMethodId: $paymentMethods->data[0]->id,
+            defaultPaymentMethodId: $paymentMethods->first()->getId(),
             transferData: new TransferData(STRIPE_CONNECTED_ACCOUNT_ID, 20),
         );
 
-        SmokeTest::assertSame(20.0, (float)$subscription->transfer_data->amount_percent, "amount percent");
+        SmokeTest::assertSame(
+            20.0,
+            (float)$subscription->getStripeObject()->transfer_data->amount_percent,
+            "amount percent"
+        );
     });
 }
 else
@@ -198,7 +219,7 @@ $smoke->run("listSubscriptions with filters", function () use ($client, &$subscr
         collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE,
     );
 
-    SmokeTest::assertSame(1, count($subscriptions->data), "number of invoiced subscriptions");
+    SmokeTest::assertSame(1, count($subscriptions), "number of invoiced subscriptions");
 });
 
 $smoke->run("listSubscriptionItems and updateSubscriptionItem", function () use (
@@ -208,10 +229,10 @@ $smoke->run("listSubscriptionItems and updateSubscriptionItem", function () use 
     &$trialSubscriptionId
 ): void {
     $subscriptionItems = $client->listSubscriptionItems($trialSubscriptionId);
-    SmokeTest::assertSame(1, count($subscriptionItems->data), "number of items");
+    SmokeTest::assertSame(1, count($subscriptionItems), "number of items");
 
     $updated = $client->updateSubscriptionItem(
-        $subscriptionItems->data[0]->id,
+        $subscriptionItems->first()->getId(),
         metadata: $metadata,
         prorationBehavior: ProrationBehavior::NONE,
         quantity: 2,
@@ -219,15 +240,15 @@ $smoke->run("listSubscriptionItems and updateSubscriptionItem", function () use 
         taxRateIds: new StringCollection($fixtures->getTaxRateId()),
     );
 
-    SmokeTest::assertSame(2, $updated->quantity, "quantity");
-    SmokeTest::assertSame($fixtures->getTaxRateId(), $updated->tax_rates[0]->id, "tax rate");
+    SmokeTest::assertSame(2, $updated->getQuantity(), "quantity");
+    SmokeTest::assertSame($fixtures->getTaxRateId(), $updated->getTaxRateIds()->first(), "tax rate");
 });
 
 $smoke->run("cancelSubscription with cancellation details", function () use ($client, &$trialSubscriptionId): void {
     $details = new CancellationDetails('Just testing', CancellationFeedback::TOO_EXPENSIVE);
     $subscription = $client->cancelSubscription($trialSubscriptionId, $details, prorate: true);
-    SmokeTest::assertSame('canceled', $subscription->status, "status");
-    SmokeTest::assertSame('too_expensive', $subscription->cancellation_details->feedback, "feedback");
+    SmokeTest::assertSame('canceled', $subscription->getStatus(), "status");
+    SmokeTest::assertSame('too_expensive', $subscription->getCancellationFeedback(), "feedback");
 });
 
 $smoke->run("listInvoices, listPaymentIntents, listCharges and listRefunds", function () use (
@@ -236,9 +257,9 @@ $smoke->run("listInvoices, listPaymentIntents, listCharges and listRefunds", fun
     &$invoicedSubscriptionId
 ): void {
     $invoices = $client->listInvoices(customerId: $subscriberId, subscriptionId: $invoicedSubscriptionId);
-    assert(count($invoices->data) >= 1, "the invoiced subscription has no invoices");
-    $client->listInvoices(collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE, expandPayments: false);
+    assert(count($invoices) >= 1, "the invoiced subscription has no invoices");
+    $client->listInvoices(collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE);
     $client->listPaymentIntents(customerId: $subscriberId);
     $client->listCharges(customerId: $subscriberId);
-    $client->listRefunds(limit: 1);
+    $client->listRefunds(limit: ResultLimit::upTo(1));
 });

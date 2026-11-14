@@ -1,0 +1,51 @@
+{
+    "id": "cus_Vcv6D7Hksl115Z",
+    "object": "customer",
+    "address": {
+        "city": "London",
+        "country": "GB",
+        "line1": "1 High Street",
+        "line2": null,
+        "postal_code": "N1 1AA",
+        "state": null
+    },
+    "balance": 0,
+    "created": 1794656224,
+    "currency": null,
+    "customer_account": null,
+    "default_source": null,
+    "delinquent": false,
+    "description": "Fixture customer",
+    "discount": null,
+    "email": "jo@example.com",
+    "invoice_prefix": "EUDSKO1C",
+    "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+    },
+    "livemode": false,
+    "metadata": {
+        "created_by": "programster-stripe-wrapper-live-tests"
+    },
+    "name": "Jo Bloggs",
+    "phone": "+447700900000",
+    "preferred_locales": [
+        "en"
+    ],
+    "shipping": {
+        "address": {
+            "city": null,
+            "country": "GB",
+            "line1": "1 High Street",
+            "line2": null,
+            "postal_code": null,
+            "state": null
+        },
+        "name": "Jo Bloggs",
+        "phone": null
+    },
+    "tax_exempt": "none",
+    "test_clock": null
+}

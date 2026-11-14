@@ -1,0 +1,30 @@
+{
+    "id": "re_3UbfGaQwd7RuG7g309bRtQl0",
+    "object": "refund",
+    "amount": 500,
+    "application": null,
+    "balance_transaction": "txn_3UbfGaQwd7RuG7g30IIeLi2h",
+    "charge": "ch_3UbfGaQwd7RuG7g30FsagncI",
+    "created": 1794656231,
+    "currency": "gbp",
+    "customer": "cus_Vcv62j7U3D6Vfw",
+    "customer_account": null,
+    "destination_details": {
+        "card": {
+            "reference_status": "pending",
+            "reference_type": "acquirer_reference_number",
+            "type": "refund"
+        },
+        "type": "card"
+    },
+    "metadata": {
+        "created_by": "programster-stripe-wrapper-live-tests"
+    },
+    "payment_intent": "pi_3UbfGaQwd7RuG7g30d6zWwi8",
+    "payment_method": "pm_1UbfGYQwd7RuG7g3Py7c9T8M",
+    "reason": null,
+    "receipt_number": null,
+    "source_transfer_reversal": null,
+    "status": "succeeded",
+    "transfer_reversal": null
+}

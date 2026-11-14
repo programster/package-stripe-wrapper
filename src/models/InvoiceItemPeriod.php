@@ -9,7 +9,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceItemPeriod implements Arrayable
+final readonly class InvoiceItemPeriod implements Arrayable
 {
     private PeriodStart $m_start;
     private PeriodEnd $m_end;

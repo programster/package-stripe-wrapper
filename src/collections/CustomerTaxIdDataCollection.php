@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Models\CustomerTaxIdData;
 
 
-class CustomerTaxIdDataCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<CustomerTaxIdData>
+ */
+final readonly class CustomerTaxIdDataCollection extends AbstractReadonlyCollection
 {
     public function __construct(CustomerTaxIdData ...$taxIds)
     {
-        parent::__construct(CustomerTaxIdData::class, ...$taxIds);
+        parent::__construct(...$taxIds);
     }
 
 
@@ -26,12 +29,14 @@ class CustomerTaxIdDataCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item CustomerTaxIdData */
             $stripeArrayForm[] = $item->toArray();
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return CustomerTaxIdData::class; }
 }

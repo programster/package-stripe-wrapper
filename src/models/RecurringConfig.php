@@ -12,7 +12,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-class RecurringConfig implements Arrayable
+final readonly class RecurringConfig implements Arrayable
 {
     private readonly RecurringInterval $m_interval;
     private readonly int $m_intervalCount;

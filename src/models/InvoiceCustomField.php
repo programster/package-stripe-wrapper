@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class InvoiceCustomField implements Arrayable
+final readonly class InvoiceCustomField implements Arrayable
 {
     private string $m_name;
     private string $m_value;

@@ -6,15 +6,18 @@
 
 namespace Programster\Stripe\Collections;
 
-use Programster\Collections\AbstractCollection;
+use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Models\SinglePaymentLineItem;
 
 
-class SinglePaymentLineItemsCollection extends AbstractCollection
+/**
+ * @extends AbstractReadonlyCollection<SinglePaymentLineItem>
+ */
+final readonly class SinglePaymentLineItemsCollection extends AbstractReadonlyCollection
 {
     public function __construct(SinglePaymentLineItem ...$fields)
     {
-        parent::__construct(SinglePaymentLineItem::class, ...$fields);
+        parent::__construct(...$fields);
     }
 
 
@@ -26,12 +29,14 @@ class SinglePaymentLineItemsCollection extends AbstractCollection
     {
         $stripeArrayForm = [];
 
-        foreach ($this->getArrayCopy() as $item)
+        foreach ($this as $item)
         {
-            /* @var $item SinglePaymentLineItem */
             $stripeArrayForm[] = $item->toArray();
         }
 
         return $stripeArrayForm;
     }
+
+
+    public function getType(): string { return SinglePaymentLineItem::class; }
 }

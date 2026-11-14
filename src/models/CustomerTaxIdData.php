@@ -10,7 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\TaxIdDataType;
 use Programster\Stripe\Interfaces\Arrayable;
 
-readonly class CustomerTaxIdData implements Arrayable
+final readonly class CustomerTaxIdData implements Arrayable
 {
     private TaxIdDataType $m_type;
     private string $m_value;

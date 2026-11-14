@@ -14,7 +14,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-class SubscriptionData implements Arrayable
+final readonly class SubscriptionData implements Arrayable
 {
     private readonly ?float $m_applicationFeePercent;
     private readonly ?int $m_billingCycleAnchor;
@@ -97,10 +97,10 @@ class SubscriptionData implements Arrayable
         $this->m_applicationFeePercent = $applicationFeePercent;
         $this->m_billingCycleAnchor = $billingCycleAnchor;
         $this->m_billingMode = $billingMode;
-        $this->m_defaultTaxRates = ($defaultTaxRates !== null) ? clone $defaultTaxRates : null;
+        $this->m_defaultTaxRates = $defaultTaxRates;
         $this->m_description = $description;
         $this->m_invoiceSettings = $invoiceSettings;
-        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_metadata = $metadata;
         $this->m_onBehalfOfAccountId = $onBehalfOfAccountId;
         $this->m_prorationBehavior = $prorationBehavior;
         $this->m_transferData = $transferData;

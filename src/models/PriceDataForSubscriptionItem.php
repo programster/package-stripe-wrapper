@@ -13,7 +13,7 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
-readonly class PriceDataForSubscriptionItem implements Arrayable
+final readonly class PriceDataForSubscriptionItem implements Arrayable
 {
     private Currency $m_currency;
     private int $m_unitPriceAmount;
