@@ -59,7 +59,7 @@ use Programster\Stripe\Models\SavedPaymentMethodOptions;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
-use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Responses\Charge;
 use Programster\Stripe\Responses\ChargeCollection;
@@ -1436,8 +1436,8 @@ final readonly class StripeClient
      * @param ProrationBehavior|null $prorationBehavior - how to handle prorations resulting from the
      * billing_cycle_anchor.
      *
-     * @param TransferData|null $transferData - If specified, the funds from the subscription’s invoices will be
-     * transferred to the destination, with its amount used as the percentage of each invoice to transfer.
+     * @param SubscriptionTransferData|null $transferData - If specified, the funds from the subscription’s invoices
+     * will be transferred to the connected account, optionally only a percentage of each.
      *
      * @param TrialConfig|null $trialConfig - how long a trial should last and how to behave when the trial ends.
      *
@@ -1478,7 +1478,7 @@ final readonly class StripeClient
         ?PaymentSettings                    $paymentSettings = null,
         ?RecurringConfig                    $pendingInvoiceItemInterval = null,
         ?ProrationBehavior                  $prorationBehavior = null,
-        ?TransferData                       $transferData = null,
+        ?SubscriptionTransferData           $transferData = null,
         ?TrialConfig                        $trialConfig = null,
         ?string                             $idempotencyKey = null,
     ) : Subscription
@@ -1556,7 +1556,7 @@ final readonly class StripeClient
         }
 
         if ($prorationBehavior !== null) { $params['proration_behavior'] = $prorationBehavior->value; }
-        if ($transferData !== null) { $params['transfer_data'] = $transferData->toSubscriptionArray(); }
+        if ($transferData !== null) { $params['transfer_data'] = $transferData->toArray(); }
         if ($trialConfig !== null) { $params = array_merge($params, $trialConfig->getStripeParams()); }
 
         $options = $this->getRequestOptions($idempotencyKey);

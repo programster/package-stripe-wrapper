@@ -57,7 +57,7 @@ use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\Models\TimePeriod;
-use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\StripeClient;
 use Programster\Stripe\Testing\SmokeTest;
 
@@ -261,7 +261,7 @@ $smoke->run("createCheckoutSessionForSubscription", function () use ($client, $f
     $recurring = new RecurringConfig(RecurringInterval::MONTH, 1);
     $price = new PriceDataForSubscriptionCheckoutSession(Currency::GBP, 999, 'prod_123', $recurring);
     $items = new SubscriptionCheckoutLineItemCollection(new SubscriptionCheckoutLineItem(1, $price));
-    $subscriptionData = new SubscriptionData(transferData: new TransferData('acct_1', 10));
+    $subscriptionData = new SubscriptionData(transferData: new SubscriptionTransferData('acct_1', 10));
 
     $client->createCheckoutSessionForSubscription(
         FlowConfig::createEmbedded('https://example.com/return'),
@@ -274,7 +274,7 @@ $smoke->run("createCheckoutSessionForSubscription", function () use ($client, $f
     SmokeTest::assertSame('subscription', $params['mode'], "mode");
     SmokeTest::assertSame('embedded', $params['ui_mode'], "UI mode");
     SmokeTest::assertSame('cus_123', $params['customer'], "customer");
-    $expectedTransfer = ['destination' => 'acct_1', 'amount_percent' => 10];
+    $expectedTransfer = ['destination' => 'acct_1', 'amount_percent' => 10.0];
     SmokeTest::assertSame($expectedTransfer, $params['subscription_data']['transfer_data'], "transfer data");
 });
 
@@ -289,7 +289,7 @@ $smoke->run("createSubscription", function () use ($client, $fakeHttpClient): vo
         automaticTax: new AutomaticTax(true),
         applicationFeePercent: 12.5,
         cancelAt: CancelAtEnum::MAX_PERIOD_END,
-        transferData: new TransferData('acct_1', 20),
+        transferData: new SubscriptionTransferData('acct_1', 20),
     );
 
     $request = $fakeHttpClient->takeLastRequest();
@@ -299,7 +299,7 @@ $smoke->run("createSubscription", function () use ($client, $fakeHttpClient): vo
     SmokeTest::assertSame(['enabled' => 'true'], $params['automatic_tax'], "automatic tax");
     SmokeTest::assertSame(12.5, $params['application_fee_percent'], "application fee percent");
     SmokeTest::assertSame('max_period_end', $params['cancel_at'], "cancel at");
-    SmokeTest::assertSame(['destination' => 'acct_1', 'amount_percent' => 20], $params['transfer_data'], "transfer");
+    SmokeTest::assertSame(['destination' => 'acct_1', 'amount_percent' => 20.0], $params['transfer_data'], "transfer");
 });
 
 $smoke->run("createSubscription rejects a customer ID given as a string", function () use ($client): void {

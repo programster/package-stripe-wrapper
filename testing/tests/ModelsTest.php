@@ -70,7 +70,8 @@ use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TaxRates;
 use Programster\Stripe\Models\TimePeriod;
-use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\PaymentTransferData;
+use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Testing\SmokeTest;
 
@@ -241,7 +242,7 @@ $smoke->run("PaymentIntentData", function (): void {
         applicationFeeAmount: 100,
         setupFutureUsage: PaymentIntentSetupFutureUsage::ON_SESSION,
         shippingConfig: $shipping,
-        transferData: new TransferData('acct_1', 900),
+        transferData: new PaymentTransferData('acct_1', 900),
     );
 
     $array = $data->toArray();
@@ -374,4 +375,35 @@ $smoke->run("ExistingCustomer", function (): void {
     $expectedUpdate = ['address' => 'never', 'name' => 'auto', 'shipping' => 'never'];
     $expected = ['customer' => 'cus_1', 'customer_update' => $expectedUpdate];
     SmokeTest::assertSame($expected, $customer->getStripeParams(), "params");
+});
+
+$smoke->run("transfer data for a payment and a subscription", function (): void {
+    $wholePayment = (new PaymentTransferData('acct_1'))->toArray();
+    SmokeTest::assertSame(['destination' => 'acct_1'], $wholePayment, "the whole payment");
+    $percent = (new SubscriptionTransferData('acct_1', 12.5))->toArray();
+    SmokeTest::assertSame(['destination' => 'acct_1', 'amount_percent' => 12.5], $percent, "a percentage");
+
+    $sendToCustomer = function (): void {
+        new PaymentTransferData('cus_123', 500);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $sendToCustomer, "acct_");
+
+    $sendNothing = function (): void {
+        new PaymentTransferData('acct_1', 0);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $sendNothing, "positive");
+
+    $sendTooMuch = function (): void {
+        new SubscriptionTransferData('acct_1', 100.5);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $sendTooMuch, "0 to 100");
+
+    $sendTooPrecise = function (): void {
+        new SubscriptionTransferData('acct_1', 12.345);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $sendTooPrecise, "two decimal places");
 });

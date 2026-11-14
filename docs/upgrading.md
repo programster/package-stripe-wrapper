@@ -67,8 +67,13 @@ fields with their getters, rather than as properties:
 - **These have been removed**, as they never worked, or weren't used: `OnBehalfOfConfig`, `StripeConnectPaymentConfig`
   and `StripeConnectSubscriptionConfig` (and the `$stripeConnectConfig` parameter they were for),
   `SubscriptionTrialConfig` (use `TrialConfig`), and `PaymentMethodType::getAll()` (use `PaymentMethodType::cases()`).
-  For Stripe Connect, pass a `TransferData` in `PaymentIntentData` or `SubscriptionData`.
+  For Stripe Connect, pass a `PaymentTransferData` in `PaymentIntentData`, or a `SubscriptionTransferData` in
+  `SubscriptionData`.
 - **The models and the client are `final`**, and readonly.
+- **`TransferData` is split in two**, as its amount meant pennies for a payment, but a percentage for a subscription:
+  use `PaymentTransferData` (with an amount in pennies) in `PaymentIntentData`, and `SubscriptionTransferData` (with a
+  percentage, from 0 to 100) in `SubscriptionData` and `createSubscription()`. Both check the destination is a
+  connected account's ID (`acct_...`), and each amount is optional, sending everything when it's left out.
 
 ## From 0.2.2 to 0.2.3
 Nothing needs to change in your code.

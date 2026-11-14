@@ -25,7 +25,7 @@ final readonly class PaymentIntentData implements Arrayable
     private ?ShippingConfig $m_shippingConfig;
     private ?string $m_statementDescriptor;
     private ?string $m_statementDescriptorSuffix;
-    private ?TransferData $m_transferData;
+    private ?PaymentTransferData $m_transferData;
     private ?string $m_transferGroup;
 
 
@@ -72,9 +72,8 @@ final readonly class PaymentIntentData implements Arrayable
      * account’s statement descriptor prefix (https://docs.stripe.com/get-started/account/statement-descriptors#static)
      * to form the complete statement descriptor that appears on the customer’s statement.
      *
-     * @param TransferData|null $transferData - The parameters used to automatically create a Transfer when the payment
-     * succeeds, with its amount in pennies/cents. For more information, see the PaymentIntents use case for connected
-     * accounts. https://docs.stripe.com/connect/charges
+     * @param PaymentTransferData|null $transferData - The connected account to send the payment's funds to, and
+     * optionally how much, when the payment succeeds. https://docs.stripe.com/connect/charges
      *
      * @param string|null $transferGroup - string that identifies the resulting payment as part of a group.
      */
@@ -89,7 +88,7 @@ final readonly class PaymentIntentData implements Arrayable
         ?ShippingConfig $shippingConfig = null,
         ?string $statementDescriptor = null,
         ?string $statementDescriptorSuffix = null,
-        ?TransferData $transferData = null,
+        ?PaymentTransferData $transferData = null,
         ?string $transferGroup = null,
     )
     {

@@ -39,7 +39,7 @@ use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\TimePeriod;
-use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
@@ -195,7 +195,7 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
             $items,
             Currency::GBP,
             defaultPaymentMethodId: $paymentMethods->first()->getId(),
-            transferData: new TransferData(STRIPE_CONNECTED_ACCOUNT_ID, 20),
+            transferData: new SubscriptionTransferData(STRIPE_CONNECTED_ACCOUNT_ID, 20),
         );
 
         SmokeTest::assertSame(

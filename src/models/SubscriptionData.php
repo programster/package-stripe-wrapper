@@ -25,7 +25,7 @@ final readonly class SubscriptionData implements Arrayable
     private readonly ?Metadata $m_metadata;
     private readonly ?string $m_onBehalfOfAccountId;
     private readonly ?ProrationBehavior $m_prorationBehavior;
-    private readonly ?TransferData $m_transferData;
+    private readonly ?SubscriptionTransferData $m_transferData;
     private readonly ?TrialConfig $m_trialConfig;
 
 
@@ -64,9 +64,9 @@ final readonly class SubscriptionData implements Arrayable
      * @param ProrationBehavior|null $prorationBehavior - how prorations are handled.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-proration_behavior
      *
-     * @param TransferData|null $transferData - If specified, the funds from the subscription’s invoices will be
-     * transferred to the destination and the ID of the resulting transfers will be found on the resulting charges.
-     * Its amount is sent as a percentage of each invoice (amount_percent).
+     * @param SubscriptionTransferData|null $transferData - If specified, the funds from the subscription’s invoices
+     * will be transferred to the connected account, and the ID of the resulting transfers will be found on the
+     * resulting charges.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-transfer_data
      *
      * @param TrialConfig|null $trialConfig - a group of settings to determine how long a trial should last and how
@@ -82,7 +82,7 @@ final readonly class SubscriptionData implements Arrayable
         ?Metadata $metadata = null,
         ?string $onBehalfOfAccountId = null,
         ?ProrationBehavior $prorationBehavior = null,
-        ?TransferData $transferData = null,
+        ?SubscriptionTransferData $transferData = null,
         ?TrialConfig $trialConfig = null,
     )
     {
@@ -140,7 +140,7 @@ final readonly class SubscriptionData implements Arrayable
 
         if ($this->m_transferData !== null)
         {
-            $arrayForm['transfer_data'] = $this->m_transferData->toSubscriptionArray();
+            $arrayForm['transfer_data'] = $this->m_transferData->toArray();
         }
 
         if ($this->m_trialConfig !== null)

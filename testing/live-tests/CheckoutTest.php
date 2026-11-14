@@ -66,7 +66,7 @@ use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TaxRates;
-use Programster\Stripe\Models\TransferData;
+use Programster\Stripe\Models\PaymentTransferData;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Responses\CheckoutSession;
 use Programster\Stripe\StripeClient;
@@ -359,7 +359,8 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
         $hosted,
         $shirts
     ): void {
-        $paymentIntentData = new PaymentIntentData(transferData: new TransferData(STRIPE_CONNECTED_ACCOUNT_ID, 500));
+        $transferData = new PaymentTransferData(STRIPE_CONNECTED_ACCOUNT_ID, 500);
+        $paymentIntentData = new PaymentIntentData(transferData: $transferData);
         $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, $paymentIntentData);
         $retrieve($session);
     });
