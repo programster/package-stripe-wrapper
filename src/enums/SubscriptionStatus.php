@@ -1,11 +1,13 @@
 <?php
 
 /*
- * Subscription statuses
+ * The statuses a subscription can have, e.g. for filtering a list of subscriptions.
  * https://docs.stripe.com/billing/subscriptions/overview#subscription-statuses
  */
 
 namespace Programster\Stripe\Enums;
+
+
 enum SubscriptionStatus: string
 {
     // fetch all subscriptions regardless of their status
@@ -46,7 +48,7 @@ enum SubscriptionStatus: string
 
     // The subscription was cancelled. During cancellation, automatic collection for all unpaid invoices is disabled
     // (auto_advance=false). This is a terminal state that can’t be updated.
-    case CANCELLED = "cancelled";
+    case CANCELLED = "canceled";
 
 
     // The latest invoice hasn’t been paid but the subscription remains in place. The latest invoice remains open and

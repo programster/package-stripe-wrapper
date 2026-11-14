@@ -1,11 +1,13 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * The locales (languages) that Stripe's checkout pages, and customers' preferred languages, can use.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-locale
  */
 
 namespace Programster\Stripe\Enums;
+
+
 enum Locale: string
 {
     case BULGARIAN = "bg";

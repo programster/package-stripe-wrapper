@@ -1,16 +1,25 @@
 <?php
 
 /*
- * An object to reference self or another account. This can be used for providing information about tax liability or
- * issuer data for a "Stripe Connect" invoice.
+ * Intended as a configuration for paying a fixed amount of a one-time payment to another ("Stripe Connect") account.
  */
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @deprecated - this can't be created, as its constructor is private and it has no static create method, and its
+ * getParams() doesn't produce what Stripe needs (e.g. it sends "application_fee" as 100 minus a fixed amount). It is
+ * only kept so that existing code that refers to it keeps working, and will be redesigned in the next major version.
+ */
 readonly class StripeConnectPaymentConfig
 {
+    private float $m_amountToOtherAccount;
+    private string $m_otherStripeAccountId;
+    private bool $m_isOnOtherAccountsBehalf;
+    private bool $m_issuerIsSelf;
+
+
     /**
      * Configure a connected account that you wish to give a fixed amount payment to. This may be a case of you being a
      * platform that facilitates suppliers providing a service to their customers, in which case the transaction is
@@ -35,36 +44,52 @@ readonly class StripeConnectPaymentConfig
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-invoice_settings-issuer
      */
     private function __construct(
-        private float  $amountToOtherAccount,
-        private string $otherStripeAccountId,
-        private bool   $isOnOtherAccountsBehalf,
-        private bool   $issuerIsSelf
+        float $amountToOtherAccount,
+        string $otherStripeAccountId,
+        bool $isOnOtherAccountsBehalf,
+        bool $issuerIsSelf
     )
     {
-
+        $this->m_amountToOtherAccount = $amountToOtherAccount;
+        $this->m_otherStripeAccountId = $otherStripeAccountId;
+        $this->m_isOnOtherAccountsBehalf = $isOnOtherAccountsBehalf;
+        $this->m_issuerIsSelf = $issuerIsSelf;
     }
 
 
-    public function getParams(): array
+    /**
+     * @deprecated - see the class's docblock.
+     * @return array
+     */
+    public function getParams() : array
     {
         $params = [];
 
-        if ($this->isOnOtherAccountsBehalf)
+        if ($this->m_isOnOtherAccountsBehalf)
         {
-            $params['on_behalf_of'] = $this->otherStripeAccountId;
-            $params['application_fee'] = (100 - $this->amountToOtherAccount);
+            $params['on_behalf_of'] = $this->m_otherStripeAccountId;
+            $params['application_fee'] = (100 - $this->m_amountToOtherAccount);
         }
         else
         {
-            $params['transfer_data']['amount'] = $this->amountToOtherAccount;
-            $params['transfer_data']['destination'] = $this->otherStripeAccountId;
+            $params['transfer_data']['amount'] = $this->m_amountToOtherAccount;
+            $params['transfer_data']['destination'] = $this->m_otherStripeAccountId;
         }
 
         return $params;
     }
 
-    public function getIssuerObj()
+
+    /**
+     * @deprecated - see the class's docblock.
+     * @return AccountReference
+     */
+    public function getIssuerObj() : AccountReference
     {
-        return ($this->issuerIsSelf) ? AccountReference::createSelf() : AccountReference::createRelatedAccount($this->otherStripeAccountId);
+        $issuer = ($this->m_issuerIsSelf)
+            ? AccountReference::createSelf()
+            : AccountReference::createRelatedAccount($this->m_otherStripeAccountId);
+
+        return $issuer;
     }
 }

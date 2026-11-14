@@ -1,11 +1,13 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * The two-letter country codes (ISO 3166-1 alpha-2) that Stripe accepts, e.g. for the countries that
+ * shipping addresses can be collected for.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-shipping_address_collection-allowed_countries
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum CountryCode: string
 {

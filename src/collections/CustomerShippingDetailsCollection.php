@@ -1,11 +1,14 @@
 <?php
 
+/*
+ * A collection of a customer's shipping details.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
-use Programster\Stripe\Enums\CountryCode;
-use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Models\CustomerShippingDetails;
+
 
 class CustomerShippingDetailsCollection extends AbstractCollection
 {
@@ -16,20 +19,19 @@ class CustomerShippingDetailsCollection extends AbstractCollection
 
 
     /**
-     * Return the PaymentMethodTypeCollection in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
             /* @var $item CustomerShippingDetails */
-            $nestedArrayForm[] = $item->toArray();
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

@@ -1,14 +1,20 @@
 <?php
 
+/*
+ * Tax details about a customer.
+ * https://docs.stripe.com/api/customers/create#create_customer-tax
+ */
+
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\BillingModeType;
-use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Enums\ValidateLocation;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class CustomerTaxConfig implements Arrayable
 {
+    private ?string $m_ipAddress;
+    private ?ValidateLocation $m_validateLocation;
+
 
     /**
      * Tax details about the customer.
@@ -23,21 +29,19 @@ readonly class CustomerTaxConfig implements Arrayable
      * tax location. Defaults to deferred.
      * https://docs.stripe.com/api/customers/create?lang=php#create_customer-tax-validate_location
      */
-    private function __construct(
-        private readonly ?string $ipAddress,
-        private readonly ?ValidateLocation $validateLocation,
-    )
+    public function __construct(?string $ipAddress = null, ?ValidateLocation $validateLocation = null)
     {
-
+        $this->m_ipAddress = $ipAddress;
+        $this->m_validateLocation = $validateLocation;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [];
 
-        if ($this->ipAddress !== null) { $arrayForm['ip_address'] = $this->ipAddress; }
-        if ($this->validateLocation !== null) { $arrayForm['validate_location'] = $this->validateLocation; }
+        if ($this->m_ipAddress !== null) { $arrayForm['ip_address'] = $this->m_ipAddress; }
+        if ($this->m_validateLocation !== null) { $arrayForm['validate_location'] = $this->m_validateLocation->value; }
 
         return $arrayForm;
     }

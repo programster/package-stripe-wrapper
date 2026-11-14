@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum for how a subscription item
+ * How Stripe should handle a subscription's payment when it needs one, but it can't be made.
  * https://docs.stripe.com/api/subscription_items/update?lang=php#update_subscription_item-payment_behavior
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum PaymentBehavior: string
 {

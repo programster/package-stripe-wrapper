@@ -1,18 +1,28 @@
 <?php
 
+/*
+ * An invoice item to add to a subscription's next invoice.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items
+ */
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\DiscountCollection;
-use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
-use Stripe\InvoiceRenderingTemplate;
+
 
 readonly class SubscriptionInvoiceItem implements Arrayable
 {
+    private string|PriceDataForInvoiceItem $m_priceIdOrPriceData;
+    private int $m_quantity;
+    private ?DiscountCollection $m_discounts;
+    private ?Metadata $m_metadata;
+    private ?InvoiceItemPeriod $m_period;
+    private ?StringCollection $m_taxRates;
+
+
     /**
      * @param string|PriceDataForInvoiceItem $priceIdOrPriceData - either the ID of the price object in stripe
      * for this item, or an object representing the price data to use.
@@ -37,51 +47,54 @@ readonly class SubscriptionInvoiceItem implements Arrayable
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items-tax_rates
      */
     public function __construct(
-        private string|PriceDataForInvoiceItem $priceIdOrPriceData,
-        private int $quantity,
-        private ?DiscountCollection $discounts = null,
-        private ?Metadata $metadata = null,
-        private ?InvoiceItemPeriod $period = null,
-        private ?StringCollection $taxRates = null,
+        string|PriceDataForInvoiceItem $priceIdOrPriceData,
+        int $quantity,
+        ?DiscountCollection $discounts = null,
+        ?Metadata $metadata = null,
+        ?InvoiceItemPeriod $period = null,
+        ?StringCollection $taxRates = null,
     )
     {
-
+        $this->m_priceIdOrPriceData = $priceIdOrPriceData;
+        $this->m_quantity = $quantity;
+        $this->m_discounts = ($discounts !== null) ? clone $discounts : null;
+        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_period = $period;
+        $this->m_taxRates = ($taxRates !== null) ? clone $taxRates : null;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
-        $arrayForm = [
-            'quantity' => $this->quantity,
-        ];
+        $arrayForm = ['quantity' => $this->m_quantity];
 
-        if ($this->discounts !== null)
+        if ($this->m_discounts !== null)
         {
-            $arrayForm['discounts'] = $this->discounts->toStripeArrayForm();
+            $arrayForm['discounts'] = $this->m_discounts->toStripeArrayForm();
         }
 
-        if ($this->metadata !== null)
+        if ($this->m_metadata !== null)
         {
-            $arrayForm['metadata'] = $this->metadata->toStripeArrayForm();
+            $arrayForm['metadata'] = $this->m_metadata->toStripeArrayForm();
         }
 
-        if ($this->period !== null)
+        if ($this->m_period !== null)
         {
-            $arrayForm['period'] = $this->period->toArray();
+            $arrayForm['period'] = $this->m_period->toArray();
         }
 
-        if (is_string($this->priceIdOrPriceData))
+        if (is_string($this->m_priceIdOrPriceData))
         {
-            $arrayForm['price'] = $this->priceIdOrPriceData;
+            $arrayForm['price'] = $this->m_priceIdOrPriceData;
         }
         else
         {
-            $arrayForm['price_data'] = $this->priceIdOrPriceData->toArray();
+            $arrayForm['price_data'] = $this->m_priceIdOrPriceData->toArray();
         }
 
-        if ($this->taxRates !== null)
+        if ($this->m_taxRates !== null)
         {
-            $arrayForm['tax_rates'] = $this->taxRates->toArray();
+            $arrayForm['tax_rates'] = $this->m_taxRates->toArray();
         }
 
         return $arrayForm;

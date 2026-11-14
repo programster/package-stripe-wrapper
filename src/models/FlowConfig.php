@@ -9,52 +9,81 @@
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Enums\RedirectOnCompletion;
-use Programster\Stripe\enums\UiMode;
+use Programster\Stripe\Enums\UiMode;
 
 class FlowConfig
 {
-    private ?string $successUrl = null;
-    private ?string $returnUrl = null; // https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-return_url
+    private readonly UiMode $m_mode;
+    private readonly ?string $m_successUrl;
+    private readonly ?string $m_returnUrl;
+    private readonly ?string $m_cancelUrl;
+    private readonly ?RedirectOnCompletion $m_redirectOnCompletion;
 
-    private ?RedirectOnCompletion $redirectOnCompletion = null;
 
-    private function __construct(private readonly UiMode $mode)
+    /**
+     * This is private, so use createHosted() or createEmbedded(), which only take what applies to that flow.
+     *
+     * @param UiMode $mode - hosted or embedded.
+     *
+     * @param string|null $successUrl - where Stripe sends the customer when they're done (hosted only).
+     *
+     * @param string|null $returnUrl - where Stripe sends the customer back to.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-return_url
+     *
+     * @param string|null $cancelUrl - where Stripe sends the customer if they cancel (hosted only).
+     *
+     * @param RedirectOnCompletion|null $redirectOnCompletion - when to redirect to the return URL (embedded only).
+     */
+    private function __construct(
+        UiMode $mode,
+        ?string $successUrl,
+        ?string $returnUrl,
+        ?string $cancelUrl,
+        ?RedirectOnCompletion $redirectOnCompletion
+    )
     {
-
+        $this->m_mode = $mode;
+        $this->m_successUrl = $successUrl;
+        $this->m_returnUrl = $returnUrl;
+        $this->m_cancelUrl = $cancelUrl;
+        $this->m_redirectOnCompletion = $redirectOnCompletion;
     }
 
 
     /**
-     * Create a flow configuration, for whether the user should be directed to a hosted site, or whether Stripe will
-     * be embedded in your site.
+     * Create a hosted flow, in which the customer's browser is sent to a payment page on Stripe's website.
      *
      * @param string $successUrl - The URL to which Stripe should send customers when payment or setup is complete.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-success_url
      *
-     * @param $returnUrl - The URL to redirect your customer back to after they authenticate or cancel their payment on
-     * the payment method’s app or site.
+     * @param string|null $returnUrl - The URL to redirect your customer back to after they authenticate or cancel
+     * their payment on the payment method’s app or site.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-return_url
      *
-     * @param ?string $cancelUrl - If set, Checkout displays a back button and customers will be directed to this URL
-     * if they decide to cancel payment and return to your website.
+     * @param string|null $cancelUrl - If set, Checkout displays a back button and customers will be directed to this
+     * URL if they decide to cancel payment and return to your website.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-cancel_url
-     * @return void
+     *
+     * @return FlowConfig
      */
-    public static function createHosted(string $successUrl, ?string $returnUrl = null, ?string $cancelUrl = null) : FlowConfig
+    public static function createHosted(
+        string $successUrl,
+        ?string $returnUrl = null,
+        ?string $cancelUrl = null
+    ) : FlowConfig
     {
-        $flowConfig = new FlowConfig(UiMode::HOSTED);
-        $flowConfig->successUrl = $successUrl;
-        $flowConfig->returnUrl = $returnUrl;
-        return $flowConfig;
+        return new FlowConfig(UiMode::HOSTED, $successUrl, $returnUrl, $cancelUrl, null);
     }
 
 
     /**
      * Create an embedded flow, in which the user's browser is not taken to the stripe website, but the Stripe payment
-     * is embedded form in your website.
-     * success url is explicitly not allowed in embedded mode.
-     * cancel url is explicitly not allowed in embedded mode.
-     * @param string $returnUrl
+     * form is embedded in your website. A success URL and cancel URL are explicitly not allowed in embedded mode.
+     *
+     * @param string $returnUrl - The URL to redirect your customer back to after they complete the payment.
+     *
+     * @param RedirectOnCompletion $redirectOnCompletion - when to redirect to the return URL. Defaults to always.
+     *
      * @return FlowConfig
      */
     public static function createEmbedded(
@@ -62,32 +91,38 @@ class FlowConfig
         RedirectOnCompletion $redirectOnCompletion = RedirectOnCompletion::ALWAYS
     ) : FlowConfig
     {
-        $flowConfig = new FlowConfig(UiMode::EMBEDDED);
-        $flowConfig->returnUrl = $returnUrl;
-        $flowConfig->redirectOnCompletion = $redirectOnCompletion;
-        return $flowConfig;
+        return new FlowConfig(UiMode::EMBEDDED, null, $returnUrl, null, $redirectOnCompletion);
     }
 
 
+    /**
+     * Get the parameters to add to a checkout session for this flow.
+     * @return array<string, string>
+     */
     public function getStripeParams() : array
     {
         $params = [
-            'ui_mode' => $this->mode->value
+            'ui_mode' => $this->m_mode->value
         ];
 
-        if ($this->successUrl !== null)
+        if ($this->m_successUrl !== null)
         {
-            $params['success_url'] = $this->successUrl;
+            $params['success_url'] = $this->m_successUrl;
         }
 
-        if ($this->returnUrl !== null)
+        if ($this->m_returnUrl !== null)
         {
-            $params['return_url'] = $this->returnUrl;
+            $params['return_url'] = $this->m_returnUrl;
         }
 
-        if ($this->redirectOnCompletion !== null)
+        if ($this->m_cancelUrl !== null)
         {
-            $params['redirect_on_completion'] = $this->redirectOnCompletion->value;
+            $params['cancel_url'] = $this->m_cancelUrl;
+        }
+
+        if ($this->m_redirectOnCompletion !== null)
+        {
+            $params['redirect_on_completion'] = $this->m_redirectOnCompletion->value;
         }
 
         return $params;

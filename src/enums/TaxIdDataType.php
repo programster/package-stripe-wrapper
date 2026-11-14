@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * The types of tax ID a customer can have, e.g. gb_vat for a UK VAT number.
+ * https://docs.stripe.com/api/customers/create?lang=php#create_customer-tax_id_data-type
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum TaxIdDataType: string
 {

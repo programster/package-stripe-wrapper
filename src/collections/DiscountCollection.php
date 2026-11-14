@@ -1,9 +1,14 @@
 <?php
 
+/*
+ * A collection of the discounts to apply to a subscription, or an item on one.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
+
 
 class DiscountCollection extends AbstractCollection
 {
@@ -14,20 +19,19 @@ class DiscountCollection extends AbstractCollection
 
 
     /**
-     * Return the PaymentMethodTypeCollection in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Enums\CountryCode */
-            $nestedArrayForm[] = $item->value;
+            /* @var $item SubscriptionItemDiscount */
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

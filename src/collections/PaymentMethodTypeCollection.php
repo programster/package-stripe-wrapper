@@ -1,11 +1,14 @@
 <?php
 
+/*
+ * A collection of payment method types, e.g. for the ways a customer may pay at checkout.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Enums\PaymentMethodType;
-use Programster\Stripe\Models\CustomField;
-use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
+
 
 class PaymentMethodTypeCollection extends AbstractCollection
 {
@@ -16,20 +19,19 @@ class PaymentMethodTypeCollection extends AbstractCollection
 
 
     /**
-     * Return the PaymentMethodTypeCollection in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's values.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Enums\PaymentMethodType */
-            $nestedArrayForm[] = $item->value;
+            /* @var $item PaymentMethodType */
+            $stripeArrayForm[] = $item->value;
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

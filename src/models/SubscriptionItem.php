@@ -1,100 +1,125 @@
 <?php
 
+/*
+ * An item in a subscription, for when creating a subscription directly, rather than through a checkout session.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
+ */
+
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\DiscountCollection;
+use Programster\Stripe\Collections\Metadata;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
+
 
 readonly class SubscriptionItem implements Arrayable
 {
+    private int $m_quantity;
+    private string|PriceDataForSubscriptionItem $m_priceDataOrPriceId;
+    private ?Metadata $m_metadata;
+    private ?DiscountCollection $m_discounts;
+    private ?BillingThresholds $m_billingThresholds;
+    private ?TaxRates $m_taxRates;
+
+
     /**
-     * Create a line item for when creating a subscripton object.
+     * Create a line item for when creating a subscription object.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
      *
-     * @param int $quantity - the number of this item to be purhased/sold.
+     * @param int $quantity - the number of this item to be purchased/sold.
      *
-     * @param string|PriceDataForSubscriptionCheckoutSession $priceDataOrPriceId - either a pricedata object to create an inline price, or the ID of
-     * an existing price/plan object within Stripe.
-     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items-price
+     * @param string|PriceDataForSubscriptionItem $priceDataOrPriceId - either a pricedata object to create an inline
+     * price, or the ID of an existing price/plan object within Stripe.
+     * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-price
      *
-     * @param ?AdjustableQuantityConfig $adjustableQuantityConfig - $adjustableQuantityConfig - provide this if you
-     * want the user to be able to adjust the quantity. If not provided, then defaults to null for a fixed quantity.
+     * @param AdjustableQuantityConfig|null $adjustableQuantityConfig - must be left as null, as Stripe doesn't support
+     * an adjustable quantity on a subscription's items. It is only here so that existing code keeps working, and will
+     * be removed in the next major version.
      *
-     * @param ?Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
+     * @param Metadata|null $metadata - Set of key-value pairs that you can attach to an object. This can be useful
      * for storing additional information about the object in a structured format. Individual keys can be unset by
      * posting an empty value to them. All keys can be unset by posting an empty value to metadata.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-metadata
      *
-     * @param ?DiscountCollection|null $discounts - The coupons to redeem into discounts for the
+     * @param DiscountCollection|null $discounts - The coupons to redeem into discounts for the
      * subscription item.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-discounts
      *
-     * @param ?BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
+     * @param BillingThresholds|null $billingThresholds - Define thresholds at which an invoice will be sent, and the
      * subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-billing_thresholds
      *
-     * @param ?TaxRates|null $taxRates - the IDs of tax rate objects that could apply to the line item
-     * depending on the customers billing/shipping address: https://docs.stripe.com/api/tax_rates
+     * @param TaxRates|null $taxRates - the IDs of tax rate objects that apply to the item. They can't be dynamic, as
+     * Stripe only supports dynamic tax rates on checkout line items. https://docs.stripe.com/api/tax_rates
+     *
+     * @throws ExceptionInvalidValue - if an adjustable quantity, or dynamic tax rates, are given.
      */
     public function __construct(
-        private int                                 $quantity,
-        private string|PriceDataForSubscriptionItem $priceDataOrPriceId,
-        private ?AdjustableQuantityConfig           $adjustableQuantityConfig = null,
-        private ?Metadata                           $metadata = null,
-        private ?DiscountCollection                 $discounts = null,
-        private ?BillingThresholds                  $billingThresholds = null,
-        private ?TaxRates                           $taxRates = null,
+        int $quantity,
+        string|PriceDataForSubscriptionItem $priceDataOrPriceId,
+        ?AdjustableQuantityConfig $adjustableQuantityConfig = null,
+        ?Metadata $metadata = null,
+        ?DiscountCollection $discounts = null,
+        ?BillingThresholds $billingThresholds = null,
+        ?TaxRates $taxRates = null,
     )
     {
+        // Stripe rejects these for a subscription's items, so catch them here, where the mistake was made.
+        if ($adjustableQuantityConfig !== null)
+        {
+            throw new ExceptionInvalidValue(
+                "Stripe doesn't support an adjustable quantity on a subscription's items, only on checkout line items."
+            );
+        }
 
+        if ($taxRates !== null && $taxRates->getIsDynamic())
+        {
+            throw new ExceptionInvalidValue(
+                "Stripe doesn't support dynamic tax rates on a subscription's items, only on checkout line items."
+            );
+        }
+
+        $this->m_quantity = $quantity;
+        $this->m_priceDataOrPriceId = $priceDataOrPriceId;
+        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_discounts = ($discounts !== null) ? clone $discounts : null;
+        $this->m_billingThresholds = $billingThresholds;
+        $this->m_taxRates = $taxRates;
     }
 
-    public function toArray(): array
+
+    public function toArray() : array
     {
-        $arrayForm = [
-            'quantity' => $this->quantity,
-        ];
+        $arrayForm = ['quantity' => $this->m_quantity];
 
-        if ($this->adjustableQuantityConfig !== null)
+        if ($this->m_taxRates !== null)
         {
-            $arrayForm['adjustable_quantity'] = $this->adjustableQuantityConfig->toArray();
+            $arrayForm['tax_rates'] = $this->m_taxRates->getTaxRates();
         }
 
-        if ($this->taxRates !== null)
+        if (is_string($this->m_priceDataOrPriceId))
         {
-            if ($this->taxRates->getIsDynamic())
-            {
-                $arrayForm['dynamic_tax_rates'] = $this->taxRates->getTaxRates();
-            }
-            else
-            {
-                $arrayForm['tax_rates'] = $this->taxRates->getTaxRates();
-            }
-        }
-
-        if (is_string($this->priceDataOrPriceId))
-        {
-            $arrayForm['price'] = $this->priceDataOrPriceId;
+            $arrayForm['price'] = $this->m_priceDataOrPriceId;
         }
         else
         {
-            $arrayForm['price_data'] = $this->priceDataOrPriceId->toArray();
+            $arrayForm['price_data'] = $this->m_priceDataOrPriceId->toArray();
         }
 
-        if ($this->metadata !== null)
+        if ($this->m_metadata !== null)
         {
-            $arrayForm['metadata'] = $this->metadata->toStripeArrayForm();
+            $arrayForm['metadata'] = $this->m_metadata->toStripeArrayForm();
         }
 
-        if ($this->discounts !== null)
+        if ($this->m_discounts !== null)
         {
-            $arrayForm['discounts'] = $this->discounts->toStripeArrayForm();
+            $arrayForm['discounts'] = $this->m_discounts->toStripeArrayForm();
         }
 
-        if ($this->billingThresholds !== null)
+        if ($this->m_billingThresholds !== null)
         {
-            $arrayForm['billing_thresholds'] = $this->billingThresholds->toStripeForm();
+            $arrayForm['billing_thresholds'] = $this->m_billingThresholds->toStripeForm();
         }
 
         return $arrayForm;

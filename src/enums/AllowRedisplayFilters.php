@@ -1,11 +1,13 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * The consent levels a saved payment method can have been saved with, which decide whether it can be shown
+ * to the customer again in a checkout session.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-saved_payment_method_options-allow_redisplay_filters
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum AllowRedisplayFilters: string
 {

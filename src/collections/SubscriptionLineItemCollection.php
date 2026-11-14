@@ -1,9 +1,14 @@
 <?php
 
+/*
+ * A collection of the items in a subscription, for StripeClient::createSubscription().
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Models\SubscriptionItem;
+
 
 class SubscriptionLineItemCollection extends AbstractCollection
 {
@@ -13,17 +18,20 @@ class SubscriptionLineItemCollection extends AbstractCollection
     }
 
 
+    /**
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
+     * @return array
+     */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
             /* @var $item SubscriptionItem */
-            $nestedArrayForm[] = $item->toArray();
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

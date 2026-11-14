@@ -9,11 +9,25 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
-use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Enums\ProrationBehavior;
+use Programster\Stripe\Interfaces\Arrayable;
 
-class SubscriptionData implements \Programster\Stripe\Interfaces\Arrayable
+
+class SubscriptionData implements Arrayable
 {
+    private readonly ?float $m_applicationFeePercent;
+    private readonly ?int $m_billingCycleAnchor;
+    private readonly ?BillingMode $m_billingMode;
+    private readonly ?StringCollection $m_defaultTaxRates;
+    private readonly ?string $m_description;
+    private readonly ?InvoiceSettings $m_invoiceSettings;
+    private readonly ?Metadata $m_metadata;
+    private readonly ?string $m_onBehalfOfAccountId;
+    private readonly ?ProrationBehavior $m_prorationBehavior;
+    private readonly ?TransferData $m_transferData;
+    private readonly ?TrialConfig $m_trialConfig;
+
+
     /**
      * Create a SubscriptionData object that specifies a subset of parameters to be passed to subscription creation for
      * Checkout Sessions in subscription mode.
@@ -27,7 +41,9 @@ class SubscriptionData implements \Programster\Stripe\Interfaces\Arrayable
      *
      * @param int|null $billingCycleAnchor - A future timestamp to anchor the subscription’s billing cycle for new
      * subscriptions. If not provided, the subscription will default to the billing cycle starting immediately.
-     * @param BillingMode|null $billingMode
+     *
+     * @param BillingMode|null $billingMode - how prorations and invoices for the subscription are calculated.
+     *
      * @param StringCollection|null $defaultTaxRates - The tax rates that will apply to any subscription item that does
      * not have tax_rates set. Invoices created will have their default_tax_rates populated from the subscription.
      *
@@ -44,50 +60,80 @@ class SubscriptionData implements \Programster\Stripe\Interfaces\Arrayable
      * on behalf of. E.g. if this is a "Stripe connect" setup, this would be the account of the person doing the work
      * that is being paid for, not the ID of the account of the team that built the application/platform.
      *
-     * @param ProrationBehavior|null $prorationBehavior
+     * @param ProrationBehavior|null $prorationBehavior - how prorations are handled.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-proration_behavior
      *
      * @param TransferData|null $transferData - If specified, the funds from the subscription’s invoices will be
      * transferred to the destination and the ID of the resulting transfers will be found on the resulting charges.
+     * Its amount is sent as a percentage of each invoice (amount_percent).
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-transfer_data
      *
      * @param TrialConfig|null $trialConfig - a group of settings to determine how long a trial should last and how
      * to behave when the trial ends.
      */
     public function __construct(
-        private readonly ?float             $applicationFeePercent = null,
-        private readonly ?int               $billingCycleAnchor = null,
-        private readonly ?BillingMode       $billingMode = null,
-        private readonly ?StringCollection  $defaultTaxRates = null,
-        private readonly ?string            $description = null,
-        private readonly ?InvoiceSettings   $invoiceSettings = null,
-        private readonly ?Metadata          $metadata = null,
-        private readonly ?string            $onBehalfOfAccountId = null,
-        private readonly ?ProrationBehavior $prorationBehavior = null,
-        private readonly ?TransferData      $transferData = null,
-        private readonly ?TrialConfig       $trialConfig = null,
+        ?float $applicationFeePercent = null,
+        ?int $billingCycleAnchor = null,
+        ?BillingMode $billingMode = null,
+        ?StringCollection $defaultTaxRates = null,
+        ?string $description = null,
+        ?InvoiceSettings $invoiceSettings = null,
+        ?Metadata $metadata = null,
+        ?string $onBehalfOfAccountId = null,
+        ?ProrationBehavior $prorationBehavior = null,
+        ?TransferData $transferData = null,
+        ?TrialConfig $trialConfig = null,
     )
     {
+        $this->m_applicationFeePercent = $applicationFeePercent;
+        $this->m_billingCycleAnchor = $billingCycleAnchor;
+        $this->m_billingMode = $billingMode;
+        $this->m_defaultTaxRates = ($defaultTaxRates !== null) ? clone $defaultTaxRates : null;
+        $this->m_description = $description;
+        $this->m_invoiceSettings = $invoiceSettings;
+        $this->m_metadata = ($metadata !== null) ? clone $metadata : null;
+        $this->m_onBehalfOfAccountId = $onBehalfOfAccountId;
+        $this->m_prorationBehavior = $prorationBehavior;
+        $this->m_transferData = $transferData;
+        $this->m_trialConfig = $trialConfig;
     }
 
-    public function toArray(): array
+
+    public function toArray() : array
     {
         $arrayForm = [];
 
-        if ($this->applicationFeePercent !== null) { $arrayForm['application_fee_percent'] = $this->applicationFeePercent; }
-        if ($this->prorationBehavior     !== null) { $arrayForm['proration_behavior'] = $this->prorationBehavior->value; }
-        if ($this->invoiceSettings       !== null) { $arrayForm['invoice_settings'] = $this->invoiceSettings->toArray(); }
-        if ($this->billingCycleAnchor    !== null) { $arrayForm['billing_cycle_anchor'] = $this->billingCycleAnchor; }
-        if ($this->billingMode           !== null) { $arrayForm['billing_mode'] = $this->billingMode->toArray(); }
-        if ($this->defaultTaxRates       !== null) { $arrayForm['default_tax_rates'] = $this->defaultTaxRates->toArray(); }
-        if ($this->description           !== null) { $arrayForm['description'] = $this->description; }
-        if ($this->metadata              !== null) { $arrayForm['metadata'] = $this->metadata->toStripeArrayForm(); }
-        if ($this->onBehalfOfAccountId   !== null) { $arrayForm['on_behalf_of'] = $this->onBehalfOfAccountId; }
-        if ($this->transferData          !== null) { $arrayForm['transfer_data'] = $this->transferData->toArray(); }
-
-        if ($this->trialConfig !== null)
+        if ($this->m_applicationFeePercent !== null)
         {
-            $arrayForm = array_merge($arrayForm, $this->trialConfig->getStripeParams());
+            $arrayForm['application_fee_percent'] = $this->m_applicationFeePercent;
+        }
+
+        if ($this->m_prorationBehavior !== null)
+        {
+            $arrayForm['proration_behavior'] = $this->m_prorationBehavior->value;
+        }
+
+        if ($this->m_invoiceSettings !== null) { $arrayForm['invoice_settings'] = $this->m_invoiceSettings->toArray(); }
+        if ($this->m_billingCycleAnchor !== null) { $arrayForm['billing_cycle_anchor'] = $this->m_billingCycleAnchor; }
+        if ($this->m_billingMode !== null) { $arrayForm['billing_mode'] = $this->m_billingMode->toArray(); }
+
+        if ($this->m_defaultTaxRates !== null)
+        {
+            $arrayForm['default_tax_rates'] = $this->m_defaultTaxRates->toArray();
+        }
+
+        if ($this->m_description !== null) { $arrayForm['description'] = $this->m_description; }
+        if ($this->m_metadata !== null) { $arrayForm['metadata'] = $this->m_metadata->toStripeArrayForm(); }
+        if ($this->m_onBehalfOfAccountId !== null) { $arrayForm['on_behalf_of'] = $this->m_onBehalfOfAccountId; }
+
+        if ($this->m_transferData !== null)
+        {
+            $arrayForm['transfer_data'] = $this->m_transferData->toSubscriptionArray();
+        }
+
+        if ($this->m_trialConfig !== null)
+        {
+            $arrayForm = array_merge($arrayForm, $this->m_trialConfig->getStripeParams());
         }
 
         return $arrayForm;

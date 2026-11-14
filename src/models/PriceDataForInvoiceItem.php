@@ -1,41 +1,67 @@
 <?php
 
+/*
+ * The data for an inline price, for an invoice item added to a subscription.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items-price_data
+ */
+
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\TaxBehavior;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
+
 
 readonly class PriceDataForInvoiceItem implements Arrayable
 {
+    private Currency $m_currency;
+    private string $m_productId;
+    private int $m_unitAmount;
+    private ?TaxBehavior $m_taxBehavior;
+
+
     /**
-     * @param Currency $currency
+     * @param Currency $currency - the currency of the price.
+     *
      * @param string $productId - The ID Of the product this price will belong to.
+     *
      * @param int $unitAmount - A non-negative integer in cents representing how much to charge. E.g. 500 for 5 USD.
-     * @param TaxBehavior|null $taxBehavior
+     *
+     * @param TaxBehavior|null $taxBehavior - whether the price includes tax.
+     *
+     * @throws ExceptionInvalidValue - if $unitAmount is negative.
      */
     public function __construct(
-        private Currency $currency,
-        private string $productId,
-        private int $unitAmount,
-        private ?TaxBehavior $taxBehavior = null
+        Currency $currency,
+        string $productId,
+        int $unitAmount,
+        ?TaxBehavior $taxBehavior = null
     )
     {
+        if ($unitAmount < 0)
+        {
+            throw new ExceptionInvalidValue("The unit amount must not be negative, but {$unitAmount} was given.");
+        }
 
+        $this->m_currency = $currency;
+        $this->m_productId = $productId;
+        $this->m_unitAmount = $unitAmount;
+        $this->m_taxBehavior = $taxBehavior;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [
-            'currency' => $this->currency->value,
-            'product' => $this->productId,
-            'unit_amount' => $this->unitAmount,
+            'currency' => $this->m_currency->value,
+            'product' => $this->m_productId,
+            'unit_amount' => $this->m_unitAmount,
         ];
 
-        if ($this->taxBehavior !== null)
+        if ($this->m_taxBehavior !== null)
         {
-            $arrayForm['tax_behavior'] = $this->taxBehavior->value;
+            $arrayForm['tax_behavior'] = $this->m_taxBehavior->value;
         }
 
         return $arrayForm;

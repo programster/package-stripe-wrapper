@@ -1,5 +1,9 @@
 <?php
 
+/*
+ * Options for gathering the customer's consent on the checkout page.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-consent_collection
+ */
 
 namespace Programster\Stripe\Models;
 
@@ -7,6 +11,11 @@ use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class ConsentConfig implements Arrayable
 {
+    private bool $m_showTermsOfServiceCheckbox;
+    private ?bool $m_hidePaymentMethodReuseAgreement;
+    private ?bool $m_hidePromotionsConsent;
+
+
     /**
      * An object for defining various consent options on the checkout page.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-consent_collection
@@ -28,31 +37,33 @@ readonly class ConsentConfig implements Arrayable
      * has consented to receiving promotional communications from the merchant in the past.
      */
     public function __construct(
-        private bool $showTermsOfServiceCheckbox,
-        private ?bool $hidePaymentMethodReuseAgreement = null,
-        private ?bool $hidePromotionsConsent = null
+        bool $showTermsOfServiceCheckbox,
+        ?bool $hidePaymentMethodReuseAgreement = null,
+        ?bool $hidePromotionsConsent = null
     )
     {
-
+        $this->m_showTermsOfServiceCheckbox = $showTermsOfServiceCheckbox;
+        $this->m_hidePaymentMethodReuseAgreement = $hidePaymentMethodReuseAgreement;
+        $this->m_hidePromotionsConsent = $hidePromotionsConsent;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [
-            'terms_of_service' => ($this->showTermsOfServiceCheckbox) ? 'required' : 'none'
+            'terms_of_service' => ($this->m_showTermsOfServiceCheckbox) ? 'required' : 'none'
         ];
 
-        if ($this->hidePaymentMethodReuseAgreement !== null)
+        if ($this->m_hidePaymentMethodReuseAgreement !== null)
         {
             $arrayForm["payment_method_reuse_agreement"] = [
-                'position' => ($this->hidePaymentMethodReuseAgreement) ? 'hidden' : 'auto'
+                'position' => ($this->m_hidePaymentMethodReuseAgreement) ? 'hidden' : 'auto'
             ];
         }
 
-        if ($this->hidePromotionsConsent !== null)
+        if ($this->m_hidePromotionsConsent !== null)
         {
-            $arrayForm["promotions"] = ($this->hidePromotionsConsent) ? 'none' : 'auto';
+            $arrayForm["promotions"] = ($this->m_hidePromotionsConsent) ? 'none' : 'auto';
         }
 
         return $arrayForm;

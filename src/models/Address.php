@@ -1,8 +1,8 @@
 <?php
 
 /*
- * An object to reference self or another account. This can be used for providing information about tax liability or
- * issuer data for a "Stripe Connect" invoice.
+ * A postal address, e.g. a customer's, or one to ship to.
+ * https://docs.stripe.com/api/customers/create#create_customer-address
  */
 
 namespace Programster\Stripe\Models;
@@ -11,56 +11,76 @@ use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class Address implements Arrayable
 {
+    private string $m_addressLine1;
+    private ?string $m_addressLine2;
+    private ?string $m_city;
+    private ?string $m_postcodeOrZip;
+    private ?string $m_stateProvinceOrRegion;
+    private ?string $m_country;
+
+
     /**
-     * Create a Shipping Address object for a customer.
-     * @param string $addressLine1
-     * @param string|null $addressLine2
-     * @param string|null $city
-     * @param string|null $postcodeOrZip
-     * @param string|null $stateProvinceOrRegion
-     * @param string|null $country
+     * Create an address.
+     *
+     * @param string $addressLine1 - the first line of the address, e.g. the street and house number.
+     *
+     * @param string|null $addressLine2 - optionally, the second line, e.g. an apartment or building name.
+     *
+     * @param string|null $city - optionally, the city, district, suburb, town or village.
+     *
+     * @param string|null $postcodeOrZip - optionally, the postcode or ZIP code.
+     *
+     * @param string|null $stateProvinceOrRegion - optionally, the state, county, province or region.
+     *
+     * @param string|null $country - optionally, the two-letter country code (ISO 3166-1 alpha-2), e.g. "GB".
      */
     public function __construct(
-        private string  $addressLine1,
-        private ?string $addressLine2 = null,
-        private ?string $city = null,
-        private ?string $postcodeOrZip = null,
-        private ?string $stateProvinceOrRegion = null,
-        private ?string $country = null,
+        string  $addressLine1,
+        ?string $addressLine2 = null,
+        ?string $city = null,
+        ?string $postcodeOrZip = null,
+        ?string $stateProvinceOrRegion = null,
+        ?string $country = null,
     )
     {
+        $this->m_addressLine1 = $addressLine1;
+        $this->m_addressLine2 = $addressLine2;
+        $this->m_city = $city;
+        $this->m_postcodeOrZip = $postcodeOrZip;
+        $this->m_stateProvinceOrRegion = $stateProvinceOrRegion;
+        $this->m_country = $country;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [
-            'line1' => $this->addressLine1,
+            'line1' => $this->m_addressLine1,
         ];
 
-        if ($this->addressLine2 !== null)
+        if ($this->m_addressLine2 !== null)
         {
-            $arrayForm['line2'] = $this->addressLine2;
+            $arrayForm['line2'] = $this->m_addressLine2;
         }
 
-        if ($this->city !== null)
+        if ($this->m_city !== null)
         {
-            $arrayForm['city'] = $this->city;
+            $arrayForm['city'] = $this->m_city;
         }
 
-        if ($this->country !== null)
+        if ($this->m_country !== null)
         {
-            $arrayForm['country'] = $this->country;
+            $arrayForm['country'] = $this->m_country;
         }
 
-        if ($this->postcodeOrZip !== null)
+        if ($this->m_postcodeOrZip !== null)
         {
-            $arrayForm['postal_code'] = $this->postcodeOrZip;
+            $arrayForm['postal_code'] = $this->m_postcodeOrZip;
         }
 
-        if ($this->stateProvinceOrRegion !== null)
+        if ($this->m_stateProvinceOrRegion !== null)
         {
-            $arrayForm['state'] = $this->stateProvinceOrRegion;
+            $arrayForm['state'] = $this->m_stateProvinceOrRegion;
         }
 
         return $arrayForm;

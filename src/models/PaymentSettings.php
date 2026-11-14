@@ -1,23 +1,28 @@
 <?php
 
 /*
- * An object to reference self or another account. This can be used for providing information about tax liability or
- * issuer data for a "Stripe Connect" invoice.
+ * Payment settings to pass to invoices created by a subscription.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings
  */
 
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
-use Programster\Stripe\Enums\PaymentMethodType;
 use Programster\Stripe\Interfaces\Arrayable;
+
 
 readonly class PaymentSettings implements Arrayable
 {
+    private ?array $m_paymentMethodOptions;
+    private ?PaymentMethodTypeCollection $m_paymentMethodTypes;
+    private ?bool $m_saveDefaultPaymentMethod;
+
+
     /**
      * Payment settings to pass to invoices created by the subscription.
      *
      * @param array|null $paymentMethodOptions - Payment-method-specific configuration to provide to invoices created
-     * by the subscription.
+     * by the subscription, in the array form Stripe takes.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings-payment_method_options
      *
      * @param PaymentMethodTypeCollection|null $paymentMethodTypes - The list of payment method types (e.g. card) to
@@ -31,31 +36,34 @@ readonly class PaymentSettings implements Arrayable
      * so Stripe sets subscription.default_payment_method when a subscription payment succeeds.
      */
     public function __construct(
-        private ?array $paymentMethodOptions = null,
-        private ?PaymentMethodTypeCollection $paymentMethodTypes = null,
-        private ?bool $saveDefaultPaymentMethod = null,
+        ?array $paymentMethodOptions = null,
+        ?PaymentMethodTypeCollection $paymentMethodTypes = null,
+        ?bool $saveDefaultPaymentMethod = null,
     )
     {
+        $this->m_paymentMethodOptions = $paymentMethodOptions;
+        $this->m_paymentMethodTypes = ($paymentMethodTypes !== null) ? clone $paymentMethodTypes : null;
+        $this->m_saveDefaultPaymentMethod = $saveDefaultPaymentMethod;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [];
 
-        if ($this->paymentMethodOptions !== null)
+        if ($this->m_paymentMethodOptions !== null)
         {
-            $arrayForm['payment_method_options'] = $this->paymentMethodOptions;
+            $arrayForm['payment_method_options'] = $this->m_paymentMethodOptions;
         }
 
-        if ($this->paymentMethodTypes !== null)
+        if ($this->m_paymentMethodTypes !== null)
         {
-            $arrayForm['payment_method_types'] = $this->paymentMethodTypes->toStripeArrayForm();
+            $arrayForm['payment_method_types'] = $this->m_paymentMethodTypes->toStripeArrayForm();
         }
 
-        if ($this->saveDefaultPaymentMethod !== null)
+        if ($this->m_saveDefaultPaymentMethod !== null)
         {
-            $arrayForm['save_default_payment_method'] = $this->saveDefaultPaymentMethod;
+            $arrayForm['save_default_payment_method'] = ($this->m_saveDefaultPaymentMethod) ? 'on_subscription' : 'off';
         }
 
         return $arrayForm;

@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum for how prorations are handled.
+ * How prorations are handled when a subscription changes.
  * https://docs.stripe.com/billing/subscriptions/prorations
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum ProrationBehavior: string
 {

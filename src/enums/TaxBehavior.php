@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum for tax behavior. Refer to:
- * https://docs.stripe.com/tax/products-prices-tax-codes-tax-behavior#setting-a-default-tax-behavior-(recommended)
+ * Whether a price includes tax or not.
+ * https://docs.stripe.com/tax/products-prices-tax-codes-tax-behavior
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum TaxBehavior: string
 {

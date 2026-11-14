@@ -1,30 +1,37 @@
 <?php
 
+/*
+ * A collection of a customer's tax IDs.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
-use Programster\Stripe\Enums\TaxIdDataType;
-use Programster\Stripe\Models\InvoiceCustomField;
+use Programster\Stripe\Models\CustomerTaxIdData;
+
 
 class CustomerTaxIdDataCollection extends AbstractCollection
 {
-    public function __construct(TaxIdDataType ...$taxIds)
+    public function __construct(CustomerTaxIdData ...$taxIds)
     {
-        parent::__construct(TaxIdDataType::class, ...$taxIds);
+        parent::__construct(CustomerTaxIdData::class, ...$taxIds);
     }
 
 
+    /**
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
+     * @return array
+     */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item InvoiceCustomField */
-            $nestedArrayForm[] = $item->toArray();
+            /* @var $item CustomerTaxIdData */
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

@@ -1,32 +1,37 @@
 <?php
 
+/*
+ * The period an invoice item covers.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items-period
+ */
 
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Collections\CustomFieldCollection;
-use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
-use Programster\Stripe\Collections\Metadata;
-use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
-use Stripe\InvoiceRenderingTemplate;
 
 readonly class InvoiceItemPeriod implements Arrayable
 {
+    private PeriodStart $m_start;
+    private PeriodEnd $m_end;
 
-    public function __construct(
-        private PeriodStart $end,
-        private PeriodEnd $start,
-    )
+
+    /**
+     * Create the period an invoice item covers.
+     * @param PeriodStart $start - when the period starts.
+     * @param PeriodEnd $end - when the period ends.
+     */
+    public function __construct(PeriodStart $start, PeriodEnd $end)
     {
-
+        $this->m_start = $start;
+        $this->m_end = $end;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         return [
-            'end' => $this->end->toArray(),
-            'start' => $this->start->toArray(),
+            'end' => $this->m_end->toArray(),
+            'start' => $this->m_start->toArray(),
         ];
     }
 }

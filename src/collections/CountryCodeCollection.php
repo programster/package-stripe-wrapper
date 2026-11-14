@@ -1,9 +1,14 @@
 <?php
 
+/*
+ * A collection of country codes, e.g. for the countries that shipping addresses may be collected for.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Enums\CountryCode;
+
 
 class CountryCodeCollection extends AbstractCollection
 {
@@ -14,20 +19,19 @@ class CountryCodeCollection extends AbstractCollection
 
 
     /**
-     * Return the PaymentMethodTypeCollection in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's values.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Enums\CountryCode */
-            $nestedArrayForm[] = $item->value;
+            /* @var $item CountryCode */
+            $stripeArrayForm[] = $item->value;
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

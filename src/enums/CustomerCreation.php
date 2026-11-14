@@ -1,9 +1,12 @@
 <?php
 
-// Configure whether a Checkout Session creates a Customer during Session confirmation.
-// https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
+/*
+ * Whether a checkout session creates a customer during session confirmation.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
+ */
 
 namespace Programster\Stripe\Enums;
+
 
 enum CustomerCreation: string
 {

@@ -1,11 +1,12 @@
 <?php
 
 /*
- * An enum for setting Stripe's behaviour if a free trial ends, and the user has not input a payment method.
+ * What Stripe should do when a free trial ends, and the customer hasn't given a payment method.
  * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data-trial_settings-end_behavior-missing_payment_method
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum EndTrialBehaviorIfMissingPaymentMethod: string
 {

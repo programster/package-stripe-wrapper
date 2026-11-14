@@ -1,13 +1,28 @@
 <?php
 
+/*
+ * Thrown when a value is longer than Stripe allows.
+ */
+
 namespace Programster\Stripe\Exceptions;
+
 
 class ExceptionValueTooLong extends \Exception
 {
-    public function __construct(private readonly string $value, string $message = "Value provided is too long.")
+    private readonly string $m_value;
+
+
+    /**
+     * @param string $value - the value that is too long.
+     * @param string $message - optionally, what the limit is.
+     */
+    public function __construct(string $value, string $message = "Value provided is too long.")
     {
-        parent::__construct($this->message);
+        $this->m_value = $value;
+        parent::__construct($message);
     }
 
-    public function getValue(): string { return $this->value; }
+
+    # Accessors
+    public function getValue() : string { return $this->m_value; }
 }

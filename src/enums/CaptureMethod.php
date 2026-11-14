@@ -1,10 +1,12 @@
 <?php
 
 /*
+ * When the funds of a payment are captured from the customer's account.
  * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-capture_method
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum CaptureMethod: string
 {

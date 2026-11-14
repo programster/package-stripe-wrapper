@@ -1,9 +1,14 @@
 <?php
 
+/*
+ * A collection of the line items being bought in a one-time payment checkout session.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Models\SinglePaymentLineItem;
+
 
 class SinglePaymentLineItemsCollection extends AbstractCollection
 {
@@ -13,17 +18,20 @@ class SinglePaymentLineItemsCollection extends AbstractCollection
     }
 
 
+    /**
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
+     * @return array
+     */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Models\SinglePaymentLineItem */
-            $nestedArrayForm[] = $item->toArray();
+            /* @var $item SinglePaymentLineItem */
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

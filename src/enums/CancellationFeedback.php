@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * The reasons a customer can give for cancelling a subscription.
+ * https://docs.stripe.com/api/subscriptions/cancel#cancel_subscription-cancellation_details-feedback
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum CancellationFeedback: string
 {

@@ -1,15 +1,27 @@
 <?php
 
-namespace Programster\Stripe\Enums;
+/*
+ * Thrown when a metadata key contains square brackets, which Stripe doesn't allow.
+ */
+
+namespace Programster\Stripe\Exceptions;
+
+
 class ExceptionInvalidKeyName extends \Exception
 {
-    public function __construct(private readonly string $keyName)
+    private readonly string $m_keyName;
+
+
+    /**
+     * @param string $keyName - the key that contains square brackets.
+     */
+    public function __construct(string $keyName)
     {
-        parent::__construct("A metadata key cannot contain square brackets.");
+        $this->m_keyName = $keyName;
+        parent::__construct("A metadata key cannot contain square brackets, but '{$keyName}' does.");
     }
 
-    public function getKeyName(): string
-    {
-        return $this->keyName;
-    }
+
+    # Accessors
+    public function getKeyName() : string { return $this->m_keyName; }
 }

@@ -1,10 +1,12 @@
 <?php
 
 /*
- * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-capture_method
+ * Points in a subscription's billing periods at which it can be set to cancel, instead of a timestamp.
+ * https://docs.stripe.com/api/subscriptions/create#create_subscription-cancel_at
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum CancelAtEnum: string
 {

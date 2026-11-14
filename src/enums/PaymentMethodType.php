@@ -1,20 +1,21 @@
 <?php
 
 /*
+ * The types of payment method, e.g. card, that a customer can pay with.
  * https://docs.stripe.com/api/payment_methods/object#payment_method_object-type
  */
 
 namespace Programster\Stripe\Enums;
 
-use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 
 enum PaymentMethodType: string
 {
-    // Pre-authorized debit payments are used to debit Canadian bank accounts through the Automated Clearing Settlement System (ACSS).
+    // Pre-authorized debit payments are used to debit Canadian bank accounts through the Automated Clearing Settlement
+    // System (ACSS).
     case ACSS_DEBIT = "acss_debit";
 
     // Affirm is a buy now, pay later payment method in the US.
-    case AFFIRM = "required";
+    case AFFIRM = "affirm";
 
     // Afterpay / Clearpay is a buy now, pay later payment method used in Australia, Canada, France, New Zealand,
     // Spain, the UK, and the US.
@@ -26,7 +27,8 @@ enum PaymentMethodType: string
     // Alma is a Buy Now, Pay Later payment method that lets customers pay in 2, 3, or 4 installments.
     case ALMA = "alma";
 
-    // Amazon Pay is a Wallet payment method that lets hundreds of millions of Amazon customers pay their way, every day.
+    // Amazon Pay is a Wallet payment method that lets hundreds of millions of Amazon customers pay their way, every
+    // day.
     case AMAZON_PAY = "amazon_pay";
 
     // BECS Direct Debit is used to debit Australian bank accounts through the Bulk Electronic Clearing System (BECS).
@@ -50,7 +52,8 @@ enum PaymentMethodType: string
     // Stripe Terminal is used to collect in-person card payments.
     case CARD_PRESENT = "card_present";
 
-    // Cash App Pay enables customers to frictionlessly authenticate payments in the Cash App using their stored balance or linked card.
+    // Cash App Pay enables customers to frictionlessly authenticate payments in the Cash App using their stored balance
+    // or linked card.
     case CASHAPP = "cashapp";
 
     // Uses a customer’s cash balance for the payment.
@@ -89,7 +92,8 @@ enum PaymentMethodType: string
     // Link allows customers to pay with their saved payment details.
     case LINK = "link";
 
-    // MobilePay is a Nordic card-passthrough wallet payment method where customers authorize the payment in the MobilePay application.
+    // MobilePay is a Nordic card-passthrough wallet payment method where customers authorize the payment in the
+    // MobilePay application.
     case MOBILEPAY = "mobilepay";
 
     // Multibanco is a voucher payment method
@@ -151,59 +155,12 @@ enum PaymentMethodType: string
 
 
     /**
-     * Get a collection of all of the payment method types. This way you can easily remove just the ones you don't
-     * want through an array_diff operation etc.
-     * @return array
+     * Get all of the payment method types.
+     * @deprecated - use PaymentMethodType::cases() instead, which this now just returns.
+     * @return PaymentMethodType[]
      */
-    public function getAll() : array
+    public static function getAll() : array
     {
-        return [
-            PaymentMethodType::ACSS_DEBIT,
-            PaymentMethodType::AFFIRM,
-            PaymentMethodType::AFTERPAY_CLEARPAY,
-            PaymentMethodType::ALIPAY,
-            PaymentMethodType::ALMA,
-            PaymentMethodType::AMAZON_PAY,
-            PaymentMethodType::AU_BECS_DEBIT,
-            PaymentMethodType::BACS_DEBIT,
-            PaymentMethodType::BANCONTACT,
-            PaymentMethodType::BLIK,
-            PaymentMethodType::BOLETO,
-            PaymentMethodType::CARD,
-            PaymentMethodType::CARD_PRESENT,
-            PaymentMethodType::CASHAPP,
-            PaymentMethodType::CUSTOMER_BALANCE,
-            PaymentMethodType::EPS,
-            PaymentMethodType::FPX,
-            PaymentMethodType::GIROPAY,
-            PaymentMethodType::GRABPAY,
-            PaymentMethodType::IDEAL,
-            PaymentMethodType::INTERAC_PRESENT,
-            PaymentMethodType::KAKAO_PAY,
-            PaymentMethodType::KLARNA,
-            PaymentMethodType::KONBINI,
-            PaymentMethodType::KR_CARD,
-            PaymentMethodType::LINK,
-            PaymentMethodType::MOBILEPAY,
-            PaymentMethodType::MULTIBANCO,
-            PaymentMethodType::NAVER_PAY,
-            PaymentMethodType::OXXO,
-            PaymentMethodType::P24,
-            PaymentMethodType::PAY_BY_BANK,
-            PaymentMethodType::PAYCO,
-            PaymentMethodType::PAYNOW,
-            PaymentMethodType::PAYPAL,
-            PaymentMethodType::PIX,
-            PaymentMethodType::PROMPTPAY,
-            PaymentMethodType::REVOLUT_PAY,
-            PaymentMethodType::SAMSUNG_PAY,
-            PaymentMethodType::SEPA_DEBIT,
-            PaymentMethodType::SOFORT,
-            PaymentMethodType::SWISH,
-            PaymentMethodType::TWINT,
-            PaymentMethodType::US_BANK_ACCOUNT,
-            PaymentMethodType::WECHAT_PAY,
-            PaymentMethodType::ZIP,
-        ];
+        return self::cases();
     }
 }

@@ -1,14 +1,21 @@
 <?php
 
+/*
+ * Options for rendering invoice PDFs.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-rendering_options
+ */
+
 namespace Programster\Stripe\Models;
 
-use Programster\Stripe\Enums\BillingModeType;
 use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
-use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class InvoiceRenderingOptions implements Arrayable
 {
+    private ?bool $m_includeTax;
+    private ?string $m_templateId;
+
+
     /**
      * Default options for invoice PDF rendering for this customer.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-rendering_options
@@ -21,12 +28,10 @@ readonly class InvoiceRenderingOptions implements Arrayable
      *
      * @param string|null $templateId - ID of the invoice rendering template to use for this invoice.
      *
-     * @throws ExceptionMissingRequiredParameter - if neither of the optional values are provided. You must specify something.
+     * @throws ExceptionMissingRequiredParameter - if neither of the optional values are provided. You must specify
+     * something.
      */
-    private function __construct(
-        private ?bool $includeTax,
-        private ?string $templateId = null
-    )
+    public function __construct(?bool $includeTax = null, ?string $templateId = null)
     {
         if ($includeTax === null && $templateId === null)
         {
@@ -34,15 +39,25 @@ readonly class InvoiceRenderingOptions implements Arrayable
                 "You must provide a value for either including tax, or the template ID."
             );
         }
+
+        $this->m_includeTax = $includeTax;
+        $this->m_templateId = $templateId;
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [];
 
-        if ($this->includeTax !== null) { $arrayForm['amount_tax_display'] = ($this->includeTax) ? "include_inclusive_tax" : "exclude_tax"; }
-        if ($this->templateId === null) { $arrayForm['template_id'] = $this->templateId; }
+        if ($this->m_includeTax !== null)
+        {
+            $arrayForm['amount_tax_display'] = ($this->m_includeTax) ? "include_inclusive_tax" : "exclude_tax";
+        }
+
+        if ($this->m_templateId !== null)
+        {
+            $arrayForm['template_id'] = $this->m_templateId;
+        }
 
         return $arrayForm;
     }

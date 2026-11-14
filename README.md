@@ -152,3 +152,23 @@ $checkoutSession = $client->createCheckoutSessionForSubscription(
 http_response_code(303);
 header('Location: ' . $checkoutSession->url);
 ```
+
+
+## Running the Tests
+The smoke tests call every public method of `StripeClient`, and build the models and collections, checking exactly
+what would be sent to Stripe. They never contact Stripe: every request is caught by a fake HTTP client, so no API key
+or network access is needed.
+
+To run them on every supported version of PHP (8.2 and up), each in its own Docker container:
+
+```bash
+composer install
+testing/run-all-php-versions.sh
+```
+
+Pass versions to test only those (e.g. `testing/run-all-php-versions.sh 8.2 8.5`), or `--rebuild` to rebuild the
+Docker images first, e.g. to pick up the latest patch releases. To run them once on your local PHP instead:
+
+```bash
+php -d zend.assertions=1 testing/main.php
+```

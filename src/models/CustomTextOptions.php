@@ -1,8 +1,8 @@
 <?php
 
 /*
- * An object to reference self or another account. This can be used for providing information about tax liability or
- * issuer data for a "Stripe Connect" invoice.
+ * Custom text to show the customer at various points during checkout.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-custom_text
  */
 
 namespace Programster\Stripe\Models;
@@ -13,6 +13,12 @@ use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class CustomTextOptions implements Arrayable
 {
+    private ?string $m_afterSubmit;
+    private ?string $m_shippingAddress;
+    private ?string $m_submit;
+    private ?string $m_termsOfServiceAcceptance;
+
+
     /**
      * Display additional text for your customers using custom text.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-custom_text
@@ -26,14 +32,16 @@ readonly class CustomTextOptions implements Arrayable
      * @param string|null $termsOfServiceAcceptance - Custom text that should be displayed in place of the default terms
      * of service agreement text.
      *
-     * @throws ExceptionMissingRequiredParameter - if all the optional parameters are set to null. At lest one must
+     * @throws ExceptionValueTooLong - if any of the messages is longer than 1200 characters.
+     *
+     * @throws ExceptionMissingRequiredParameter - if all the optional parameters are set to null. At least one must
      * be specified if you are creating one of these objects.
      */
     public function __construct(
-        private ?string $afterSubmit = null,
-        private ?string $shippingAddress = null,
-        private ?string $submit = null,
-        private ?string $termsOfServiceAcceptance = null,
+        ?string $afterSubmit = null,
+        ?string $shippingAddress = null,
+        ?string $submit = null,
+        ?string $termsOfServiceAcceptance = null,
     )
     {
         foreach ([$afterSubmit, $shippingAddress, $submit, $termsOfServiceAcceptance] as $parameter)
@@ -47,6 +55,11 @@ readonly class CustomTextOptions implements Arrayable
             }
         }
 
+        $this->m_afterSubmit = $afterSubmit;
+        $this->m_shippingAddress = $shippingAddress;
+        $this->m_submit = $submit;
+        $this->m_termsOfServiceAcceptance = $termsOfServiceAcceptance;
+
         if (count($this->toArray()) === 0)
         {
             throw new ExceptionMissingRequiredParameter(
@@ -56,36 +69,28 @@ readonly class CustomTextOptions implements Arrayable
     }
 
 
-    public function toArray(): array
+    public function toArray() : array
     {
         $arrayForm = [];
 
-        if ($this->afterSubmit !== null)
+        if ($this->m_afterSubmit !== null)
         {
-            $arrayForm['after_submit'] = [
-                'message' => $this->afterSubmit,
-            ];
+            $arrayForm['after_submit'] = ['message' => $this->m_afterSubmit];
         }
 
-        if ($this->shippingAddress !== null)
+        if ($this->m_shippingAddress !== null)
         {
-            $arrayForm['shipping_address'] = [
-                'message' => $this->shippingAddress,
-            ];
+            $arrayForm['shipping_address'] = ['message' => $this->m_shippingAddress];
         }
 
-        if ($this->submit !== null)
+        if ($this->m_submit !== null)
         {
-            $arrayForm['submit'] = [
-                'message' => $this->submit,
-            ];
+            $arrayForm['submit'] = ['message' => $this->m_submit];
         }
 
-        if ($this->termsOfServiceAcceptance !== null)
+        if ($this->m_termsOfServiceAcceptance !== null)
         {
-            $arrayForm['terms_of_service_acceptance'] = [
-                'message' => $this->submit,
-            ];
+            $arrayForm['terms_of_service_acceptance'] = ['message' => $this->m_termsOfServiceAcceptance];
         }
 
         return $arrayForm;

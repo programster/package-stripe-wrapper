@@ -14,7 +14,7 @@
         }
     ],
     "require": {
-        "php": ">=8.3.0",
+        "php": ">=8.2.0",
         "stripe/stripe-php": "^v19.4.0",
         "ext-curl": "*",
         "programster/collections": "^0.1.0"
@@ -27,6 +27,11 @@
             "Programster\\Stripe\\Exceptions\\": "src/exceptions/",
             "Programster\\Stripe\\Interfaces\\": "src/interfaces/",
             "Programster\\Stripe\\Models\\": "src/models/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Programster\\Stripe\\Testing\\": "testing/"
         }
     }
 }

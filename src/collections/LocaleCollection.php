@@ -1,10 +1,14 @@
 <?php
 
+/*
+ * A collection of locales, e.g. for a customer's preferred languages.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
-use Programster\Stripe\Enums\CountryCode;
 use Programster\Stripe\Enums\Locale;
+
 
 class LocaleCollection extends AbstractCollection
 {
@@ -15,20 +19,19 @@ class LocaleCollection extends AbstractCollection
 
 
     /**
-     * Return the PaymentMethodTypeCollection in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's values.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Enums\CountryCode */
-            $nestedArrayForm[] = $item->value;
+            /* @var $item Locale */
+            $stripeArrayForm[] = $item->value;
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

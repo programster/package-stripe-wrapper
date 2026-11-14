@@ -1,10 +1,12 @@
 <?php
 
 /*
- * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-capture_method
+ * The kind of transaction a checkout session is for, which decides the text on its submit button.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-submit_type
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum SubmitType: string
 {

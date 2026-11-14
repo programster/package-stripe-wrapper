@@ -1,9 +1,14 @@
 <?php
 
+/*
+ * A collection of the custom fields to show on a checkout page.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Models\CustomField;
+
 
 class CustomFieldCollection extends AbstractCollection
 {
@@ -14,20 +19,19 @@ class CustomFieldCollection extends AbstractCollection
 
 
     /**
-     * Return the custom fields in a collapsed array form suitable for sending to stripe.
+     * Get the collection in the form Stripe takes: a list of each item's array forms.
      * @return array
      */
     public function toStripeArrayForm() : array
     {
-        $nestedArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
+        $stripeArrayForm = [];
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Models\CustomField */
-            $nestedArrayForm[] = $item->toArray();
+            /* @var $item CustomField */
+            $stripeArrayForm[] = $item->toArray();
         }
 
-        return $nestedArrayForm;
+        return $stripeArrayForm;
     }
 }

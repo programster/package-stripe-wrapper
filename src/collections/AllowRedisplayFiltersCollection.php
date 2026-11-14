@@ -1,10 +1,14 @@
 <?php
 
+/*
+ * A collection of the consent levels a saved payment method may have been saved with, for it to be shown again.
+ */
+
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractCollection;
 use Programster\Stripe\Enums\AllowRedisplayFilters;
-use Programster\Stripe\Enums\CountryCode;
+
 
 class AllowRedisplayFiltersCollection extends AbstractCollection
 {
@@ -14,14 +18,17 @@ class AllowRedisplayFiltersCollection extends AbstractCollection
     }
 
 
+    /**
+     * Get the collection in the form Stripe takes: a list of each item's values.
+     * @return array
+     */
     public function toStripeArrayForm() : array
     {
         $stripeArrayForm = [];
-        $arrayCopy = $this->getArrayCopy();
 
-        foreach ($arrayCopy as $item)
+        foreach ($this->getArrayCopy() as $item)
         {
-            /* @var $item \Programster\Stripe\Enums\AllowRedisplayFilters */
+            /* @var $item AllowRedisplayFilters */
             $stripeArrayForm[] = $item->value;
         }
 

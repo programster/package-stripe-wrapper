@@ -1,5 +1,10 @@
 <?php
 
+/*
+ * A name and value to show on an invoice, e.g. a purchase order number.
+ * https://docs.stripe.com/api/customers/create#create_customer-invoice_settings-custom_fields
+ */
+
 namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
@@ -7,35 +12,44 @@ use Programster\Stripe\Interfaces\Arrayable;
 
 readonly class InvoiceCustomField implements Arrayable
 {
+    private string $m_name;
+    private string $m_value;
+
 
     /**
-     * @param string $name - String of your choice that your integration can use to reconcile this field. Must be unique
-     * to this field, alphanumeric, and up to 200 characters.
-     * @param string $value - the label to display next to the field
-     * @param FieldType $type - the type of field. E.g. a dropdown, text, or numeric field.
-     * @param bool $optional - whether this field is optional or not. E.g. does the customer have to fill it in?
+     * Create a custom field for an invoice.
+     * @param string $name - the name of the field, up to 40 characters.
+     * @param string $value - the value of the field, up to 140 characters.
+     * @throws ExceptionValueTooLong - if the name or value is too long.
      */
-    public function __construct(
-        private string $name,
-        private string $value,
-    )
+    public function __construct(string $name, string $value)
     {
-        if (strlen($this->name) > 40)
+        if (strlen($name) > 40)
         {
-            throw new ExceptionValueTooLong($this->name, "A custom field for an invoice cannot have a name more then 40 characters long.");
+            throw new ExceptionValueTooLong(
+                $name,
+                "A custom field for an invoice cannot have a name more then 40 characters long."
+            );
         }
 
-        if (strlen($this->value) > 140)
+        if (strlen($value) > 140)
         {
-            throw new ExceptionValueTooLong($this->value, "A custom field for an invoice cannot have a value more then 140 characters long.");
+            throw new ExceptionValueTooLong(
+                $value,
+                "A custom field for an invoice cannot have a value more then 140 characters long."
+            );
         }
+
+        $this->m_name = $name;
+        $this->m_value = $value;
     }
 
-    public function toArray(): array
+
+    public function toArray() : array
     {
         return [
-            'name' => $this->name,
-            'value' => $this->value,
+            'name' => $this->m_name,
+            'value' => $this->m_value,
         ];
     }
 }

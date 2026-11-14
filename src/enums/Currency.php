@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
+ * The currencies that Stripe accepts.
  * https://docs.stripe.com/currencies
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum Currency: string
 {

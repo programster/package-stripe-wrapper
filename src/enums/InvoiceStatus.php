@@ -1,11 +1,12 @@
 <?php
 
 /*
- * The varioius statuses that can be used for an invoice.
+ * The statuses an invoice can have, e.g. for filtering a list of invoices.
  * https://docs.stripe.com/api/invoices/list#list_invoices-status
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum InvoiceStatus: string
 {

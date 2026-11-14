@@ -1,11 +1,12 @@
 <?php
 
 /*
- * Enum of all the currencies Stripe accepts.
- * https://docs.stripe.com/currencies
+ * Whether a checkout session should collect the customer's billing address.
+ * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-billing_address_collection
  */
 
 namespace Programster\Stripe\Enums;
+
 
 enum BillingAddressCollection: string
 {

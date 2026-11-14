@@ -1,15 +1,27 @@
 <?php
 
+/*
+ * Thrown when the same key is given more than once, e.g. in a set of metadata.
+ */
+
 namespace Programster\Stripe\Exceptions;
-class ExceptionDuplicateKey extends \Exception
+
+
+class ExceptionDuplicateKey extends ExceptionInvalidValue
 {
-    public function __construct(private readonly string $key)
+    private readonly string $m_key;
+
+
+    /**
+     * @param string $key - the key that was given more than once.
+     */
+    public function __construct(string $key)
     {
-        parent::__construct("You provided a duplicate key '$key'.");
+        $this->m_key = $key;
+        parent::__construct("You provided a duplicate key '{$key}'.");
     }
 
-    public function getKey(): string
-    {
-        return $this->key;
-    }
+
+    # Accessors
+    public function getKey() : string { return $this->m_key; }
 }
