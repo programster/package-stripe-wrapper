@@ -10,6 +10,7 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Enums\ProrationBehavior;
+use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
@@ -85,6 +86,14 @@ class SubscriptionData implements Arrayable
         ?TrialConfig $trialConfig = null,
     )
     {
+        # Stripe rejects this, so catch it here, where the mistake was made.
+        if ($prorationBehavior !== null && $billingCycleAnchor === null)
+        {
+            throw new ExceptionInvalidValue(
+                "Stripe only accepts a proration behaviour for a checkout subscription with a billing cycle anchor."
+            );
+        }
+
         $this->m_applicationFeePercent = $applicationFeePercent;
         $this->m_billingCycleAnchor = $billingCycleAnchor;
         $this->m_billingMode = $billingMode;

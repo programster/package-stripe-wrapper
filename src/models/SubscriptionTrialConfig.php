@@ -96,7 +96,8 @@ readonly class SubscriptionTrialConfig
 
         if ($this->m_endTrialBehaviorIfMissingPaymentMethod !== null)
         {
-            $params['trial_settings'] = ['end_behavior' => $this->m_endTrialBehaviorIfMissingPaymentMethod->value];
+            $endBehavior = ['missing_payment_method' => $this->m_endTrialBehaviorIfMissingPaymentMethod->value];
+            $params['trial_settings'] = ['end_behavior' => $endBehavior];
         }
 
         if ($this->m_trialFromPlan !== null)

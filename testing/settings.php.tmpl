@@ -1,0 +1,22 @@
+<?php
+
+/*
+ * Settings for the live tests (testing/main-live.php), which send real requests to Stripe's test mode.
+ * Copy this file to testing/settings.php (which git ignores), and fill it in. Never use a live key: the tests refuse
+ * to run with anything other than a test-mode key.
+ */
+
+# Required: your test-mode secret key, from https://dashboard.stripe.com/test/apikeys (it starts with sk_test_).
+define('STRIPE_SECRET_KEY', '');
+
+# Optional: set to true once Stripe Tax is set up in test mode (with a head office address), to also test
+# automatic tax. https://dashboard.stripe.com/test/settings/tax
+define('STRIPE_TAX_IS_SET_UP', false);
+
+# Optional: set to true once a terms of service URL is set in your public details, to also test asking customers
+# to agree to it. https://dashboard.stripe.com/test/settings/public
+define('STRIPE_TERMS_OF_SERVICE_URL_IS_SET', false);
+
+# Optional: the ID of a connected account in test mode (it starts with acct_), to also test Stripe Connect transfers.
+# Leave empty to skip those tests. https://dashboard.stripe.com/test/connect/accounts
+define('STRIPE_CONNECTED_ACCOUNT_ID', '');

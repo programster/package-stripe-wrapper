@@ -172,3 +172,24 @@ Docker images first, e.g. to pick up the latest patch releases. To run them once
 ```bash
 php -d zend.assertions=1 testing/main.php
 ```
+
+
+### Live Tests Against Stripe's Test Mode
+The smoke tests can only check what this package sends, not that Stripe accepts it. The live tests send real
+requests to Stripe's test mode, to check that too. They refuse to run with anything other than a test-mode key, so
+they can't create real customers or charge real cards.
+
+1. Copy `testing/settings.php.tmpl` to `testing/settings.php` (which git ignores), and fill in your test-mode secret
+   key, from https://dashboard.stripe.com/test/apikeys.
+2. Optionally, turn on the extra tests for Stripe Tax, terms of service consent and Stripe Connect, once they're set
+   up in your test-mode account, as described in the template.
+3. Run them:
+
+```bash
+php -d zend.assertions=1 testing/main-live.php
+```
+
+Everything the tests create is cleaned up afterwards, as far as Stripe allows. Subscription customers are on a test
+clock, which is deleted with everything attached to it. Other customers and the coupon are deleted, and the tax rate
+and product are archived. Products that checkout sessions create from inline product data can't be removed through
+the API, so they stay in test mode, marked with `created_by: programster-stripe-wrapper-live-tests` in their metadata.

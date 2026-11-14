@@ -14,6 +14,9 @@ final class SmokeTest
     private array $m_failures = [];
     private array $m_warnings = [];
 
+    # Tests that couldn't run here (e.g. ones needing a Stripe feature that isn't set up), so they can be reported.
+    private array $m_skipped = [];
+
 
     public function __construct()
     {
@@ -57,6 +60,12 @@ final class SmokeTest
         catch (\Throwable $e)
         {
             $error = get_class($e) . ": " . $e->getMessage() . " @ " . basename($e->getFile()) . ":" . $e->getLine();
+
+            # When Stripe rejects a request, it names the parameter it didn't like, which pinpoints the mistake.
+            if ($e instanceof \Stripe\Exception\InvalidRequestException && $e->getStripeParam() !== null)
+            {
+                $error .= " (Stripe rejected the parameter: " . $e->getStripeParam() . ")";
+            }
         }
 
         $newWarnings = array_slice($this->m_warnings, $numWarningsBefore);
@@ -73,6 +82,18 @@ final class SmokeTest
         {
             $this->m_failures[] = trim("{$label}: {$error} " . implode(" | ", $newWarnings));
         }
+    }
+
+
+    /**
+     * Record a test as skipped, rather than running it, so that it is reported, instead of looking like it passed.
+     * @param string $label - the name of the test.
+     * @param string $reason - why it can't run, e.g. what needs setting up for it to.
+     * @return void
+     */
+    public function skip(string $label, string $reason): void
+    {
+        $this->m_skipped[] = "{$label} ({$reason})";
     }
 
 
@@ -148,4 +169,5 @@ final class SmokeTest
     # Accessors
     public function getNumPassed(): int { return $this->m_numPassed; }
     public function getFailures(): array { return $this->m_failures; }
+    public function getSkipped(): array { return $this->m_skipped; }
 }

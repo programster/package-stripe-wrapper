@@ -34,7 +34,8 @@ readonly class FieldType implements Arrayable
      * Create a numeric field. Note that this takes the maximum length before the minimum, unlike createText().
      *
      * @param string $defaultValue - the value that will pre-fill the field on the payment page. If you don't want to
-     * provide a default value, then just provide an empty string.
+     * provide a default value, then just provide an empty string, and none is sent to Stripe (which rejects an empty
+     * one).
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-custom_fields-numeric-default_value
      *
      * @param int $maxLength - the most digits the customer can enter.
@@ -49,11 +50,7 @@ readonly class FieldType implements Arrayable
     {
         self::assertValidLengths($minLength, $maxLength);
 
-        $childConfig = [
-            'default_value' => $defaultValue,
-            'minimum_length' => $minLength,
-            'maximum_length' => $maxLength,
-        ];
+        $childConfig = self::buildLengthConfig($defaultValue, $minLength, $maxLength);
 
         return new FieldType(CustomFieldType::NUMERIC, $childConfig);
     }
@@ -63,7 +60,8 @@ readonly class FieldType implements Arrayable
      * Create a text field.
      *
      * @param string $defaultValue - the value that will pre-fill the field on the payment page. If you don't want to
-     * provide a default value, then just provide an empty string.
+     * provide a default value, then just provide an empty string, and none is sent to Stripe (which rejects an empty
+     * one).
      *
      * @param int $minLength - the fewest characters the customer can enter.
      *
@@ -77,11 +75,7 @@ readonly class FieldType implements Arrayable
     {
         self::assertValidLengths($minLength, $maxLength);
 
-        $childConfig = [
-            'default_value' => $defaultValue,
-            'minimum_length' => $minLength,
-            'maximum_length' => $maxLength,
-        ];
+        $childConfig = self::buildLengthConfig($defaultValue, $minLength, $maxLength);
 
         return new FieldType(CustomFieldType::TEXT, $childConfig);
     }
@@ -141,6 +135,30 @@ readonly class FieldType implements Arrayable
             'type' => $this->m_type->value,
             $this->m_type->value => $this->m_childConfig,
         ];
+    }
+
+
+    /**
+     * Build the settings for a numeric or text field. Stripe rejects an empty default value, so one is only included
+     * when there is one.
+     * @param string $defaultValue - the value to pre-fill the field with, or an empty string for none.
+     * @param int $minLength - the minimum length.
+     * @param int $maxLength - the maximum length.
+     * @return array<string, int|string>
+     */
+    private static function buildLengthConfig(string $defaultValue, int $minLength, int $maxLength): array
+    {
+        $childConfig = [
+            'minimum_length' => $minLength,
+            'maximum_length' => $maxLength,
+        ];
+
+        if ($defaultValue !== '')
+        {
+            $childConfig['default_value'] = $defaultValue;
+        }
+
+        return $childConfig;
     }
 
 

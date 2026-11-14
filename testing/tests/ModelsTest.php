@@ -21,6 +21,7 @@ use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\EndTrialBehaviorIfMissingPaymentMethod;
 use Programster\Stripe\Enums\PaymentIntentSetupFutureUsage;
 use Programster\Stripe\Enums\PaymentMethodType;
+use Programster\Stripe\Enums\ProrationBehavior;
 use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Enums\SubscriptionStatus;
@@ -64,6 +65,7 @@ use Programster\Stripe\Models\ShippingConfig;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
+use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\SubscriptionTrialConfig;
 use Programster\Stripe\Models\TaxIdCollectionConfig;
@@ -164,8 +166,10 @@ $smoke->run("FieldType", function (): void {
     $noDefault = FieldType::createDropdown(null, $blue)->toArray();
     assert(!isset($noDefault['dropdown']['default_value']), "an absent default was sent");
     $text = FieldType::createText('', 1, 20)->toArray();
-    $expectedText = ['default_value' => '', 'minimum_length' => 1, 'maximum_length' => 20];
-    SmokeTest::assertSame($expectedText, $text['text'], "text");
+    $expectedText = ['minimum_length' => 1, 'maximum_length' => 20];
+    SmokeTest::assertSame($expectedText, $text['text'], "an empty default isn't sent");
+    $textWithDefault = FieldType::createText('Hi', 1, 20)->toArray();
+    SmokeTest::assertSame('Hi', $textWithDefault['text']['default_value'], "default");
     $numeric = FieldType::createNumeric('', 20, 1)->toArray();
     SmokeTest::assertSame(20, $numeric['numeric']['maximum_length'], "numeric");
 
@@ -352,10 +356,22 @@ $smoke->run("TimePeriod uses inclusive comparisons by default", function (): voi
     SmokeTest::assertSame(['gt' => 1, 'lt' => 2], (new TimePeriod(1, 2, false, false))->toArray(), "exclusive");
 });
 
+$smoke->run("SubscriptionData rejects a proration behaviour without a billing cycle anchor", function (): void {
+    $createWithoutAnchor = function (): void {
+        new SubscriptionData(prorationBehavior: ProrationBehavior::NONE);
+    };
+
+    SmokeTest::expectException(ExceptionInvalidValue::class, $createWithoutAnchor, "billing cycle anchor");
+    $none = ProrationBehavior::NONE;
+    $withAnchor = (new SubscriptionData(billingCycleAnchor: 1000, prorationBehavior: $none))->toArray();
+    SmokeTest::assertSame('none', $withAnchor['proration_behavior'], "proration behaviour");
+});
+
 $smoke->run("trial configs", function (): void {
     $cancel = EndTrialBehaviorIfMissingPaymentMethod::CANCEL;
     $trial = TrialConfig::createForNumDays(14, $cancel)->getStripeParams();
-    $expectedTrial = ['trial_period_days' => 14, 'trial_settings' => ['end_behavior' => 'cancel']];
+    $expectedSettings = ['end_behavior' => ['missing_payment_method' => 'cancel']];
+    $expectedTrial = ['trial_period_days' => 14, 'trial_settings' => $expectedSettings];
     SmokeTest::assertSame($expectedTrial, $trial, "days");
     $subscriptionTrial = SubscriptionTrialConfig::createForEndTimestamp(5000)->getStripeParams();
     SmokeTest::assertSame(['trial_end' => 5000], $subscriptionTrial, "end timestamp");
