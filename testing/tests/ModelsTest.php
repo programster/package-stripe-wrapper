@@ -7,10 +7,10 @@
  */
 
 use Programster\Stripe\Collections\AllowRedisplayFiltersCollection;
-use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
+use Programster\Stripe\Collections\ShippingCountryCodeCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionInvoiceItemCollection;
 use Programster\Stripe\Collections\SubscriptionLineItemCollection;
@@ -24,6 +24,7 @@ use Programster\Stripe\Enums\PaymentMethodType;
 use Programster\Stripe\Enums\ProrationBehavior;
 use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Enums\RecurringInterval;
+use Programster\Stripe\Enums\ShippingCountryCode;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Enums\Updateable;
 use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
@@ -391,9 +392,30 @@ $smoke->run("trial configs", function (): void {
 });
 
 $smoke->run("collections of enums", function (): void {
-    $countries = (new CountryCodeCollection(CountryCode::GB, CountryCode::US))->toStripeArrayForm();
-    SmokeTest::assertSame(['GB', 'US'], $countries, "countries");
+    $countries = new ShippingCountryCodeCollection(ShippingCountryCode::GB, ShippingCountryCode::US);
+    SmokeTest::assertSame(['GB', 'US'], $countries->toStripeArrayForm(), "countries");
     SmokeTest::assertSame([], (new StringCollection())->toArray(), "empty string collection");
+});
+
+$smoke->run("an address can be in every country that shipping can be collected for", function (): void {
+    # Checkout's shipping list adds Ascension Island and Tristan da Cunha (both part of SH in ISO 3166-1), and ZZ for
+    # an unknown country.
+    $notCountries = ['AC', 'TA', 'ZZ'];
+    $missing = [];
+
+    foreach (ShippingCountryCode::cases() as $shippingCountry)
+    {
+        $isCountry = !in_array($shippingCountry->value, $notCountries, true);
+
+        if ($isCountry && CountryCode::tryFrom($shippingCountry->value) === null)
+        {
+            $missing[] = $shippingCountry->value;
+        }
+    }
+
+    SmokeTest::assertSame([], $missing, "shipping countries that aren't CountryCodes");
+    $address = new Address('1 Rue de la Paix', country: CountryCode::FR);
+    SmokeTest::assertSame(['line1' => '1 Rue de la Paix', 'country' => 'FR'], $address->toArray(), "address");
 });
 
 $smoke->run("an existing checkout customer", function (): void {

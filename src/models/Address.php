@@ -7,6 +7,7 @@
 
 namespace Programster\Stripe\Models;
 
+use Programster\Stripe\Enums\CountryCode;
 use Programster\Stripe\Interfaces\Arrayable;
 
 final readonly class Address implements Arrayable
@@ -16,7 +17,7 @@ final readonly class Address implements Arrayable
     private ?string $m_city;
     private ?string $m_postcodeOrZip;
     private ?string $m_stateProvinceOrRegion;
-    private ?string $m_country;
+    private ?CountryCode $m_country;
 
 
     /**
@@ -32,15 +33,15 @@ final readonly class Address implements Arrayable
      *
      * @param string|null $stateProvinceOrRegion - optionally, the state, county, province or region.
      *
-     * @param string|null $country - optionally, the two-letter country code (ISO 3166-1 alpha-2), e.g. "GB".
+     * @param CountryCode|null $country - optionally, the country, e.g. CountryCode::GB.
      */
     public function __construct(
-        string  $addressLine1,
-        ?string $addressLine2 = null,
-        ?string $city = null,
-        ?string $postcodeOrZip = null,
-        ?string $stateProvinceOrRegion = null,
-        ?string $country = null,
+        string       $addressLine1,
+        ?string      $addressLine2 = null,
+        ?string      $city = null,
+        ?string      $postcodeOrZip = null,
+        ?string      $stateProvinceOrRegion = null,
+        ?CountryCode $country = null,
     )
     {
         $this->m_addressLine1 = $addressLine1;
@@ -73,7 +74,7 @@ final readonly class Address implements Arrayable
 
         if ($this->m_country !== null)
         {
-            $arrayForm['country'] = $this->m_country;
+            $arrayForm['country'] = $this->m_country->value;
         }
 
         if ($this->m_postcodeOrZip !== null)

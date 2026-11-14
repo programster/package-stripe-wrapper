@@ -143,7 +143,7 @@ $session = $client->createCheckoutSessionForSinglePayment(
     discount: Discount::createCoupon('coupon_123'),
     locale: Locale::FRENCH,
     billingAddressCollection: BillingAddressCollection::REQUIRED,
-    shippingAddressCollection: new CountryCodeCollection(CountryCode::GB, CountryCode::FR),
+    shippingAddressCollection: new ShippingCountryCodeCollection(ShippingCountryCode::GB, ShippingCountryCode::FR),
     enablePhoneNumberCollection: true,
     customTextOptions: new CustomTextOptions(submit: "We'll ship your order within 2 working days."),
     metadata: new Metadata(new MetadataItem('order_id', '42')),

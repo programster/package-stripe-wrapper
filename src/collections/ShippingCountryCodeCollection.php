@@ -1,21 +1,21 @@
 <?php
 
 /*
- * A collection of country codes, e.g. for the countries that shipping addresses may be collected for.
+ * A collection of the countries that Checkout may collect shipping addresses for.
  */
 
 namespace Programster\Stripe\Collections;
 
 use Programster\Collections\AbstractReadonlyCollection;
-use Programster\Stripe\Enums\CountryCode;
+use Programster\Stripe\Enums\ShippingCountryCode;
 
 
 /**
- * @extends AbstractReadonlyCollection<CountryCode>
+ * @extends AbstractReadonlyCollection<ShippingCountryCode>
  */
-final readonly class CountryCodeCollection extends AbstractReadonlyCollection
+final readonly class ShippingCountryCodeCollection extends AbstractReadonlyCollection
 {
-    public function __construct(CountryCode ...$countryCodes)
+    public function __construct(ShippingCountryCode ...$countryCodes)
     {
         parent::__construct(...$countryCodes);
     }
@@ -38,5 +38,5 @@ final readonly class CountryCodeCollection extends AbstractReadonlyCollection
     }
 
 
-    public function getType(): string { return CountryCode::class; }
+    public function getType(): string { return ShippingCountryCode::class; }
 }

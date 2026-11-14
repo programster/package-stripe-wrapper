@@ -2,13 +2,13 @@
 
 namespace Programster\Stripe;
 
-use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\DiscountCollection;
 use Programster\Stripe\Collections\LocaleCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
+use Programster\Stripe\Collections\ShippingCountryCodeCollection;
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
@@ -996,9 +996,9 @@ final readonly class StripeClient
      * @param BillingAddressCollection $billingAddressCollection - Describe whether Checkout should collect the
      * customer’s billing address.
      *
-     * @param CountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to collect the
-     * customer's shipping address for the transaction. This will need to be the country codes of the countries that
-     * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
+     * @param ShippingCountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to
+     * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
+     * is null, meaning Stripe won't collect shipping information.
      *
      * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
@@ -1056,7 +1056,7 @@ final readonly class StripeClient
         ?AfterExpiration                 $afterExpiration = null,
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection           $shippingAddressCollection = null,
+        ?ShippingCountryCodeCollection   $shippingAddressCollection = null,
         ?TaxIdCollectionConfig           $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
@@ -1162,9 +1162,9 @@ final readonly class StripeClient
      * @param BillingAddressCollection $billingAddressCollection - Describe whether Checkout should collect the
      * customer’s billing address.
      *
-     * @param CountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to collect the
-     * customer's shipping address for the transaction. This will need to be the country codes of the countries that
-     * you will support shipping to. The default will be null, meaning Stripe would not collect shipping information.
+     * @param ShippingCountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to
+     * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
+     * is null, meaning Stripe won't collect shipping information.
      *
      * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
      * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
@@ -1218,7 +1218,7 @@ final readonly class StripeClient
         ?AfterExpiration                        $afterExpiration = null,
         ?bool                                   $adaptivePricing = null,
         BillingAddressCollection                $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?CountryCodeCollection                  $shippingAddressCollection = null,
+        ?ShippingCountryCodeCollection          $shippingAddressCollection = null,
         ?TaxIdCollectionConfig                  $taxIdCollection = null,
         ?bool                                   $enablePhoneNumberCollection = null,
         ?ConsentConfig                          $consentConfig = null,
@@ -1690,7 +1690,7 @@ final readonly class StripeClient
      * @param AfterExpiration|null $afterExpiration
      * @param bool|null $adaptivePricing
      * @param BillingAddressCollection $billingAddressCollection
-     * @param CountryCodeCollection|null $shippingAddressCollection
+     * @param ShippingCountryCodeCollection|null $shippingAddressCollection
      * @param TaxIdCollectionConfig|null $taxIdCollection
      * @param bool|null $enablePhoneNumberCollection
      * @param ConsentConfig|null $consentConfig
@@ -1714,7 +1714,7 @@ final readonly class StripeClient
         ?AfterExpiration $afterExpiration,
         ?bool $adaptivePricing,
         BillingAddressCollection $billingAddressCollection,
-        ?CountryCodeCollection $shippingAddressCollection,
+        ?ShippingCountryCodeCollection $shippingAddressCollection,
         ?TaxIdCollectionConfig $taxIdCollection,
         ?bool $enablePhoneNumberCollection,
         ?ConsentConfig $consentConfig,

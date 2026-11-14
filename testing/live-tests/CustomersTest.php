@@ -10,6 +10,7 @@ use Programster\Stripe\Collections\CustomerTaxIdDataCollection;
 use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\LocaleCollection;
 use Programster\Stripe\Collections\Metadata;
+use Programster\Stripe\Enums\CountryCode;
 use Programster\Stripe\Enums\Locale;
 use Programster\Stripe\Enums\ReconciliationMode;
 use Programster\Stripe\Enums\TaxExempt;
@@ -44,7 +45,7 @@ $smoke->run("createCustomer: address, contact details, shipping and metadata", f
     $runId,
     &$checkoutCustomerId
 ): void {
-    $address = new Address('1 High Street', 'Flat 2', 'London', 'N1 1AA', 'Greater London', 'GB');
+    $address = new Address('1 High Street', 'Flat 2', 'London', 'N1 1AA', 'Greater London', CountryCode::GB);
     $shipping = new CustomerShippingDetails($address, 'Jo Bloggs', '+447700900000');
 
     $customer = $client->createCustomer(

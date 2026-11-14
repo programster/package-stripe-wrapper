@@ -5,6 +5,7 @@
     - [Listing](#listing)
     - [One type per parameter](#one-type-per-parameter)
     - [Times](#times)
+    - [Countries](#countries)
     - [Other changes](#other-changes)
 - [From 0.2.2 to 0.2.3](#from-022-to-023)
 - [From 0.2.1 to 0.2.2](#from-021-to-022)
@@ -89,6 +90,14 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
 - `TimePeriod`'s start and end. An end before the start throws an `ExceptionInvalidValue`.
 - `TrialConfig::createForEndTimestamp()` is now `TrialConfig::createForEndTime()`, and `PeriodStart::createTimestamp()`
   and `PeriodEnd::createTimestamp()` are now `createAt()`.
+
+### Countries
+- **An `Address`'s country is a `CountryCode`**, e.g. `country: CountryCode::GB` rather than `country: 'GB'`. Stripe
+  accepts any two letters as an address's country without checking them, so a mistyped code used to be saved as it
+  was. `CountryCode` has every ISO 3166-1 alpha-2 code, and `XK` for Kosovo.
+- **The old `CountryCode` is now `ShippingCountryCode`**, and `CountryCodeCollection` is now
+  `ShippingCountryCodeCollection`, for the checkout methods' `$shippingAddressCollection`. It only has the countries
+  Checkout can collect shipping addresses for, which are fewer.
 
 ### Other changes
 - **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `listInvoicePayments()` and

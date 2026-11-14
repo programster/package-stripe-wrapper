@@ -13,7 +13,7 @@
 use Programster\Stripe\Models\Address;
 
 $client = new StripeClient('sk_test_...');
-$address = new Address('1 High Street', city: 'London', postcodeOrZip: 'N1 1AA', country: 'GB');
+$address = new Address('1 High Street', city: 'London', postcodeOrZip: 'N1 1AA', country: CountryCode::GB);
 
 $customer = $client->createCustomer(
     address: $address,

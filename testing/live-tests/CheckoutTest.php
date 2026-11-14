@@ -8,11 +8,11 @@
  */
 
 use Programster\Stripe\Collections\AllowRedisplayFiltersCollection;
-use Programster\Stripe\Collections\CountryCodeCollection;
 use Programster\Stripe\Collections\CustomFieldCollection;
 use Programster\Stripe\Collections\InvoiceCustomFieldCollection;
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
+use Programster\Stripe\Collections\ShippingCountryCodeCollection;
 use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
@@ -30,6 +30,7 @@ use Programster\Stripe\Enums\ProrationBehavior;
 use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Enums\RedirectOnCompletion;
+use Programster\Stripe\Enums\ShippingCountryCode;
 use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\TaxBehavior;
 use Programster\Stripe\Enums\Updateable;
@@ -193,7 +194,7 @@ $smoke->run("single payment: payment intent data", function () use (
     $shirts,
     $metadata
 ): void {
-    $shipping = new ShippingConfig('Jo Bloggs', new Address('1 High Street', city: 'London', country: 'GB'));
+    $shipping = new ShippingConfig('Jo Bloggs', new Address('1 High Street', city: 'London', country: CountryCode::GB));
 
     $paymentIntentData = new PaymentIntentData(
         description: 'Live test payment',
@@ -253,7 +254,7 @@ $smoke->run("single payment: custom fields, custom text and shipping", function 
         $hosted,
         $shirts,
         customTextOptions: $customText,
-        shippingAddressCollection: new CountryCodeCollection(CountryCode::GB, CountryCode::US),
+        shippingAddressCollection: new ShippingCountryCodeCollection(ShippingCountryCode::GB, ShippingCountryCode::US),
         customFields: $customFields,
     );
 

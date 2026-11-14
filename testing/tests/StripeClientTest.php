@@ -15,6 +15,7 @@ use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Collections\SubscriptionLineItemCollection;
+use Programster\Stripe\Enums\CountryCode;
 use Programster\Stripe\Enums\Currency;
 use Programster\Stripe\Enums\CustomerCreation;
 use Programster\Stripe\Enums\InvoiceStatus;
@@ -115,7 +116,7 @@ $smoke->run("listSubscriptions", function () use ($client, $fakeHttpClient): voi
 });
 
 $smoke->run("createCustomer", function () use ($client, $fakeHttpClient): void {
-    $address = new Address('1 High Street', city: 'London', postcodeOrZip: 'N1 1AA', country: 'GB');
+    $address = new Address('1 High Street', city: 'London', postcodeOrZip: 'N1 1AA', country: CountryCode::GB);
     $shipping = new CustomerShippingDetails($address, 'Jo Bloggs');
     $taxIds = new CustomerTaxIdDataCollection(new CustomerTaxIdData(TaxIdDataType::GB_VAT, 'GB123456789'));
 
