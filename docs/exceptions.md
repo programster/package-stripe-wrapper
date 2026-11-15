@@ -16,6 +16,7 @@ as asked. They're all in the `Programster\Stripe\Exceptions` namespace:
 | `ExceptionTooManyResults` | A list matches more than its safety cap (1,000 by default), and no `ResultLimit` was given. See [Listing](listing.md#how-many-you-get). |
 | `ExceptionCustomerDeleted` | A customer that's been deleted is retrieved, as Stripe only gives back its ID. |
 | `ExceptionNoRelatedObject` | A `fetch...()` method is called for a related object that isn't there, e.g. a checkout session's `fetchSubscription()` before it's been completed. |
+| `ExceptionWrongStatus` | An object isn't in the status a method needs, e.g. `toCompleted()` on a checkout session that hasn't been completed. Check its `is...()` method first. |
 | `ExceptionIncompleteList` | `getItems()` or `getPayments()` is called on a list Stripe cut short. Use the matching `fetch...()` method instead. |
 | `ExceptionUnexpectedResponse` | Stripe's response is missing a field the package needs, or has one of an unexpected type, e.g. because Stripe's API has changed. |
 

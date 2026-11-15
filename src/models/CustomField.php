@@ -10,6 +10,19 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type LengthConfigArray from FieldType
+ * @phpstan-import-type DropdownConfigArray from FieldType
+ * @phpstan-type CustomFieldArray array{
+ *     key: string,
+ *     label: array{custom: string, type: 'custom'},
+ *     optional: bool,
+ *     type: 'numeric'|'text'|'dropdown',
+ *     numeric?: LengthConfigArray,
+ *     text?: LengthConfigArray,
+ *     dropdown?: DropdownConfigArray
+ * }
+ */
 final readonly class CustomField implements Arrayable
 {
     private string $m_key;
@@ -47,7 +60,7 @@ final readonly class CustomField implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return CustomFieldArray
      */
     public function toArray() : array
     {

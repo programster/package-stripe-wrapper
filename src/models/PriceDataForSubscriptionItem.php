@@ -14,6 +14,17 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type RecurringArray from RecurringConfig
+ *
+ * @phpstan-type PriceDataForSubscriptionItemArray array{
+ *     currency: string,
+ *     unit_amount: int,
+ *     product: string,
+ *     recurring: RecurringArray,
+ *     tax_behavior?: string
+ * }
+ */
 final readonly class PriceDataForSubscriptionItem implements Arrayable
 {
     private Currency $m_currency;
@@ -61,7 +72,7 @@ final readonly class PriceDataForSubscriptionItem implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return PriceDataForSubscriptionItemArray
      */
     public function toArray() : array
     {

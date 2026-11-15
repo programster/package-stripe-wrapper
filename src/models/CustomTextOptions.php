@@ -11,6 +11,14 @@ use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type CustomTextOptionsArray array{
+ *     after_submit?: array{message: string},
+ *     shipping_address?: array{message: string},
+ *     submit?: array{message: string},
+ *     terms_of_service_acceptance?: array{message: string}
+ * }
+ */
 final readonly class CustomTextOptions implements Arrayable
 {
     private ?string $m_afterSubmit;
@@ -70,7 +78,7 @@ final readonly class CustomTextOptions implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return CustomTextOptionsArray
      */
     public function toArray() : array
     {

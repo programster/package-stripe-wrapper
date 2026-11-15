@@ -28,7 +28,7 @@ final readonly class InvoiceItemPeriod implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{end: array{type: string, timestamp?: int}, start: array{type: string, timestamp?: int}}
      */
     public function toArray() : array
     {

@@ -9,6 +9,9 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type AccountReferenceArray from AccountReference
+ */
 final readonly class InvoiceSettings implements Arrayable
 {
     private AccountReference $m_issuer;
@@ -27,7 +30,7 @@ final readonly class InvoiceSettings implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{issuer: AccountReferenceArray}
      */
     public function toArray() : array
     {

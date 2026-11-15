@@ -24,7 +24,14 @@ $metadata = ['created_by' => 'programster-stripe-wrapper-live-tests'];
 # Save the raw body of the last response an object came from, with any secrets replaced, so it can't leak, even
 # though it's only test mode.
 $save = function (string $name, \Stripe\StripeObject $object) use ($directory): void {
-    $body = $object->getLastResponse()->body;
+    $response = $object->getLastResponse();
+
+    if ($response === null)
+    {
+        throw new \Exception("The {$name} object didn't come from a response, so there's nothing to save.");
+    }
+
+    $body = $response->body;
     # Decoded to objects rather than arrays, so an empty object, such as "metadata": {}, stays an object.
     $decoded = json_decode($body, false, 512, JSON_THROW_ON_ERROR);
 
@@ -148,7 +155,14 @@ try
 
     $save('subscription-active', $sdk->subscriptions->retrieve($subscription->id));
     $save('subscription-item', $sdk->subscriptionItems->retrieve($subscription->items->data[0]->id));
-    $invoiceId = $subscription->latest_invoice->id;
+    $latestInvoice = $subscription->latest_invoice;
+
+    if (!($latestInvoice instanceof \Stripe\Invoice))
+    {
+        throw new \Exception("The subscription's latest invoice wasn't expanded.");
+    }
+
+    $invoiceId = $latestInvoice->id;
     $save('invoice', $sdk->invoices->retrieve($invoiceId));
     $save('invoice-with-payments', $sdk->invoices->retrieve($invoiceId, ['expand' => ['payments']]));
     $paymentIntents = $sdk->paymentIntents->all(['customer' => $subscriber->id]);

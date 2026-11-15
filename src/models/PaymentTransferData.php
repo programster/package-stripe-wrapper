@@ -46,7 +46,7 @@ final readonly class PaymentTransferData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{destination: string, amount?: int}
      */
     public function toArray(): array
     {

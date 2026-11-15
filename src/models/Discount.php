@@ -10,6 +10,9 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\DiscountType;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type DiscountArray array{coupon: string}|array{promotion_code: string}
+ */
 final readonly class Discount implements Arrayable
 {
     private DiscountType $m_type;
@@ -54,12 +57,13 @@ final readonly class Discount implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return DiscountArray
      */
     public function toArray() : array
     {
-        return [
-            $this->m_type->value => $this->m_value,
-        ];
+        return match ($this->m_type) {
+            DiscountType::COUPON => ['coupon' => $this->m_value],
+            DiscountType::PROMOTION_CODE => ['promotion_code' => $this->m_value],
+        };
     }
 }

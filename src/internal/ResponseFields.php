@@ -38,6 +38,38 @@ final readonly class ResponseFields
 
 
     /**
+     * Read the fields of an object from a Stripe response, checking that it is one (each of its keys is a field's
+     * name), rather than a list.
+     *
+     * @param array<mixed> $values - the object's values, e.g. from the SDK object's toArray().
+     *
+     * @param string $description - what the object is, for error messages, e.g. "customer cus_123".
+     *
+     * @return ResponseFields
+     *
+     * @throws ExceptionUnexpectedResponse - if any of its keys isn't a field's name.
+     */
+    public static function createFromArray(array $values, string $description): ResponseFields
+    {
+        $fields = [];
+
+        foreach ($values as $key => $value)
+        {
+            if (!is_string($key))
+            {
+                throw new ExceptionUnexpectedResponse(
+                    "The {$description} from Stripe should be an object, but was a list."
+                );
+            }
+
+            $fields[$key] = $value;
+        }
+
+        return new ResponseFields($fields, $description);
+    }
+
+
+    /**
      * Read the fields of a nested object, such as a customer's address.
      * @param string $field - the field holding the nested object.
      * @return ResponseFields
@@ -52,7 +84,7 @@ final readonly class ResponseFields
             $this->throwUnexpected($field, "an object", $value);
         }
 
-        return new ResponseFields($value, "{$field} of {$this->m_description}");
+        return $this->createNested($field, $value, "{$field} of {$this->m_description}");
     }
 
 
@@ -69,7 +101,7 @@ final readonly class ResponseFields
 
         if (is_array($value))
         {
-            $fields = new ResponseFields($value, "{$field} of {$this->m_description}");
+            $fields = $this->createNested($field, $value, "{$field} of {$this->m_description}");
         }
         elseif ($value !== null)
         {
@@ -357,7 +389,8 @@ final readonly class ResponseFields
                 $this->throwUnexpected("{$field}.{$index}", "an object", $value);
             }
 
-            $objects[] = new ResponseFields($value, "{$field}[{$index}] of {$this->m_description}");
+            $description = "{$field}[{$index}] of {$this->m_description}";
+            $objects[] = $this->createNested("{$field}.{$index}", $value, $description);
         }
 
         return $objects;
@@ -389,7 +422,8 @@ final readonly class ResponseFields
                 $list->throwUnexpected("data.{$index}", "an object", $values);
             }
 
-            $objects[] = new ResponseFields($values, "{$field}[{$index}] of {$this->m_description}");
+            $description = "{$field}[{$index}] of {$this->m_description}";
+            $objects[] = $list->createNested("data.{$index}", $values, $description);
         }
 
         return [$objects, $list->getBool('has_more')];
@@ -420,6 +454,38 @@ final readonly class ResponseFields
         }
 
         return $this->m_values[$field];
+    }
+
+
+    /**
+     * Create the fields of a nested object, checking that it is one (each of its keys is a field's name), rather than
+     * a list.
+     *
+     * @param string $field - the field holding the object, for the error message.
+     *
+     * @param array<mixed> $values - the object's values, as Stripe sent them.
+     *
+     * @param string $description - what the object is, for error messages, e.g. "address of customer cus_123".
+     *
+     * @return ResponseFields
+     *
+     * @throws ExceptionUnexpectedResponse - if any of its keys isn't a field's name.
+     */
+    private function createNested(string $field, array $values, string $description): ResponseFields
+    {
+        $fields = [];
+
+        foreach ($values as $key => $value)
+        {
+            if (!is_string($key))
+            {
+                $this->throwUnexpected($field, "an object", $values);
+            }
+
+            $fields[$key] = $value;
+        }
+
+        return new ResponseFields($fields, $description);
     }
 
 

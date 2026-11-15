@@ -46,7 +46,7 @@ This creates a checkout session for a one-off payment, and sends the customer to
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $client = new StripeClient('sk_test_...');
-$flowConfig = FlowConfig::createHosted(successUrl: "https://example.com/success");
+$flow = new HostedFlow(successUrl: "https://example.com/success");
 
 $shirt = PriceDataForSinglePayment::forProductData(
     currency: Currency::GBP,
@@ -65,8 +65,8 @@ $items = new SinglePaymentLineItemsCollection(
     )
 );
 
-$checkoutSession = $client->createCheckoutSessionForSinglePayment(
-    flowConfig: $flowConfig,
+$checkoutSession = $client->createHostedCheckoutSessionForSinglePayment(
+    flow: $flow,
     items: $items,
 );
 

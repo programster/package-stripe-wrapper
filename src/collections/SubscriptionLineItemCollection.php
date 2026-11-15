@@ -12,6 +12,8 @@ use Programster\Stripe\Models\SubscriptionItem;
 
 /**
  * @extends AbstractReadonlyCollection<SubscriptionItem>
+ *
+ * @phpstan-import-type SubscriptionItemArray from SubscriptionItem
  */
 final readonly class SubscriptionLineItemCollection extends AbstractReadonlyCollection
 {
@@ -23,7 +25,7 @@ final readonly class SubscriptionLineItemCollection extends AbstractReadonlyColl
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<SubscriptionItemArray>
      */
     public function toStripeArrayForm() : array
     {

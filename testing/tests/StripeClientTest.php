@@ -32,6 +32,8 @@ use Programster\Stripe\Testing\FakeStripeHttpClient;
 use Programster\Stripe\Exceptions\ExceptionTooManyResults;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
+use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
+use Programster\Stripe\Exceptions\ExceptionWrongStatus;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AutomaticTax;
 use Programster\Stripe\Models\BillingCycleAnchor;
@@ -44,8 +46,9 @@ use Programster\Stripe\Models\CustomerTaxIdData;
 use Programster\Stripe\Models\CustomField;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\DropdownOption;
+use Programster\Stripe\Models\EmbeddedFlow;
 use Programster\Stripe\Models\FieldType;
-use Programster\Stripe\Models\FlowConfig;
+use Programster\Stripe\Models\HostedFlow;
 use Programster\Stripe\Models\MetadataItem;
 use Programster\Stripe\Models\PriceDataForSinglePayment;
 use Programster\Stripe\Models\PriceDataForSubscriptionCheckoutSession;
@@ -65,6 +68,8 @@ use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\StripeClient;
+use Programster\Stripe\Responses\NewEmbeddedCheckoutSession;
+use Programster\Stripe\Responses\NewHostedCheckoutSession;
 use Programster\Stripe\Testing\SmokeTest;
 
 /** @var \Programster\Stripe\Testing\SmokeTest $smoke */
@@ -79,7 +84,7 @@ $smoke->run("each client uses its own key, including for checkout sessions", fun
     SmokeTest::assertSame('sk_test_first', $fakeHttpClient->takeLastRequest()->getApiKey(), "retrieve's key");
 
     $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
-    $first->createCheckoutSessionForSinglePayment(FlowConfig::createHosted('https://example.com/done'), $items);
+    $first->createHostedCheckoutSessionForSinglePayment(new HostedFlow('https://example.com/done'), $items);
     SmokeTest::assertSame('sk_test_first', $fakeHttpClient->takeLastRequest()->getApiKey(), "create's key");
     $second->retrieveCheckoutSession('cs_123');
     SmokeTest::assertSame('sk_test_second', $fakeHttpClient->takeLastRequest()->getApiKey(), "second key");
@@ -174,7 +179,7 @@ $smoke->run("updateSubscriptionItem", function () use ($client, $fakeHttpClient)
     SmokeTest::assertSame('/v1/subscription_items/si_123', $request->getPath(), "path");
     $params = $request->getParams();
     SmokeTest::assertSame(1700000000, $params['proration_date'], "proration date");
-    SmokeTest::assertSame('prod_123', $params['price_data']['product'], "price data");
+    SmokeTest::assertSame('prod_123', SmokeTest::getNested($params, 'price_data', 'product'), "price data");
     SmokeTest::assertSame([['coupon' => 'coupon_1']], $params['discounts'], "discounts");
     SmokeTest::assertSame(['txr_1'], $params['tax_rates'], "tax rates");
 
@@ -228,25 +233,26 @@ $smoke->run("listCustomers, listRefunds, listCharges", function () use ($client,
     SmokeTest::assertSame('/v1/refunds', $request->getPath(), "refunds path");
     SmokeTest::assertSame(['charge' => 'ch_123', 'limit' => 100], $request->getParams(), "refunds params");
 
-    $client->listCharges(paymentIntent: 'pi_123');
+    $client->listCharges(paymentIntentId: 'pi_123');
     $request = $fakeHttpClient->takeLastRequest();
     SmokeTest::assertSame('/v1/charges', $request->getPath(), "charges path");
     SmokeTest::assertSame(['payment_intent' => 'pi_123', 'limit' => 100], $request->getParams(), "charges params");
 });
 
-$smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $fakeHttpClient): void {
+$smoke->run("createHostedCheckoutSessionForSinglePayment", function () use ($client, $fakeHttpClient): void {
     $shirtProduct = new ProductData('T-shirt', taxCodeId: 'txcd_123');
     $shirt = PriceDataForSinglePayment::forProductData(Currency::GBP, 2000, $shirtProduct);
     $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPriceData($shirt, 1));
     $dropdown = FieldType::createDropdown(null, new DropdownOption('Red', 'red'));
 
-    $client->createCheckoutSessionForSinglePayment(
-        FlowConfig::createHosted('https://example.com/done', cancelUrl: 'https://example.com/cancel'),
+    $session = $client->createHostedCheckoutSessionForSinglePayment(
+        new HostedFlow('https://example.com/done', cancelUrl: 'https://example.com/cancel'),
         $items,
         discount: Discount::createCoupon('coupon_1'),
         customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS),
         automaticTax: new AutomaticTax(true),
         expiresAt: new DateTimeImmutable('@1700003600'),
+        adaptivePricing: true,
         customFields: new CustomFieldCollection(new CustomField('colour', 'Colour', $dropdown, true)),
         allowedPaymentMethodTypes: new PaymentMethodTypeCollection(PaymentMethodType::AFFIRM),
     );
@@ -255,29 +261,37 @@ $smoke->run("createCheckoutSessionForSinglePayment", function () use ($client, $
     SmokeTest::assertSame('/v1/checkout/sessions', $request->getPath(), "path");
     $params = $request->getParams();
     SmokeTest::assertSame('payment', $params['mode'], "mode");
+    SmokeTest::assertSame('hosted', $params['ui_mode'], "UI mode");
+    SmokeTest::assertSame('https://example.com/done', $params['success_url'], "success URL");
     SmokeTest::assertSame('https://example.com/cancel', $params['cancel_url'], "cancel URL");
+    $recordedUrl = FakeStripeHttpClient::loadFixture('checkout-session-hosted')['url'];
+    SmokeTest::assertSame($recordedUrl, $session->getUrl(), "the payment page's URL");
+    SmokeTest::assertSame($session->getId(), $session->getSession()->getId(), "the session's ID");
     SmokeTest::assertSame('jo@example.com', $params['customer_email'], "email");
     SmokeTest::assertSame('always', $params['customer_creation'], "customer creation");
     SmokeTest::assertSame(1700003600, $params['expires_at'], "expires at");
+    # Stripe rejects adaptive pricing as a bare boolean ("Invalid object"), as it's an object with an "enabled" field.
+    SmokeTest::assertSame(['enabled' => 'true'], $params['adaptive_pricing'], "adaptive pricing");
     SmokeTest::assertSame([['coupon' => 'coupon_1']], $params['discounts'], "discounts");
-    SmokeTest::assertSame('txcd_123', $params['line_items'][0]['price_data']['product_data']['tax_code'], "tax code");
+    $taxCode = SmokeTest::getNested($params, 'line_items', 0, 'price_data', 'product_data', 'tax_code');
+    SmokeTest::assertSame('txcd_123', $taxCode, "tax code");
     SmokeTest::assertSame(['affirm'], $params['payment_method_types'], "payment method types");
-    $customField = $params['custom_fields'][0];
-    SmokeTest::assertSame('true', $customField['optional'], "custom field is optional");
-    SmokeTest::assertSame([['label' => 'Red', 'value' => 'red']], $customField['dropdown']['options'], "options");
+    SmokeTest::assertSame('true', SmokeTest::getNested($params, 'custom_fields', 0, 'optional'), "optional field");
+    $options = SmokeTest::getNested($params, 'custom_fields', 0, 'dropdown', 'options');
+    SmokeTest::assertSame([['label' => 'Red', 'value' => 'red']], $options, "options");
 });
 
 $smoke->run("checkout customers", function () use ($client, $fakeHttpClient): void {
     $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
-    $flowConfig = FlowConfig::createHosted('https://example.com/done');
+    $flow = new HostedFlow('https://example.com/done');
     $customer = SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS);
-    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, customer: $customer);
+    $client->createHostedCheckoutSessionForSinglePayment($flow, $items, customer: $customer);
     $params = $fakeHttpClient->takeLastRequest()->getParams();
     SmokeTest::assertSame('always', $params['customer_creation'], "creation without an email");
     assert(!isset($params['customer']) && !isset($params['customer_email']), "a customer was sent");
 
     $customer = SinglePaymentCheckoutCustomer::existing('cus_123');
-    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, customer: $customer);
+    $client->createHostedCheckoutSessionForSinglePayment($flow, $items, customer: $customer);
     $params = $fakeHttpClient->takeLastRequest()->getParams();
     SmokeTest::assertSame('cus_123', $params['customer'], "an existing customer");
     assert(!isset($params['customer_creation']), "customer creation was sent with an existing customer");
@@ -301,14 +315,14 @@ $smoke->run("checkout customers", function () use ($client, $fakeHttpClient): vo
     SmokeTest::expectException(ExceptionInvalidValue::class, $subscriberEmailIsCustomerId, "email address");
 });
 
-$smoke->run("createCheckoutSessionForSubscription", function () use ($client, $fakeHttpClient): void {
+$smoke->run("createEmbeddedCheckoutSessionForSubscription", function () use ($client, $fakeHttpClient): void {
     $recurring = new RecurringConfig(RecurringInterval::MONTH, 1);
     $price = PriceDataForSubscriptionCheckoutSession::forProduct(Currency::GBP, 999, 'prod_123', $recurring);
     $items = new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::forPriceData($price, 1));
     $subscriptionData = new SubscriptionData(transferData: new SubscriptionTransferData('acct_1', 10));
 
-    $client->createCheckoutSessionForSubscription(
-        FlowConfig::createEmbedded('https://example.com/return'),
+    $session = $client->createEmbeddedCheckoutSessionForSubscription(
+        new EmbeddedFlow('https://example.com/return'),
         $items,
         subscriptionData: $subscriptionData,
         customer: SubscriptionCheckoutCustomer::withEmail('jo@example.com'),
@@ -317,10 +331,16 @@ $smoke->run("createCheckoutSessionForSubscription", function () use ($client, $f
     $params = $fakeHttpClient->takeLastRequest()->getParams();
     SmokeTest::assertSame('subscription', $params['mode'], "mode");
     SmokeTest::assertSame('embedded', $params['ui_mode'], "UI mode");
+    SmokeTest::assertSame('https://example.com/return', $params['return_url'], "return URL");
+    SmokeTest::assertSame('always', $params['redirect_on_completion'], "redirect on completion");
+    assert(!isset($params['success_url']) && !isset($params['cancel_url']), "a hosted flow's URL was sent");
+    SmokeTest::assertSame('redacted_client_secret', $session->getClientSecret(), "client secret");
     SmokeTest::assertSame('jo@example.com', $params['customer_email'], "customer email");
-    SmokeTest::assertSame('prod_123', $params['line_items'][0]['price_data']['product'], "product");
+    $product = SmokeTest::getNested($params, 'line_items', 0, 'price_data', 'product');
+    SmokeTest::assertSame('prod_123', $product, "product");
     $expectedTransfer = ['destination' => 'acct_1', 'amount_percent' => 10.0];
-    SmokeTest::assertSame($expectedTransfer, $params['subscription_data']['transfer_data'], "transfer data");
+    $transferData = SmokeTest::getNested($params, 'subscription_data', 'transfer_data');
+    SmokeTest::assertSame($expectedTransfer, $transferData, "transfer data");
 });
 
 $smoke->run("createSubscription", function () use ($client, $fakeHttpClient): void {
@@ -398,8 +418,8 @@ $smoke->run("idempotency keys are sent, and checked", function () use ($client, 
     $client->createCustomer(email: 'jo@example.com');
     assert(!$fakeHttpClient->takeLastRequest()->hasHeader('Idempotency-Key'), "a key was sent when none was given");
     $items = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPrice('price_123', 1));
-    $flowConfig = FlowConfig::createHosted('https://example.com/done');
-    $client->createCheckoutSessionForSinglePayment($flowConfig, $items, idempotencyKey: 'basket-7');
+    $flow = new HostedFlow('https://example.com/done');
+    $client->createHostedCheckoutSessionForSinglePayment($flow, $items, idempotencyKey: 'basket-7');
     SmokeTest::assertSame('basket-7', $fakeHttpClient->takeLastRequest()->getHeader('Idempotency-Key'), "checkout");
 
     $useEmptyKey = function () use ($client): void {
@@ -541,9 +561,11 @@ $smoke->run("listInvoicesWithPayments includes the payments, and Invoice can fet
     SmokeTest::assertSame(1998, $payment->getAmountPaid()?->getAmount(), "the amount paid");
 
     $invoice = $client->retrieveInvoice('in_123');
+    $recordedPayments = $withPayments['payments'] ?? null;
+    assert(is_array($recordedPayments) && isset($recordedPayments['data']), "the recorded invoice has no payments");
 
     $fakeHttpClient->queueResponse(
-        ['object' => 'list', 'data' => $withPayments['payments']['data'], 'has_more' => false, 'url' => '/']
+        ['object' => 'list', 'data' => $recordedPayments['data'], 'has_more' => false, 'url' => '/']
     );
 
     $fetched = $invoice->fetchPayments();
@@ -585,4 +607,145 @@ $smoke->run("the payment models read what Stripe sent", function () use ($client
     $card = $client->listCustomerPaymentMethods('cus_123')->first();
     assert($card->hasType(PaymentMethodType::CARD), "the payment method isn't a card");
     SmokeTest::assertSame('4242', $card->getCard()?->getLast4(), "the card's last 4 digits");
+});
+
+$smoke->run("the retrieve methods ask for the object by its ID", function () use ($client, $fakeHttpClient): void {
+    $client->retrievePaymentIntent('pi_123');
+    SmokeTest::assertSame('/v1/payment_intents/pi_123', $fakeHttpClient->takeLastRequest()->getPath(), "intent");
+    $client->retrieveCharge('ch_123');
+    SmokeTest::assertSame('/v1/charges/ch_123', $fakeHttpClient->takeLastRequest()->getPath(), "charge");
+    $client->retrieveRefund('re_123');
+    SmokeTest::assertSame('/v1/refunds/re_123', $fakeHttpClient->takeLastRequest()->getPath(), "refund");
+    $paymentMethod = $client->retrievePaymentMethod('pm_123');
+    SmokeTest::assertSame('/v1/payment_methods/pm_123', $fakeHttpClient->takeLastRequest()->getPath(), "method");
+    assert($paymentMethod->hasType(PaymentMethodType::CARD), "the payment method isn't a card");
+});
+
+$smoke->run("the fetch methods ask Stripe for the related objects", function () use ($client, $fakeHttpClient): void {
+    $takeLastPath = function () use ($fakeHttpClient): string {
+        return $fakeHttpClient->takeLastRequest()->getPath();
+    };
+
+    $subscription = $client->retrieveSubscription('sub_123');
+    $subscription->fetchLatestInvoice();
+    SmokeTest::assertSame('/v1/invoices/' . $subscription->getLatestInvoiceId(), $takeLastPath(), "latest invoice");
+    $subscription->fetchDefaultPaymentMethod();
+    $defaultPaymentMethodPath = '/v1/payment_methods/' . $subscription->getDefaultPaymentMethodId();
+    SmokeTest::assertSame($defaultPaymentMethodPath, $takeLastPath(), "default payment method");
+
+    $paymentIntent = $client->retrievePaymentIntent('pi_123');
+    $paymentIntent->fetchLatestCharge();
+    SmokeTest::assertSame('/v1/charges/' . $paymentIntent->getLatestChargeId(), $takeLastPath(), "latest charge");
+    $paymentIntent->fetchPaymentMethod();
+    SmokeTest::assertSame('/v1/payment_methods/' . $paymentIntent->getPaymentMethodId(), $takeLastPath(), "method");
+    $paymentIntent->fetchCharges();
+    $intentFilter = ['payment_intent' => $paymentIntent->getId(), 'limit' => 100];
+    SmokeTest::assertSame($intentFilter, $fakeHttpClient->takeLastRequest()->getParams(), "the intent's charges");
+    $paymentIntent->fetchRefunds();
+    $request = $fakeHttpClient->takeLastRequest();
+    SmokeTest::assertSame('/v1/refunds', $request->getPath(), "the intent's refunds");
+    SmokeTest::assertSame($intentFilter, $request->getParams(), "the intent's refunds' filter");
+
+    $charge = $client->retrieveCharge('ch_123');
+    $charge->fetchCustomer();
+    SmokeTest::assertSame('/v1/customers/' . $charge->getCustomerId(), $takeLastPath(), "the charge's customer");
+    $charge->fetchPaymentIntent();
+    SmokeTest::assertSame('/v1/payment_intents/' . $charge->getPaymentIntentId(), $takeLastPath(), "the intent");
+    $charge->fetchPaymentMethod();
+    SmokeTest::assertSame('/v1/payment_methods/' . $charge->getPaymentMethodId(), $takeLastPath(), "the method");
+    $charge->fetchRefunds();
+    $chargeFilter = ['charge' => $charge->getId(), 'limit' => 100];
+    SmokeTest::assertSame($chargeFilter, $fakeHttpClient->takeLastRequest()->getParams(), "the charge's refunds");
+
+    $refund = $client->retrieveRefund('re_123');
+    $refund->fetchCharge();
+    SmokeTest::assertSame('/v1/charges/' . $refund->getChargeId(), $takeLastPath(), "the refund's charge");
+    $refund->fetchPaymentIntent();
+    SmokeTest::assertSame('/v1/payment_intents/' . $refund->getPaymentIntentId(), $takeLastPath(), "its intent");
+
+    $customer = $client->retrieveCustomer('cus_123');
+    $customer->fetchSubscriptions();
+    $everySubscription = ['customer' => $customer->getId(), 'status' => 'all', 'limit' => 100];
+    SmokeTest::assertSame($everySubscription, $fakeHttpClient->takeLastRequest()->getParams(), "subscriptions");
+    $customer->fetchPaymentMethods();
+    $customerPaymentMethodsPath = '/v1/customers/' . $customer->getId() . '/payment_methods';
+    SmokeTest::assertSame($customerPaymentMethodsPath, $takeLastPath(), "the customer's payment methods");
+
+    $withPayments = FakeStripeHttpClient::loadFixture('invoice-with-payments');
+    $fakeHttpClient->queueResponse(['object' => 'list', 'data' => [$withPayments], 'has_more' => false, 'url' => '/']);
+    $payment = $client->listInvoicesWithPayments()->first()->getPayments()->first();
+    $payment->fetchInvoice();
+    SmokeTest::assertSame('/v1/invoices/' . $payment->getInvoiceId(), $takeLastPath(), "the payment's invoice");
+    $payment->fetchPaymentIntent();
+    SmokeTest::assertSame('/v1/payment_intents/' . $payment->getPaymentIntentId(), $takeLastPath(), "its intent");
+
+    # The recorded session is still open, so it has neither yet.
+    $session = $client->retrieveCheckoutSession('cs_123');
+
+    $fetchPaymentIntent = function () use ($session): void {
+        $session->fetchPaymentIntent();
+    };
+
+    SmokeTest::expectException(ExceptionNoRelatedObject::class, $fetchPaymentIntent, "no payment intent");
+
+    $fetchInvoice = function () use ($session): void {
+        $session->fetchInvoice();
+    };
+
+    SmokeTest::expectException(ExceptionNoRelatedObject::class, $fetchInvoice, "no invoice");
+});
+
+$smoke->run("a new session is certain to have its URL or client secret", function () use (
+    $client,
+    $fakeHttpClient
+): void {
+    $hostedSession = $client->retrieveCheckoutSession('cs_123');
+    $hosted = new NewHostedCheckoutSession($hostedSession);
+    SmokeTest::assertSame($hostedSession->getUrl(), $hosted->getUrl(), "the URL");
+
+    $wrapHostedAsEmbedded = function () use ($hostedSession): void {
+        new NewEmbeddedCheckoutSession($hostedSession);
+    };
+
+    SmokeTest::expectException(ExceptionUnexpectedResponse::class, $wrapHostedAsEmbedded, "no client secret");
+    $fakeHttpClient->queueResponse(FakeStripeHttpClient::loadFixture('checkout-session-embedded'));
+    $embeddedSession = $client->retrieveCheckoutSession('cs_123');
+
+    $wrapEmbeddedAsHosted = function () use ($embeddedSession): void {
+        new NewHostedCheckoutSession($embeddedSession);
+    };
+
+    SmokeTest::expectException(ExceptionUnexpectedResponse::class, $wrapEmbeddedAsHosted, "no URL");
+});
+
+$smoke->run("only a completed session can be a CompletedCheckoutSession", function () use (
+    $client,
+    $fakeHttpClient
+): void {
+    $openSession = $client->retrieveCheckoutSession('cs_123');
+
+    $completeOpenSession = function () use ($openSession): void {
+        $openSession->toCompleted();
+    };
+
+    SmokeTest::expectException(ExceptionWrongStatus::class, $completeOpenSession, "is open");
+
+    # Stripe empties the URL once a session is completed.
+    $completed = FakeStripeHttpClient::loadFixture('checkout-session-hosted');
+    $completed['status'] = 'complete';
+    $completed['url'] = null;
+    $fakeHttpClient->queueResponse($completed);
+    $completedSession = $client->retrieveCheckoutSession('cs_123')->toCompleted();
+    SmokeTest::assertSame('jo@example.com', $completedSession->getCustomerDetails()->getEmail(), "the email");
+    SmokeTest::assertSame(null, $completedSession->getSession()->getUrl(), "the emptied URL");
+
+    $completed['customer_details'] = null;
+    $fakeHttpClient->queueResponse($completed);
+    $sessionWithoutDetails = $client->retrieveCheckoutSession('cs_123');
+
+    $completeWithoutDetails = function () use ($sessionWithoutDetails): void {
+        $sessionWithoutDetails->toCompleted();
+    };
+
+    SmokeTest::expectException(ExceptionUnexpectedResponse::class, $completeWithoutDetails, "no customer details");
 });

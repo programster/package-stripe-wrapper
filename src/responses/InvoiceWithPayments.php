@@ -62,7 +62,8 @@ final readonly class InvoiceWithPayments
     ): InvoiceWithPayments
     {
         $invoice = Invoice::createFromStripeObject($object, $client);
-        return new InvoiceWithPayments(new ResponseFields($object->toArray(), "invoice {$invoice->getId()}"), $client);
+        $fields = ResponseFields::createFromArray($object->toArray(), "invoice {$invoice->getId()}");
+        return new InvoiceWithPayments($fields, $client);
     }
 
 

@@ -34,7 +34,7 @@ final readonly class CustomerTaxIdData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{type: string, value: string}
      */
     public function toArray() : array
     {

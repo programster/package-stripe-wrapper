@@ -12,6 +12,17 @@ use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type InvoiceDataArray array{
+ *     account_tax_ids?: list<string>,
+ *     custom_fields?: list<array{name: string, value: string}>,
+ *     description?: string,
+ *     footer?: string,
+ *     issuer?: array{type: string, account?: string},
+ *     metadata?: array<string, string>,
+ *     rendering_options?: array{amount_tax_display?: string, template_id?: string}
+ * }
+ */
 final readonly class InvoiceData implements Arrayable
 {
     private ?StringCollection $m_accountTaxIds;
@@ -66,7 +77,7 @@ final readonly class InvoiceData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return InvoiceDataArray
      */
     public function toArray() : array
     {

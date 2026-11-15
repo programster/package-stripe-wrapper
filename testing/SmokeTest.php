@@ -170,6 +170,39 @@ final class SmokeTest
     }
 
 
+    /**
+     * Get a value from inside nested arrays, such as a request's parameters, by the key at each level, failing the
+     * test if any of them isn't there.
+     *
+     * @param array<mixed> $array - the outermost array.
+     *
+     * @param int|string ...$keys - the key at each level, outermost first.
+     *
+     * @return mixed - the value at the end of the keys.
+     *
+     * @throws \AssertionError - if a key isn't there, or the value before it isn't an array.
+     */
+    public static function getNested(array $array, int|string ...$keys): mixed
+    {
+        $value = $array;
+        $path = '';
+
+        foreach ($keys as $key)
+        {
+            $path .= "[{$key}]";
+
+            if (!is_array($value) || !array_key_exists($key, $value))
+            {
+                throw new \AssertionError("There's nothing at {$path}.");
+            }
+
+            $value = $value[$key];
+        }
+
+        return $value;
+    }
+
+
     # Accessors
     public function getNumPassed(): int { return $this->m_numPassed; }
     public function getFailures(): array { return $this->m_failures; }

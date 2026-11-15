@@ -14,11 +14,24 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type PriceDataForSubscriptionCheckoutSessionArray from PriceDataForSubscriptionCheckoutSession
+ *
+ * @phpstan-type SubscriptionCheckoutLineItemArray array{
+ *     quantity: int,
+ *     adjustable_quantity?: array{enabled: true, minimum: int, maximum: int},
+ *     dynamic_tax_rates?: list<string>,
+ *     tax_rates?: list<string>,
+ *     price?: string,
+ *     price_data?: PriceDataForSubscriptionCheckoutSessionArray
+ * }
+ * @phpstan-type PriceParams array{price: string}|array{price_data: PriceDataForSubscriptionCheckoutSessionArray}
+ */
 final readonly class SubscriptionCheckoutLineItem implements Arrayable
 {
     private int $m_quantity;
 
-    /** @var array<string, mixed> */
+    /** @var PriceParams */
     private array $m_priceParams;
 
     private ?AdjustableQuantityConfig $m_adjustableQuantityConfig;
@@ -30,7 +43,7 @@ final readonly class SubscriptionCheckoutLineItem implements Arrayable
      *
      * @param int $quantity - the number of this item to be purchased.
      *
-     * @param array<string, mixed> $priceParams - the line item's parameters for the price.
+     * @param PriceParams $priceParams - the line item's parameters for the price.
      *
      * @param AdjustableQuantityConfig|null $adjustableQuantityConfig - whether the customer can change the quantity.
      *
@@ -107,7 +120,7 @@ final readonly class SubscriptionCheckoutLineItem implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return SubscriptionCheckoutLineItemArray
      */
     public function toArray() : array
     {
@@ -122,11 +135,11 @@ final readonly class SubscriptionCheckoutLineItem implements Arrayable
         {
             if ($this->m_taxRates->getIsDynamic())
             {
-                $arrayForm['dynamic_tax_rates'] = $this->m_taxRates->getTaxRates();
+                $arrayForm['dynamic_tax_rates'] = $this->m_taxRates->toStripeArrayForm();
             }
             else
             {
-                $arrayForm['tax_rates'] = $this->m_taxRates->getTaxRates();
+                $arrayForm['tax_rates'] = $this->m_taxRates->toStripeArrayForm();
             }
         }
 

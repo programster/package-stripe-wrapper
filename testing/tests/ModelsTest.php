@@ -26,6 +26,7 @@ use Programster\Stripe\Enums\ProrationDiscountConfig;
 use Programster\Stripe\Enums\RecurringInterval;
 use Programster\Stripe\Enums\ShippingCountryCode;
 use Programster\Stripe\Enums\SubscriptionStatus;
+use Programster\Stripe\Enums\TaxIdCollection;
 use Programster\Stripe\Enums\Updateable;
 use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
 use Programster\Stripe\Exceptions\ExceptionDuplicateKey;
@@ -72,7 +73,6 @@ use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
-use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TaxRates;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\PaymentTransferData;
@@ -131,13 +131,15 @@ $smoke->run("BillingThresholds", function (): void {
     SmokeTest::assertSame("", (new BillingThresholds(null))->toStripeForm(), "removed");
 });
 
-$smoke->run("ConsentConfig, CustomerUpdateConfig, TaxIdCollectionConfig", function (): void {
+$smoke->run("ConsentConfig, CustomerUpdateConfig, TaxIdCollection", function (): void {
     $consent = (new ConsentConfig(true, hidePromotionsConsent: true))->toArray();
     SmokeTest::assertSame(['terms_of_service' => 'required', 'promotions' => 'none'], $consent, "consent");
     $update = (new CustomerUpdateConfig(address: Updateable::AUTO))->toArray();
     SmokeTest::assertSame(['address' => 'auto', 'name' => 'never', 'shipping' => 'never'], $update, "update");
-    $taxId = (new TaxIdCollectionConfig(true, true))->toArray();
-    SmokeTest::assertSame(['enabled' => true, 'required' => 'if_supported'], $taxId, "tax ID collection");
+    $required = TaxIdCollection::REQUIRED_WHERE_SUPPORTED->toStripeArrayForm();
+    SmokeTest::assertSame(['enabled' => true, 'required' => 'if_supported'], $required, "required tax ID");
+    $optional = TaxIdCollection::OPTIONAL->toStripeArrayForm();
+    SmokeTest::assertSame(['enabled' => true, 'required' => 'never'], $optional, "optional tax ID");
 });
 
 $smoke->run("CustomTextOptions sends each message under its own name", function (): void {
@@ -172,17 +174,17 @@ $smoke->run("FieldType", function (): void {
     $red = new DropdownOption('Red', 'red');
     $blue = new DropdownOption('Blue', 'blue');
     $dropdown = FieldType::createDropdown($red, $blue)->toArray();
-    SmokeTest::assertSame('red', $dropdown['dropdown']['default_value'], "default");
-    SmokeTest::assertSame(2, count($dropdown['dropdown']['options']), "options");
+    SmokeTest::assertSame('red', $dropdown['dropdown']['default_value'] ?? null, "default");
+    SmokeTest::assertSame(2, count($dropdown['dropdown']['options'] ?? []), "options");
     $noDefault = FieldType::createDropdown(null, $blue)->toArray();
     assert(!isset($noDefault['dropdown']['default_value']), "an absent default was sent");
     $text = FieldType::createText('', 1, 20)->toArray();
     $expectedText = ['minimum_length' => 1, 'maximum_length' => 20];
-    SmokeTest::assertSame($expectedText, $text['text'], "an empty default isn't sent");
+    SmokeTest::assertSame($expectedText, $text['text'] ?? null, "an empty default isn't sent");
     $textWithDefault = FieldType::createText('Hi', 1, 20)->toArray();
-    SmokeTest::assertSame('Hi', $textWithDefault['text']['default_value'], "default");
+    SmokeTest::assertSame('Hi', $textWithDefault['text']['default_value'] ?? null, "default");
     $numeric = FieldType::createNumeric('', 1, 20)->toArray();
-    SmokeTest::assertSame(20, $numeric['numeric']['maximum_length'], "numeric");
+    SmokeTest::assertSame(20, $numeric['numeric']['maximum_length'] ?? null, "numeric");
 
     $createWithDuplicateDefault = function () use ($red): void {
         FieldType::createDropdown($red, new DropdownOption('Also red', 'red'));
@@ -203,9 +205,11 @@ $smoke->run("InvoiceCreation, InvoiceData, InvoiceRenderingOptions", function ()
     $customFields = new InvoiceCustomFieldCollection(new InvoiceCustomField('PO', '123'));
     $data = new InvoiceData(customFields: $customFields, metadata: $metadata, renderingOptions: $rendering);
     $creation = InvoiceCreation::createEnabled($data)->toArray();
-    SmokeTest::assertSame(['ref' => '1'], $creation['invoice_data']['metadata'], "metadata");
-    SmokeTest::assertSame(['template_id' => 'inrtem_1'], $creation['invoice_data']['rendering_options'], "rendering");
-    SmokeTest::assertSame([['name' => 'PO', 'value' => '123']], $creation['invoice_data']['custom_fields'], "fields");
+    SmokeTest::assertSame(['ref' => '1'], $creation['invoice_data']['metadata'] ?? null, "metadata");
+    $renderingOptions = $creation['invoice_data']['rendering_options'] ?? null;
+    SmokeTest::assertSame(['template_id' => 'inrtem_1'], $renderingOptions, "rendering");
+    $customFields = $creation['invoice_data']['custom_fields'] ?? null;
+    SmokeTest::assertSame([['name' => 'PO', 'value' => '123']], $customFields, "fields");
     SmokeTest::assertSame(['enabled' => false], InvoiceCreation::createDisabled()->toArray(), "disabled");
     $issuer = (new InvoiceSettings(AccountReference::createSelf()))->toArray();
     SmokeTest::assertSame(['issuer' => ['type' => 'self']], $issuer, "invoice settings");
@@ -262,9 +266,10 @@ $smoke->run("PaymentIntentData", function (): void {
 
     $array = $data->toArray();
     SmokeTest::assertSame('automatic_async', $array['capture_method'], "capture method");
-    SmokeTest::assertSame('on_session', $array['setup_future_usage'], "setup future usage");
-    SmokeTest::assertSame('DHL', $array['shipping']['carrier'], "carrier");
-    SmokeTest::assertSame(['destination' => 'acct_1', 'amount' => 900], $array['transfer_data'], "transfer data");
+    SmokeTest::assertSame('on_session', $array['setup_future_usage'] ?? null, "setup future usage");
+    SmokeTest::assertSame('DHL', $array['shipping']['carrier'] ?? null, "carrier");
+    $transferData = $array['transfer_data'] ?? null;
+    SmokeTest::assertSame(['destination' => 'acct_1', 'amount' => 900], $transferData, "transfer data");
 });
 
 $smoke->run("PaymentSettings sends Stripe's values for saving the payment method", function (): void {
@@ -279,7 +284,7 @@ $smoke->run("PaymentSettings sends Stripe's values for saving the payment method
 $smoke->run("ProductData checks its images", function (): void {
     $images = new StringCollection('https://example.com/a.png');
     $product = (new ProductData('Shirt', images: $images))->toArray();
-    SmokeTest::assertSame(['https://example.com/a.png'], $product['images'], "images");
+    SmokeTest::assertSame(['https://example.com/a.png'], $product['images'] ?? null, "images");
 
     $createWithBadUrl = function (): void {
         new ProductData('Shirt', images: new StringCollection('not a url'));
@@ -331,8 +336,8 @@ $smoke->run("SubscriptionInvoiceItem", function (): void {
     $price = new PriceDataForInvoiceItem(Currency::GBP, 'prod_1', 300);
     $item = SubscriptionInvoiceItem::forPriceData($price, 2, taxRates: new StringCollection('txr_1'));
     $array = (new SubscriptionInvoiceItemCollection($item))->toStripeArrayForm()[0];
-    SmokeTest::assertSame(300, $array['price_data']['unit_amount'], "unit amount");
-    SmokeTest::assertSame(['txr_1'], $array['tax_rates'], "tax rates");
+    SmokeTest::assertSame(300, $array['price_data']['unit_amount'] ?? null, "unit amount");
+    SmokeTest::assertSame(['txr_1'], $array['tax_rates'] ?? null, "tax rates");
     $existing = SubscriptionInvoiceItem::forPrice('price_1', 1)->toArray();
     SmokeTest::assertSame(['quantity' => 1, 'price' => 'price_1'], $existing, "an existing price");
 });
@@ -377,8 +382,8 @@ $smoke->run("SubscriptionData rejects a proration behaviour without a billing cy
     $none = ProrationBehavior::NONE;
     $anchor = new DateTimeImmutable('@1000');
     $withAnchor = (new SubscriptionData(billingCycleAnchor: $anchor, prorationBehavior: $none))->toArray();
-    SmokeTest::assertSame('none', $withAnchor['proration_behavior'], "proration behaviour");
-    SmokeTest::assertSame(1000, $withAnchor['billing_cycle_anchor'], "anchor");
+    SmokeTest::assertSame('none', $withAnchor['proration_behavior'] ?? null, "proration behaviour");
+    SmokeTest::assertSame(1000, $withAnchor['billing_cycle_anchor'] ?? null, "anchor");
 });
 
 $smoke->run("trial configs", function (): void {
@@ -459,16 +464,16 @@ $smoke->run("transfer data for a payment and a subscription", function (): void 
 $smoke->run("line items and prices take an ID or inline data, and reject the wrong kind of ID", function (): void {
     $product = new ProductData('Shirt');
     $inline = PriceDataForSinglePayment::forProductData(Currency::GBP, 100, $product)->toArray();
-    SmokeTest::assertSame(['name' => 'Shirt'], $inline['product_data'], "inline product");
+    SmokeTest::assertSame(['name' => 'Shirt'], $inline['product_data'] ?? null, "inline product");
     $existing = PriceDataForSinglePayment::forProduct(Currency::GBP, 100, 'my-shirt')->toArray();
-    SmokeTest::assertSame('my-shirt', $existing['product'], "a product ID of your own");
+    SmokeTest::assertSame('my-shirt', $existing['product'] ?? null, "a product ID of your own");
     $item = SinglePaymentLineItem::forPrice('price_1', 2)->toArray();
     SmokeTest::assertSame(['quantity' => 2, 'price' => 'price_1'], $item, "an existing price");
     $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
     $checkoutPrice = PriceDataForSubscriptionCheckoutSession::forProductData(Currency::GBP, 100, $product, $monthly);
     $checkoutItem = SubscriptionCheckoutLineItem::forPriceData($checkoutPrice, 1)->toArray();
     $expectedRecurring = ['interval' => 'month', 'interval_count' => 1];
-    SmokeTest::assertSame($expectedRecurring, $checkoutItem['price_data']['recurring'], "recurring");
+    SmokeTest::assertSame($expectedRecurring, $checkoutItem['price_data']['recurring'] ?? null, "recurring");
 
     $priceAsProductForCheckout = function (): void {
         PriceDataForSubscriptionCheckoutSession::forProduct(Currency::GBP, 100, 'price_1');

@@ -12,6 +12,7 @@ use Programster\Stripe\Models\CustomField;
 
 /**
  * @extends AbstractReadonlyCollection<CustomField>
+ * @phpstan-import-type CustomFieldArray from CustomField
  */
 final readonly class CustomFieldCollection extends AbstractReadonlyCollection
 {
@@ -23,7 +24,7 @@ final readonly class CustomFieldCollection extends AbstractReadonlyCollection
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<CustomFieldArray>
      */
     public function toStripeArrayForm() : array
     {

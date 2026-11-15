@@ -37,7 +37,7 @@ final readonly class CustomerTaxConfig implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{ip_address?: string, validate_location?: string}
      */
     public function toArray() : array
     {

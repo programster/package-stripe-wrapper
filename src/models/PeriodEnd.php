@@ -50,7 +50,7 @@ final readonly class PeriodEnd implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{type: string, timestamp?: int}
      */
     public function toArray() : array
     {

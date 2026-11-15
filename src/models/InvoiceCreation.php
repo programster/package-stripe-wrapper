@@ -9,6 +9,9 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type InvoiceDataArray from InvoiceData
+ */
 final readonly class InvoiceCreation implements Arrayable
 {
     private bool $m_enabled;
@@ -54,7 +57,7 @@ final readonly class InvoiceCreation implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{enabled: bool, invoice_data?: InvoiceDataArray}
      */
     public function toArray() : array
     {

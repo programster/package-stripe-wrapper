@@ -60,7 +60,7 @@ final readonly class PeriodStart implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{type: string, timestamp?: int}
      */
     public function toArray() : array
     {

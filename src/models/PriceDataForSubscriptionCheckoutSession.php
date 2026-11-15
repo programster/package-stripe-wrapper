@@ -15,12 +15,27 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type ProductDataArray from ProductData
+ *
+ * @phpstan-import-type RecurringArray from RecurringConfig
+ *
+ * @phpstan-type PriceDataForSubscriptionCheckoutSessionArray array{
+ *     currency: string,
+ *     unit_amount: int,
+ *     product?: string,
+ *     product_data?: ProductDataArray,
+ *     recurring?: RecurringArray,
+ *     tax_behavior?: string
+ * }
+ * @phpstan-type ProductParams array{product: string}|array{product_data: ProductDataArray}
+ */
 final readonly class PriceDataForSubscriptionCheckoutSession implements Arrayable
 {
     private Currency $m_currency;
     private int $m_unitAmount;
 
-    /** @var array<string, mixed> */
+    /** @var ProductParams */
     private array $m_productParams;
 
     private ?RecurringConfig $m_recurring;
@@ -34,7 +49,7 @@ final readonly class PriceDataForSubscriptionCheckoutSession implements Arrayabl
      *
      * @param int $unitAmount
      *
-     * @param array<string, mixed> $productParams - the price's parameters for the product.
+     * @param ProductParams $productParams - the price's parameters for the product.
      *
      * @param RecurringConfig|null $recurring
      *
@@ -129,7 +144,7 @@ final readonly class PriceDataForSubscriptionCheckoutSession implements Arrayabl
 
 
     /**
-     * @return array<string, mixed>
+     * @return PriceDataForSubscriptionCheckoutSessionArray
      */
     public function toArray() : array
     {

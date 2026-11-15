@@ -11,9 +11,36 @@ use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * The payment method options take the shape the Stripe SDK declares for them.
+ * @phpstan-type PaymentMethodOptionsArray array{
+ *     acss_debit?: null|array{mandate_options?: array{transaction_type?: string}, verification_method?: string},
+ *     bancontact?: null|array{preferred_language?: string},
+ *     card?: null|array{
+ *         mandate_options?: array{amount?: int, amount_type?: string, description?: string},
+ *         network?: string,
+ *         request_three_d_secure?: string
+ *     },
+ *     customer_balance?: null|array{
+ *         bank_transfer?: array{eu_bank_transfer?: array{country: string}, type?: string},
+ *         funding_type?: string
+ *     },
+ *     konbini?: null|array{},
+ *     payto?: null|array{mandate_options?: array{amount?: int, purpose?: string}},
+ *     sepa_debit?: null|array{},
+ *     us_bank_account?: null|array{
+ *         financial_connections?: array{
+ *             filters?: array{account_subcategories?: string[]},
+ *             permissions?: string[],
+ *             prefetch?: string[]
+ *         },
+ *         verification_method?: string
+ *     }
+ * }
+ */
 final readonly class PaymentSettings implements Arrayable
 {
-    /** @var array<string, mixed>|null */
+    /** @var PaymentMethodOptionsArray|null */
     private ?array $m_paymentMethodOptions;
     private ?PaymentMethodTypeCollection $m_paymentMethodTypes;
     private ?bool $m_saveDefaultPaymentMethod;
@@ -22,8 +49,8 @@ final readonly class PaymentSettings implements Arrayable
     /**
      * Payment settings to pass to invoices created by the subscription.
      *
-     * @param array<string, mixed>|null $paymentMethodOptions - Payment-method-specific configuration to provide to
-     * invoices created by the subscription, in the array form Stripe takes.
+     * @param PaymentMethodOptionsArray|null $paymentMethodOptions - Payment-method-specific configuration to provide
+     * to invoices created by the subscription, in the array form Stripe takes.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-payment_settings-payment_method_options
      *
      * @param PaymentMethodTypeCollection|null $paymentMethodTypes - The list of payment method types (e.g. card) to
@@ -49,7 +76,11 @@ final readonly class PaymentSettings implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     payment_method_options?: PaymentMethodOptionsArray,
+     *     payment_method_types?: list<string>,
+     *     save_default_payment_method?: string
+     * }
      */
     public function toArray() : array
     {

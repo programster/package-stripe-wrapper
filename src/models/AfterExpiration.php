@@ -11,6 +11,9 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type AfterExpirationArray array{recovery: array{enabled: bool, allow_promotion_codes?: bool}}
+ */
 final readonly class AfterExpiration implements Arrayable
 {
     private readonly bool $m_enabled;
@@ -51,7 +54,7 @@ final readonly class AfterExpiration implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return AfterExpirationArray
      */
     public function toArray() : array
     {

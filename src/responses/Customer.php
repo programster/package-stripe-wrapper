@@ -9,10 +9,13 @@ namespace Programster\Stripe\Responses;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\StringCollection;
+use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
+use Stripe\Exception\ApiErrorException;
 
 final readonly class Customer extends AbstractResponse
 {
@@ -68,6 +71,32 @@ final readonly class Customer extends AbstractResponse
         $this->m_invoicePrefix = $fields->getOptionalString('invoice_prefix');
         $this->m_livemode = $fields->getBool('livemode');
         $this->m_testClockId = $fields->getOptionalId('test_clock');
+    }
+
+
+    /**
+     * Ask Stripe for the customer's saved payment methods, all of them.
+     * @return PaymentMethodCollection
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentMethods(): PaymentMethodCollection
+    {
+        return $this->m_client->listCustomerPaymentMethods($this->getId(), limit: ResultLimit::all());
+    }
+
+
+    /**
+     * Ask Stripe for the customer's subscriptions, whatever their status (including cancelled ones), all of them.
+     * @return SubscriptionCollection
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchSubscriptions(): SubscriptionCollection
+    {
+        return $this->m_client->listSubscriptions(
+            customerId: $this->getId(),
+            subscriptionStatus: SubscriptionStatus::ALL,
+            limit: ResultLimit::all()
+        );
     }
 
 

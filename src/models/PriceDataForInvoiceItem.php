@@ -14,6 +14,14 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-type PriceDataForInvoiceItemArray array{
+ *     currency: string,
+ *     product: string,
+ *     unit_amount: int,
+ *     tax_behavior?: string
+ * }
+ */
 final readonly class PriceDataForInvoiceItem implements Arrayable
 {
     private Currency $m_currency;
@@ -55,7 +63,7 @@ final readonly class PriceDataForInvoiceItem implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return PriceDataForInvoiceItemArray
      */
     public function toArray() : array
     {

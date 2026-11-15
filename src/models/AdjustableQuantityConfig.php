@@ -37,7 +37,7 @@ final readonly class AdjustableQuantityConfig implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{enabled: true, minimum: int, maximum: int}
      */
     public function toArray() : array
     {

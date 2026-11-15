@@ -9,9 +9,13 @@ namespace Programster\Stripe\Responses;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Enums\ChargeStatus;
+use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
+use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
+use Stripe\Exception\ApiErrorException;
 
 final readonly class Charge extends AbstractResponse
 {
@@ -85,6 +89,69 @@ final readonly class Charge extends AbstractResponse
     public function isSucceeded(): bool
     {
         return $this->hasStatus(ChargeStatus::SUCCEEDED);
+    }
+
+
+    /**
+     * Ask Stripe for the charge's customer.
+     * @return Customer
+     * @throws ExceptionNoRelatedObject - if the charge has no customer. Check getCustomerId() first.
+     * @throws ExceptionCustomerDeleted - if the customer has since been deleted.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchCustomer(): Customer
+    {
+        if ($this->m_customerId === null)
+        {
+            throw new ExceptionNoRelatedObject("Charge {$this->getId()} has no customer.");
+        }
+
+        return $this->m_client->retrieveCustomer($this->m_customerId);
+    }
+
+
+    /**
+     * Ask Stripe for the charge's payment intent.
+     * @return PaymentIntent
+     * @throws ExceptionNoRelatedObject - if the charge has no payment intent. Check getPaymentIntentId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentIntent(): PaymentIntent
+    {
+        if ($this->m_paymentIntentId === null)
+        {
+            throw new ExceptionNoRelatedObject("Charge {$this->getId()} has no payment intent.");
+        }
+
+        return $this->m_client->retrievePaymentIntent($this->m_paymentIntentId);
+    }
+
+
+    /**
+     * Ask Stripe for the charge's payment method.
+     * @return PaymentMethod
+     * @throws ExceptionNoRelatedObject - if the charge has no payment method. Check getPaymentMethodId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentMethod(): PaymentMethod
+    {
+        if ($this->m_paymentMethodId === null)
+        {
+            throw new ExceptionNoRelatedObject("Charge {$this->getId()} has no payment method.");
+        }
+
+        return $this->m_client->retrievePaymentMethod($this->m_paymentMethodId);
+    }
+
+
+    /**
+     * Ask Stripe for the charge's refunds, all of them.
+     * @return RefundCollection
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchRefunds(): RefundCollection
+    {
+        return $this->m_client->listRefunds(chargeId: $this->getId(), limit: ResultLimit::all());
     }
 
 

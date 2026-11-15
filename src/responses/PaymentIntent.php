@@ -13,6 +13,7 @@ use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
+use Programster\Stripe\Models\ResultLimit;
 use Programster\Stripe\StripeClient;
 use Stripe\Exception\ApiErrorException;
 
@@ -98,6 +99,62 @@ final readonly class PaymentIntent extends AbstractResponse
         }
 
         return $this->m_client->retrieveCustomer($this->m_customerId);
+    }
+
+
+    /**
+     * Ask Stripe for the payment intent's latest charge.
+     * @return Charge
+     * @throws ExceptionNoRelatedObject - if the payment intent has no charge yet. Check getLatestChargeId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchLatestCharge(): Charge
+    {
+        if ($this->m_latestChargeId === null)
+        {
+            throw new ExceptionNoRelatedObject("Payment intent {$this->getId()} has no charge yet.");
+        }
+
+        return $this->m_client->retrieveCharge($this->m_latestChargeId);
+    }
+
+
+    /**
+     * Ask Stripe for the payment intent's payment method.
+     * @return PaymentMethod
+     * @throws ExceptionNoRelatedObject - if the payment intent has no payment method. Check getPaymentMethodId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentMethod(): PaymentMethod
+    {
+        if ($this->m_paymentMethodId === null)
+        {
+            throw new ExceptionNoRelatedObject("Payment intent {$this->getId()} has no payment method.");
+        }
+
+        return $this->m_client->retrievePaymentMethod($this->m_paymentMethodId);
+    }
+
+
+    /**
+     * Ask Stripe for the payment intent's charges, all of them.
+     * @return ChargeCollection
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchCharges(): ChargeCollection
+    {
+        return $this->m_client->listCharges(paymentIntentId: $this->getId(), limit: ResultLimit::all());
+    }
+
+
+    /**
+     * Ask Stripe for the payment intent's refunds, all of them.
+     * @return RefundCollection
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchRefunds(): RefundCollection
+    {
+        return $this->m_client->listRefunds(paymentIntentId: $this->getId(), limit: ResultLimit::all());
     }
 
 

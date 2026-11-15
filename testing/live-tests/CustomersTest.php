@@ -103,15 +103,13 @@ $smoke->run("createCustomer: invoice settings", function () use ($client, $fixtu
     );
 
     $fixtures->trackCustomer($customer->getId());
-    SmokeTest::assertSame('Thank you', $customer->getStripeObject()->invoice_settings->footer, "footer");
+    SmokeTest::assertSame('Thank you', $customer->getStripeObject()->invoice_settings?->footer, "footer");
 
-    SmokeTest::assertSame(
-        'PO number',
-        $customer->getStripeObject()->invoice_settings->custom_fields[0]->name,
-        "custom field"
-    );
+    $customFields = $customer->getStripeObject()->invoice_settings?->custom_fields;
+    assert(isset($customFields[0]), "the customer has no invoice custom fields");
+    SmokeTest::assertSame('PO number', $customFields[0]->name, "custom field");
 
-    $amountTaxDisplay = $customer->getStripeObject()->invoice_settings->rendering_options->amount_tax_display;
+    $amountTaxDisplay = $customer->getStripeObject()->invoice_settings->rendering_options?->amount_tax_display;
     SmokeTest::assertSame('include_inclusive_tax', $amountTaxDisplay, "rendering options");
     SmokeTest::assertSame("LT{$runId}", $customer->getInvoicePrefix(), "invoice prefix");
 });

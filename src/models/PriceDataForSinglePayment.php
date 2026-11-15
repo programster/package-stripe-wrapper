@@ -14,12 +14,23 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type ProductDataArray from ProductData
+ *
+ * @phpstan-type PriceDataForSinglePaymentArray array{
+ *     currency: string,
+ *     unit_amount: int,
+ *     product?: string,
+ *     product_data?: ProductDataArray
+ * }
+ * @phpstan-type ProductParams array{product: string}|array{product_data: ProductDataArray}
+ */
 final readonly class PriceDataForSinglePayment implements Arrayable
 {
     private Currency $m_currency;
     private int $m_unitAmount;
 
-    /** @var array<string, mixed> */
+    /** @var ProductParams */
     private array $m_productParams;
 
 
@@ -31,7 +42,7 @@ final readonly class PriceDataForSinglePayment implements Arrayable
      *
      * @param int $unitAmount
      *
-     * @param array<string, mixed> $productParams - the price's parameters for the product.
+     * @param ProductParams $productParams - the price's parameters for the product.
      *
      * @throws ExceptionInvalidValue - if $unitAmount is negative.
      */
@@ -102,7 +113,7 @@ final readonly class PriceDataForSinglePayment implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return PriceDataForSinglePaymentArray
      */
     public function toArray() : array
     {

@@ -12,6 +12,8 @@ use Programster\Stripe\Models\SubscriptionInvoiceItem;
 
 /**
  * @extends AbstractReadonlyCollection<SubscriptionInvoiceItem>
+ *
+ * @phpstan-import-type SubscriptionInvoiceItemArray from SubscriptionInvoiceItem
  */
 final readonly class SubscriptionInvoiceItemCollection extends AbstractReadonlyCollection
 {
@@ -23,7 +25,7 @@ final readonly class SubscriptionInvoiceItemCollection extends AbstractReadonlyC
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<SubscriptionInvoiceItemArray>
      */
     public function toStripeArrayForm() : array
     {

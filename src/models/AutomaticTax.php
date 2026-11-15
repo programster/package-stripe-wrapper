@@ -9,6 +9,10 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type AccountReferenceArray from AccountReference
+ * @phpstan-type AutomaticTaxArray array{enabled: bool, liability?: AccountReferenceArray}
+ */
 final readonly class AutomaticTax implements Arrayable
 {
     private bool $m_enabled;
@@ -35,7 +39,7 @@ final readonly class AutomaticTax implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return AutomaticTaxArray
      */
     public function toArray() : array
     {

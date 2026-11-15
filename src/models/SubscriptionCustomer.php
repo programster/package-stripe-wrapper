@@ -12,15 +12,18 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-type CustomerParams array{customer: string}|array{customer_account: string}
+ */
 final readonly class SubscriptionCustomer
 {
-    /** @var array<string, string> */
+    /** @var CustomerParams */
     private array $m_stripeParams;
 
 
     /**
      * This is private, so use customer() or customerAccount().
-     * @param array<string, string> $stripeParams - the subscription's parameters for the customer.
+     * @param CustomerParams $stripeParams - the subscription's parameters for the customer.
      */
     private function __construct(array $stripeParams)
     {
@@ -56,7 +59,7 @@ final readonly class SubscriptionCustomer
 
     /**
      * Get the parameters to add to a subscription for this customer.
-     * @return array<string, string>
+     * @return CustomerParams
      */
     public function getStripeParams() : array
     {

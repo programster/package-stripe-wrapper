@@ -10,6 +10,9 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\AccountReferenceType;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type AccountReferenceArray array{type: string, account?: string}
+ */
 final readonly class AccountReference implements Arrayable
 {
     private readonly AccountReferenceType $m_type;
@@ -50,7 +53,7 @@ final readonly class AccountReference implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return AccountReferenceArray
      */
     public function toArray() : array
     {

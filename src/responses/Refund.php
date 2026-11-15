@@ -9,9 +9,11 @@ namespace Programster\Stripe\Responses;
 
 use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Enums\RefundStatus;
+use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
 use Programster\Stripe\StripeClient;
+use Stripe\Exception\ApiErrorException;
 
 final readonly class Refund extends AbstractResponse
 {
@@ -60,6 +62,40 @@ final readonly class Refund extends AbstractResponse
     public function isSucceeded(): bool
     {
         return $this->hasStatus(RefundStatus::SUCCEEDED);
+    }
+
+
+    /**
+     * Ask Stripe for the refund's charge.
+     * @return Charge
+     * @throws ExceptionNoRelatedObject - if the refund has no charge. Check getChargeId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchCharge(): Charge
+    {
+        if ($this->m_chargeId === null)
+        {
+            throw new ExceptionNoRelatedObject("Refund {$this->getId()} has no charge.");
+        }
+
+        return $this->m_client->retrieveCharge($this->m_chargeId);
+    }
+
+
+    /**
+     * Ask Stripe for the refund's payment intent.
+     * @return PaymentIntent
+     * @throws ExceptionNoRelatedObject - if the refund has no payment intent. Check getPaymentIntentId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentIntent(): PaymentIntent
+    {
+        if ($this->m_paymentIntentId === null)
+        {
+            throw new ExceptionNoRelatedObject("Refund {$this->getId()} has no payment intent.");
+        }
+
+        return $this->m_client->retrievePaymentIntent($this->m_paymentIntentId);
     }
 
 

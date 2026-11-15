@@ -15,6 +15,7 @@ use Programster\Stripe\Enums\SessionMode;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
+use Programster\Stripe\Exceptions\ExceptionWrongStatus;
 use Programster\Stripe\Internal\ResponseFields;
 use Programster\Stripe\StripeClient;
 use Stripe\Exception\ApiErrorException;
@@ -123,6 +124,18 @@ final readonly class CheckoutSession extends AbstractResponse
 
 
     /**
+     * Get the session as a CompletedCheckoutSession, which is certain to have the customer's details.
+     * @return CompletedCheckoutSession
+     * @throws ExceptionWrongStatus - if the session hasn't been completed. Check isComplete() first.
+     * @throws ExceptionUnexpectedResponse - if the completed session has no customer details.
+     */
+    public function toCompleted(): CompletedCheckoutSession
+    {
+        return new CompletedCheckoutSession($this);
+    }
+
+
+    /**
      * Check the session's payment status. This takes the enum, so the comparison can't be misspelt.
      * @param CheckoutSessionPaymentStatus $paymentStatus - the payment status to check for.
      * @return bool
@@ -187,6 +200,48 @@ final readonly class CheckoutSession extends AbstractResponse
         }
 
         return $this->m_client->retrieveSubscription($this->m_subscriptionId);
+    }
+
+
+    /**
+     * Ask Stripe for the session's payment intent.
+     *
+     * @return PaymentIntent
+     *
+     * @throws ExceptionNoRelatedObject - if the session has no payment intent (e.g. it's for a subscription, or hasn't
+     * been completed yet). Check getPaymentIntentId() first.
+     *
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentIntent(): PaymentIntent
+    {
+        if ($this->m_paymentIntentId === null)
+        {
+            throw new ExceptionNoRelatedObject("Checkout session {$this->getId()} has no payment intent.");
+        }
+
+        return $this->m_client->retrievePaymentIntent($this->m_paymentIntentId);
+    }
+
+
+    /**
+     * Ask Stripe for the session's invoice.
+     *
+     * @return Invoice
+     *
+     * @throws ExceptionNoRelatedObject - if the session has no invoice (e.g. it hasn't been completed yet, or no
+     * invoice was asked for). Check getInvoiceId() first.
+     *
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchInvoice(): Invoice
+    {
+        if ($this->m_invoiceId === null)
+        {
+            throw new ExceptionNoRelatedObject("Checkout session {$this->getId()} has no invoice.");
+        }
+
+        return $this->m_client->retrieveInvoice($this->m_invoiceId);
     }
 
 

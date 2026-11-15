@@ -27,10 +27,12 @@ use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Enums\TaxExempt;
+use Programster\Stripe\Enums\TaxIdCollection;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Exceptions\ExceptionIncompleteList;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Exceptions\ExceptionTooManyResults;
+use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
@@ -45,7 +47,8 @@ use Programster\Stripe\Models\CustomerInvoiceSettings;
 use Programster\Stripe\Models\CustomerShippingDetails;
 use Programster\Stripe\Models\CustomerTaxConfig;
 use Programster\Stripe\Models\Discount;
-use Programster\Stripe\Models\FlowConfig;
+use Programster\Stripe\Models\EmbeddedFlow;
+use Programster\Stripe\Models\HostedFlow;
 use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\InvoiceSettings;
 use Programster\Stripe\Models\PaymentIntentData;
@@ -59,7 +62,6 @@ use Programster\Stripe\Models\SubscriptionCustomer;
 use Programster\Stripe\Models\SubscriptionData;
 use Programster\Stripe\Models\SubscriptionItemPrice;
 use Programster\Stripe\Models\SubscriptionTransferData;
-use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Responses\Charge;
@@ -73,6 +75,8 @@ use Programster\Stripe\Responses\InvoicePayment;
 use Programster\Stripe\Responses\InvoicePaymentCollection;
 use Programster\Stripe\Responses\InvoiceWithPayments;
 use Programster\Stripe\Responses\InvoiceWithPaymentsCollection;
+use Programster\Stripe\Responses\NewEmbeddedCheckoutSession;
+use Programster\Stripe\Responses\NewHostedCheckoutSession;
 use Programster\Stripe\Responses\PaymentIntent;
 use Programster\Stripe\Responses\PaymentIntentCollection;
 use Programster\Stripe\Responses\PaymentMethod;
@@ -86,6 +90,44 @@ use Programster\Stripe\Responses\SubscriptionItemCollection;
 use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
 
+/**
+ * @phpstan-import-type AfterExpirationArray from AfterExpiration
+ * @phpstan-import-type AutomaticTaxArray from AutomaticTax
+ * @phpstan-import-type ConsentConfigArray from ConsentConfig
+ * @phpstan-import-type CustomFieldArray from \Programster\Stripe\Models\CustomField
+ * @phpstan-import-type CustomTextOptionsArray from CustomTextOptions
+ * @phpstan-import-type DiscountArray from Discount
+ * @phpstan-import-type SavedPaymentMethodOptionsArray from SavedPaymentMethodOptions
+ * @phpstan-type FlowParams array{
+ *     ui_mode: string,
+ *     success_url?: string,
+ *     return_url?: string,
+ *     cancel_url?: string,
+ *     redirect_on_completion?: string
+ * }
+ * @phpstan-type SharedCheckoutParams array{
+ *     billing_address_collection: string,
+ *     automatic_tax?: AutomaticTaxArray,
+ *     client_reference_id?: string,
+ *     metadata?: array<string, string>,
+ *     adaptive_pricing?: array{enabled: bool},
+ *     after_expiration?: AfterExpirationArray,
+ *     allow_promotion_codes?: bool,
+ *     consent_collection?: ConsentConfigArray,
+ *     currency?: string,
+ *     custom_fields?: list<CustomFieldArray>,
+ *     custom_text?: CustomTextOptionsArray,
+ *     tax_id_collection?: array{enabled: true, required: string},
+ *     shipping_address_collection?: array{allowed_countries: list<string>},
+ *     discounts?: list<DiscountArray>,
+ *     expires_at?: int,
+ *     phone_number_collection?: array{enabled: bool},
+ *     locale?: string,
+ *     payment_method_configuration?: string,
+ *     payment_method_types?: list<string>,
+ *     saved_payment_method_options?: SavedPaymentMethodOptionsArray
+ * }
+ */
 final readonly class StripeClient
 {
     private \Stripe\StripeClient $m_underlyingStripeClient;
@@ -186,13 +228,14 @@ final readonly class StripeClient
         if ($collectionMethod !== null) { $params['collection_method'] = $collectionMethod->value; }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->subscriptions->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->subscriptions->all($params);
         };
 
         $subscriptions = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'subscriptions') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'subscriptions') as $object)
         {
             $subscriptions[] = Subscription::createFromStripeObject($object, $this);
         }
@@ -363,13 +406,14 @@ final readonly class StripeClient
         $params = self::getPagingParams($startingAfter, $endingBefore);
         $params['subscription'] = $subscriptionId;
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->subscriptionItems->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->subscriptionItems->all($params);
         };
 
         $items = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'subscription items') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'subscription items') as $object)
         {
             $items[] = SubscriptionItem::createFromStripeObject($object, $this);
         }
@@ -545,13 +589,14 @@ final readonly class StripeClient
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->paymentIntents->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->paymentIntents->all($params);
         };
 
         $paymentIntents = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'payment intents') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'payment intents') as $object)
         {
             $paymentIntents[] = PaymentIntent::createFromStripeObject($object, $this);
         }
@@ -618,13 +663,14 @@ final readonly class StripeClient
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->invoices->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->invoices->all($params);
         };
 
         $invoices = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoices') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'invoices') as $object)
         {
             $invoices[] = Invoice::createFromStripeObject($object, $this);
         }
@@ -695,13 +741,14 @@ final readonly class StripeClient
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
         $params['expand'] = ['data.payments'];
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->invoices->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->invoices->all($params);
         };
 
         $invoices = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoices') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'invoices') as $object)
         {
             $invoices[] = InvoiceWithPayments::createFromStripeObject($object, $this);
         }
@@ -741,13 +788,14 @@ final readonly class StripeClient
         $params = self::getPagingParams($startingAfter, $endingBefore);
         $params['invoice'] = $invoiceId;
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->invoicePayments->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->invoicePayments->all($params);
         };
 
         $payments = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'invoice payments') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'invoice payments') as $object)
         {
             $payments[] = InvoicePayment::createFromStripeObject($object, $this);
         }
@@ -810,13 +858,14 @@ final readonly class StripeClient
         if ($created !== null) { $params['created'] = $created->toArray(); }
         if ($testClock !== null) { $params['test_clock'] = $testClock; }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->customers->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->customers->all($params);
         };
 
         $customers = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'customers') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'customers') as $object)
         {
             $customers[] = Customer::createFromStripeObject($object, $this);
         }
@@ -865,13 +914,14 @@ final readonly class StripeClient
         if ($paymentIntentId !== null) { $params['payment_intent'] = $paymentIntentId; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->refunds->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->refunds->all($params);
         };
 
         $refunds = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'refunds') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'refunds') as $object)
         {
             $refunds[] = Refund::createFromStripeObject($object, $this);
         }
@@ -888,7 +938,7 @@ final readonly class StripeClient
      *
      * @param TimePeriod|null $created - optionally, only list charges created in this time period.
      *
-     * @param string|null $paymentIntent - optionally, only list this payment intent's charges.
+     * @param string|null $paymentIntentId - optionally, only list this payment intent's charges.
      *
      * @param string|null $transferGroup - optionally, only list charges in this transfer group.
      *
@@ -910,7 +960,7 @@ final readonly class StripeClient
     public function listCharges(
         ?string $customerId = null,
         ?TimePeriod $created = null,
-        ?string $paymentIntent = null,
+        ?string $paymentIntentId = null,
         ?string $transferGroup = null,
         ?ResultLimit $limit = null,
         ?string $startingAfter = null,
@@ -921,16 +971,17 @@ final readonly class StripeClient
 
         if ($customerId !== null) { $params['customer'] = $customerId; }
         if ($created !== null) { $params['created'] = $created->toArray(); }
-        if ($paymentIntent !== null) { $params['payment_intent'] = $paymentIntent; }
+        if ($paymentIntentId !== null) { $params['payment_intent'] = $paymentIntentId; }
         if ($transferGroup !== null) { $params['transfer_group'] = $transferGroup; }
 
-        $requestPage = function (array $pageParams): Collection {
-            return $this->m_underlyingStripeClient->charges->all($pageParams);
+        $requestPage = function (int $pageSize) use ($params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->charges->all($params);
         };
 
         $charges = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'charges') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'charges') as $object)
         {
             $charges[] = Charge::createFromStripeObject($object, $this);
         }
@@ -943,8 +994,10 @@ final readonly class StripeClient
      * Create a checkout session object for a one-time payment, rather than a subscription or setting up a customer.
      * https://docs.stripe.com/api/checkout/sessions/create
      *
-     * @param FlowConfig $flowConfig - whether the checkout is hosted by Stripe or embedded in your site, and the URLs
-     * to send the customer to.
+     * The customer is sent to a payment page hosted by Stripe. For a payment form embedded in your own site,
+     * use createEmbeddedCheckoutSessionForSinglePayment() instead.
+     *
+     * @param HostedFlow $flow - the URLs that Stripe's payment page sends the customer to.
      *
      * @param SinglePaymentLineItemsCollection $items - A collection of SinglePaymentLineItem objects that are being
      * purchased.
@@ -1000,8 +1053,9 @@ final readonly class StripeClient
      * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
      * is null, meaning Stripe won't collect shipping information.
      *
-     * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
-     * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
+     * @param TaxIdCollection|null $taxIdCollection - optionally, collect the customer's tax ID, either optionally or
+     * as required where Stripe supports it. Defaults to null, which doesn't collect it.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-tax_id_collection
      *
      * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
      * Stripe recommends that you review your privacy policy and check with your legal contacts before using this
@@ -1035,12 +1089,14 @@ final readonly class StripeClient
      * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
      * https://docs.stripe.com/api/idempotent_requests
      *
-     * @return CheckoutSession - the created checkout session.
+     * @return NewHostedCheckoutSession - the created session, with getUrl() for its payment page, to send
+     * the customer to.
      *
-     * @throws ApiErrorException
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
-    public function createCheckoutSessionForSinglePayment(
-        FlowConfig                       $flowConfig,
+    public function createHostedCheckoutSessionForSinglePayment(
+        HostedFlow                       $flow,
         SinglePaymentLineItemsCollection $items,
         ?PaymentIntentData               $paymentIntentData = null,
         ?string                          $clientReferenceId = null,
@@ -1057,7 +1113,7 @@ final readonly class StripeClient
         ?bool                            $adaptivePricing = null,
         BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
         ?ShippingCountryCodeCollection   $shippingAddressCollection = null,
-        ?TaxIdCollectionConfig           $taxIdCollection = null,
+        ?TaxIdCollection                 $taxIdCollection = null,
         ?bool                            $enablePhoneNumberCollection = null,
         ?ConsentConfig                   $consentConfig = null,
         ?CustomFieldCollection           $customFields = null,
@@ -1067,22 +1123,19 @@ final readonly class StripeClient
         SubmitType                       $submitType = SubmitType::AUTO,
         ?Metadata                        $metadata = null,
         ?string                          $idempotencyKey = null,
-    ) : CheckoutSession
+    ) : NewHostedCheckoutSession
     {
-        $params = $flowConfig->getStripeParams();
-        $params['mode'] = SessionMode::PAYMENT->value;
-        $params['line_items'] = $items->toStripeArrayForm();
-        $params['submit_type'] = $submitType->value;
-        if ($customer !== null) { $params = array_merge($params, $customer->getStripeParams()); }
-        if ($paymentIntentData !== null) { $params['payment_intent_data'] = $paymentIntentData->toArray(); }
-        if ($invoiceCreation !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
-
-        $sharedParams = self::getSharedCheckoutParams(
+        $session = $this->createSinglePaymentSession(
+            $flow->getStripeParams(),
+            $items,
+            $paymentIntentData,
             $clientReferenceId,
             $discount,
             $allowPromoCodes,
             $locale,
             $currency,
+            $customer,
+            $invoiceCreation,
             $customTextOptions,
             $automaticTax,
             $expiresAt,
@@ -1097,13 +1150,181 @@ final readonly class StripeClient
             $paymentMethodConfigurationId,
             $allowedPaymentMethodTypes,
             $savedPaymentMethodOptions,
-            $metadata
+            $submitType,
+            $metadata,
+            $idempotencyKey
         );
 
-        $params = array_merge($params, $sharedParams);
-        $options = $this->getRequestOptions($idempotencyKey);
-        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
-        return CheckoutSession::createFromStripeObject($session, $this);
+        return new NewHostedCheckoutSession($session);
+    }
+
+
+    /**
+     * Create a checkout session object for a one-time payment, rather than a subscription or setting up a customer.
+     * https://docs.stripe.com/api/checkout/sessions/create
+     *
+     * Stripe's payment form is embedded in your own site. For a payment page hosted by Stripe, use
+     * createHostedCheckoutSessionForSinglePayment() instead.
+     *
+     * @param EmbeddedFlow $flow - where to send the customer back to after they pay, and when.
+     *
+     * @param SinglePaymentLineItemsCollection $items - A collection of SinglePaymentLineItem objects that are being
+     * purchased.
+     *
+     * @param PaymentIntentData|null $paymentIntentData - A subset of parameters to be passed to PaymentIntent creation
+     * for Checkout Sessions in payment mode.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data
+     *
+     * @param string|null $clientReferenceId - A unique string to reference the Checkout Session. This can be a
+     * customer ID, a cart ID, or similar, and can be used to reconcile the session with your internal systems.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-client_reference_id
+     *
+     * @param Discount|null $discount - optionally provide a discount object for applying one of either a promotion
+     * code, or a coupon code. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-discounts
+     *
+     * @param bool|null $allowPromoCodes - set to true if you want to add a box to the checkout that allows the user to
+     * enter promo codes.
+     *
+     * @param Locale|null $locale - optionally specify the locale/language the stripe payment page should use. If null
+     * (default), then stripe will use whatever the user's browser is set to.
+     *
+     * @param Currency|null $currency - optionally specify the currency. This is useful if you have products listed with
+     * multiple possible currencies.
+     *
+     * @param SinglePaymentCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
+     * (SinglePaymentCheckoutCustomer::existing()), an email address to fill in (withEmail()), or neither, with whether
+     * Stripe creates a customer (create()). Leave as null for none of these, and Stripe's default of only creating a
+     * customer if it's needed.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
+     *
+     * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice for the one-time payment
+     * should be created. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
+     *
+     * @param CustomTextOptions|null $customTextOptions - optionally provide custom text messages at various points
+     * during the checkout flow.
+     *
+     * @param AutomaticTax|null $automaticTax - Details on the state of automatic tax for the session, including the
+     * status of the latest tax calculation.
+     * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-automatic_tax
+     *
+     * @param \DateTimeImmutable|null $expiresAt - when the checkout session should expire, from 30 minutes to 24 hours
+     * after it's created. Defaults to 24 hours after.
+     *
+     * @param AfterExpiration|null $afterExpiration - Provides configuration for actions to take if this Checkout
+     * Session expires. https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-after_expiration
+     *
+     * @param bool|null $adaptivePricing - if not provided, defaults to what is set on your Stripe dashboard.
+     *
+     * @param BillingAddressCollection $billingAddressCollection - Describe whether Checkout should collect the
+     * customer’s billing address.
+     *
+     * @param ShippingCountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to
+     * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
+     * is null, meaning Stripe won't collect shipping information.
+     *
+     * @param TaxIdCollection|null $taxIdCollection - optionally, collect the customer's tax ID, either optionally or
+     * as required where Stripe supports it. Defaults to null, which doesn't collect it.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-tax_id_collection
+     *
+     * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
+     * Stripe recommends that you review your privacy policy and check with your legal contacts before using this
+     * feature. https://docs.stripe.com/payments/checkout/phone-numbers
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-phone_number_collection
+     *
+     * @param ConsentConfig|null $consentConfig - Configure fields for the Checkout Session to gather active consent
+     * from customers. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-consent_collection
+     *
+     * @param CustomFieldCollection|null $customFields - extra fields to collect from the customer on the checkout
+     * page, up to 3.
+     *
+     * @param string|null $paymentMethodConfigurationId - optionally provide the ID of the payment method configuration
+     * to use with this Checkout session. https://docs.stripe.com/api/payment_methods
+     *
+     * @param PaymentMethodTypeCollection|null $allowedPaymentMethodTypes - optionally provide a list of the payment
+     * method types you would allow the user to pay through on checkout. E.g. ['card']
+     *
+     * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions - Controls saved payment method settings for
+     * the session.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-saved_payment_method_options
+     *
+     * @param SubmitType $submitType - Describes the type of transaction being performed by Checkout in order to
+     * customize relevant text on the page, such as the submit button. submit_type can only be specified on Checkout
+     * Sessions in payment mode.
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs to store against the checkout session.
+     *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
+     * @return NewEmbeddedCheckoutSession - the created session, with getClientSecret() for Stripe.js to show
+     * the payment form with.
+     *
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function createEmbeddedCheckoutSessionForSinglePayment(
+        EmbeddedFlow                     $flow,
+        SinglePaymentLineItemsCollection $items,
+        ?PaymentIntentData               $paymentIntentData = null,
+        ?string                          $clientReferenceId = null,
+        ?Discount                        $discount = null,
+        ?bool                            $allowPromoCodes = null,
+        ?Locale                          $locale = null,
+        ?Currency                        $currency = null,
+        ?SinglePaymentCheckoutCustomer   $customer = null,
+        ?InvoiceCreation                 $invoiceCreation = null,
+        ?CustomTextOptions               $customTextOptions = null,
+        ?AutomaticTax                    $automaticTax = null,
+        ?\DateTimeImmutable              $expiresAt = null,
+        ?AfterExpiration                 $afterExpiration = null,
+        ?bool                            $adaptivePricing = null,
+        BillingAddressCollection         $billingAddressCollection = BillingAddressCollection::AUTO,
+        ?ShippingCountryCodeCollection   $shippingAddressCollection = null,
+        ?TaxIdCollection                 $taxIdCollection = null,
+        ?bool                            $enablePhoneNumberCollection = null,
+        ?ConsentConfig                   $consentConfig = null,
+        ?CustomFieldCollection           $customFields = null,
+        ?string                          $paymentMethodConfigurationId = null,
+        ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes = null,
+        ?SavedPaymentMethodOptions       $savedPaymentMethodOptions = null,
+        SubmitType                       $submitType = SubmitType::AUTO,
+        ?Metadata                        $metadata = null,
+        ?string                          $idempotencyKey = null,
+    ) : NewEmbeddedCheckoutSession
+    {
+        $session = $this->createSinglePaymentSession(
+            $flow->getStripeParams(),
+            $items,
+            $paymentIntentData,
+            $clientReferenceId,
+            $discount,
+            $allowPromoCodes,
+            $locale,
+            $currency,
+            $customer,
+            $invoiceCreation,
+            $customTextOptions,
+            $automaticTax,
+            $expiresAt,
+            $afterExpiration,
+            $adaptivePricing,
+            $billingAddressCollection,
+            $shippingAddressCollection,
+            $taxIdCollection,
+            $enablePhoneNumberCollection,
+            $consentConfig,
+            $customFields,
+            $paymentMethodConfigurationId,
+            $allowedPaymentMethodTypes,
+            $savedPaymentMethodOptions,
+            $submitType,
+            $metadata,
+            $idempotencyKey
+        );
+
+        return new NewEmbeddedCheckoutSession($session);
     }
 
 
@@ -1113,8 +1334,10 @@ final readonly class StripeClient
      * that has a subscription payment.
      * https://docs.stripe.com/api/checkout/sessions/create
      *
-     * @param FlowConfig $flowConfig - whether the checkout is hosted by Stripe or embedded in your site, and the URLs
-     * to send the customer to.
+     * The customer is sent to a payment page hosted by Stripe. For a payment form embedded in your own site,
+     * use createEmbeddedCheckoutSessionForSubscription() instead.
+     *
+     * @param HostedFlow $flow - the URLs that Stripe's payment page sends the customer to.
      *
      * @param SubscriptionCheckoutLineItemCollection $items - the items being subscribed to (or bought once alongside
      * the subscription).
@@ -1166,8 +1389,9 @@ final readonly class StripeClient
      * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
      * is null, meaning Stripe won't collect shipping information.
      *
-     * @param TaxIdCollectionConfig|null $taxIdCollection - Details on the state of tax ID collection for the session.
-     * https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-tax_id_collection
+     * @param TaxIdCollection|null $taxIdCollection - optionally, collect the customer's tax ID, either optionally or
+     * as required where Stripe supports it. Defaults to null, which doesn't collect it.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-tax_id_collection
      *
      * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
      * Stripe recommends that you review your privacy policy and check with your legal contacts before using this
@@ -1197,53 +1421,52 @@ final readonly class StripeClient
      * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
      * https://docs.stripe.com/api/idempotent_requests
      *
-     * @return CheckoutSession - the created checkout session.
+     * @return NewHostedCheckoutSession - the created session, with getUrl() for its payment page, to send
+     * the customer to.
      *
-     * @throws ApiErrorException
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
      */
-    public function createCheckoutSessionForSubscription(
-        FlowConfig                              $flowConfig,
-        SubscriptionCheckoutLineItemCollection  $items,
-        ?SubscriptionData                       $subscriptionData = null,
-        ?string                                 $clientReferenceId = null,
-        ?Discount                               $discount = null,
-        ?bool                                   $allowPromoCodes = null,
-        ?Locale                                 $locale = null,
-        ?Currency                               $currency = null,
-        ?SubscriptionCheckoutCustomer           $customer = null,
-        ?InvoiceCreation                        $invoiceCreation = null,
-        ?CustomTextOptions                      $customTextOptions = null,
-        ?AutomaticTax                           $automaticTax = null,
-        ?\DateTimeImmutable                     $expiresAt = null,
-        ?AfterExpiration                        $afterExpiration = null,
-        ?bool                                   $adaptivePricing = null,
-        BillingAddressCollection                $billingAddressCollection = BillingAddressCollection::AUTO,
-        ?ShippingCountryCodeCollection          $shippingAddressCollection = null,
-        ?TaxIdCollectionConfig                  $taxIdCollection = null,
-        ?bool                                   $enablePhoneNumberCollection = null,
-        ?ConsentConfig                          $consentConfig = null,
-        ?CustomFieldCollection                  $customFields = null,
-        ?string                                 $paymentMethodConfigurationId = null,
-        ?PaymentMethodTypeCollection            $allowedPaymentMethodTypes = null,
-        ?SavedPaymentMethodOptions              $savedPaymentMethodOptions = null,
-        ?Metadata                               $metadata = null,
-        ?string                                 $idempotencyKey = null,
-    ) : CheckoutSession
+    public function createHostedCheckoutSessionForSubscription(
+        HostedFlow                             $flow,
+        SubscriptionCheckoutLineItemCollection $items,
+        ?SubscriptionData                      $subscriptionData = null,
+        ?string                                $clientReferenceId = null,
+        ?Discount                              $discount = null,
+        ?bool                                  $allowPromoCodes = null,
+        ?Locale                                $locale = null,
+        ?Currency                              $currency = null,
+        ?SubscriptionCheckoutCustomer          $customer = null,
+        ?InvoiceCreation                       $invoiceCreation = null,
+        ?CustomTextOptions                     $customTextOptions = null,
+        ?AutomaticTax                          $automaticTax = null,
+        ?\DateTimeImmutable                    $expiresAt = null,
+        ?AfterExpiration                       $afterExpiration = null,
+        ?bool                                  $adaptivePricing = null,
+        BillingAddressCollection               $billingAddressCollection = BillingAddressCollection::AUTO,
+        ?ShippingCountryCodeCollection         $shippingAddressCollection = null,
+        ?TaxIdCollection                       $taxIdCollection = null,
+        ?bool                                  $enablePhoneNumberCollection = null,
+        ?ConsentConfig                         $consentConfig = null,
+        ?CustomFieldCollection                 $customFields = null,
+        ?string                                $paymentMethodConfigurationId = null,
+        ?PaymentMethodTypeCollection           $allowedPaymentMethodTypes = null,
+        ?SavedPaymentMethodOptions             $savedPaymentMethodOptions = null,
+        ?Metadata                              $metadata = null,
+        ?string                                $idempotencyKey = null,
+    ) : NewHostedCheckoutSession
     {
-        $params = $flowConfig->getStripeParams();
-        $params['mode'] = SessionMode::SUBSCRIPTION->value;
-        $params['line_items'] = $items->toStripeArrayForm();
-        if ($customer !== null) { $params = array_merge($params, $customer->getStripeParams()); }
-
-        if ($subscriptionData !== null) { $params['subscription_data'] = $subscriptionData->toArray(); }
-        if ($invoiceCreation !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
-
-        $sharedParams = self::getSharedCheckoutParams(
+        $session = $this->createSubscriptionSession(
+            $flow->getStripeParams(),
+            $items,
+            $subscriptionData,
             $clientReferenceId,
             $discount,
             $allowPromoCodes,
             $locale,
             $currency,
+            $customer,
+            $invoiceCreation,
             $customTextOptions,
             $automaticTax,
             $expiresAt,
@@ -1258,13 +1481,172 @@ final readonly class StripeClient
             $paymentMethodConfigurationId,
             $allowedPaymentMethodTypes,
             $savedPaymentMethodOptions,
-            $metadata
+            $metadata,
+            $idempotencyKey
         );
 
-        $params = array_merge($params, $sharedParams);
-        $options = $this->getRequestOptions($idempotencyKey);
-        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
-        return CheckoutSession::createFromStripeObject($session, $this);
+        return new NewHostedCheckoutSession($session);
+    }
+
+
+    /**
+     * Create a checkout session object for a subscription payment, rather than a one-time payment, or setting up a
+     * customer. This can contain items that are paid for once, but should be used when there is at least one item
+     * that has a subscription payment.
+     * https://docs.stripe.com/api/checkout/sessions/create
+     *
+     * Stripe's payment form is embedded in your own site. For a payment page hosted by Stripe, use
+     * createHostedCheckoutSessionForSubscription() instead.
+     *
+     * @param EmbeddedFlow $flow - where to send the customer back to after they pay, and when.
+     *
+     * @param SubscriptionCheckoutLineItemCollection $items - the items being subscribed to (or bought once alongside
+     * the subscription).
+     *
+     * @param SubscriptionData|null $subscriptionData - A subset of parameters to be passed to subscription creation
+     * for Checkout Sessions in subscription mode.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-subscription_data
+     *
+     * @param string|null $clientReferenceId - A unique string to reference the Checkout Session. This can be a
+     * customer ID, a cart ID, or similar, and can be used to reconcile the session with your internal systems.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-client_reference_id
+     *
+     * @param Discount|null $discount - optionally provide a discount object for applying one of either a promotion
+     * code, or a coupon code. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-discounts
+     *
+     * @param bool|null $allowPromoCodes - set to true if you want to add a box to the checkout that allows the user to
+     * enter promo codes.
+     *
+     * @param Locale|null $locale - optionally specify the locale/language the stripe payment page should use. If null
+     * (default), then stripe will use whatever the user's browser is set to.
+     *
+     * @param Currency|null $currency - optionally specify the currency. This is useful if you have products listed with
+     * multiple possible currencies.
+     *
+     * @param SubscriptionCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
+     * (SubscriptionCheckoutCustomer::existing()), or an email address to fill in (withEmail()). Leave as null for
+     * neither, so the customer enters their email address. Stripe always creates a customer for a new subscriber.
+     *
+     * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice should be created.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
+     *
+     * @param CustomTextOptions|null $customTextOptions - optionally provide custom text messages at various points
+     * during the checkout flow.
+     *
+     * @param AutomaticTax|null $automaticTax - settings for automatic tax lookup for this session.
+     *
+     * @param \DateTimeImmutable|null $expiresAt - when the checkout session should expire, from 30 minutes to 24 hours
+     * after it's created. Defaults to 24 hours after.
+     *
+     * @param AfterExpiration|null $afterExpiration - Provides configuration for actions to take if this Checkout
+     * Session expires.
+     *
+     * @param bool|null $adaptivePricing - if not provided, defaults to what is set on your Stripe dashboard.
+     *
+     * @param BillingAddressCollection $billingAddressCollection - Describe whether Checkout should collect the
+     * customer’s billing address.
+     *
+     * @param ShippingCountryCodeCollection|null $shippingAddressCollection - provide this if you need Stripe to
+     * collect the customer's shipping address for the transaction: the countries that you will ship to. The default
+     * is null, meaning Stripe won't collect shipping information.
+     *
+     * @param TaxIdCollection|null $taxIdCollection - optionally, collect the customer's tax ID, either optionally or
+     * as required where Stripe supports it. Defaults to null, which doesn't collect it.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-tax_id_collection
+     *
+     * @param ?bool $enablePhoneNumberCollection - optionally enable the collection of the user's phone number.
+     * Stripe recommends that you review your privacy policy and check with your legal contacts before using this
+     * feature. https://docs.stripe.com/payments/checkout/phone-numbers
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-phone_number_collection
+     *
+     * @param ConsentConfig|null $consentConfig - Configure fields for the Checkout Session to gather active consent
+     * from customers. https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-consent_collection
+     *
+     * @param CustomFieldCollection|null $customFields - extra fields to collect from the customer on the checkout
+     * page, up to 3.
+     *
+     * @param string|null $paymentMethodConfigurationId - optionally provide the ID of the payment method configuration
+     * to use with this Checkout session. https://docs.stripe.com/api/payment_methods
+     *
+     * @param PaymentMethodTypeCollection|null $allowedPaymentMethodTypes - optionally provide a list of the payment
+     * method types you would allow the user to pay through on checkout. E.g. ['card']
+     *
+     * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions - Controls saved payment method settings for
+     * the session.
+     * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-saved_payment_method_options
+     *
+     * @param Metadata|null $metadata - Set of key-value pairs to store against the checkout session.
+     *
+     * @param string|null $idempotencyKey - optionally, a unique key for this request (e.g. a UUID, or your own ID
+     * for the order), so that if it's sent again, such as when retrying after a timeout, Stripe returns what the first
+     * request made, rather than making it twice. Use a new key for each different request. Up to 255 characters.
+     * https://docs.stripe.com/api/idempotent_requests
+     *
+     * @return NewEmbeddedCheckoutSession - the created session, with getClientSecret() for Stripe.js to show
+     * the payment form with.
+     *
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function createEmbeddedCheckoutSessionForSubscription(
+        EmbeddedFlow                           $flow,
+        SubscriptionCheckoutLineItemCollection $items,
+        ?SubscriptionData                      $subscriptionData = null,
+        ?string                                $clientReferenceId = null,
+        ?Discount                              $discount = null,
+        ?bool                                  $allowPromoCodes = null,
+        ?Locale                                $locale = null,
+        ?Currency                              $currency = null,
+        ?SubscriptionCheckoutCustomer          $customer = null,
+        ?InvoiceCreation                       $invoiceCreation = null,
+        ?CustomTextOptions                     $customTextOptions = null,
+        ?AutomaticTax                          $automaticTax = null,
+        ?\DateTimeImmutable                    $expiresAt = null,
+        ?AfterExpiration                       $afterExpiration = null,
+        ?bool                                  $adaptivePricing = null,
+        BillingAddressCollection               $billingAddressCollection = BillingAddressCollection::AUTO,
+        ?ShippingCountryCodeCollection         $shippingAddressCollection = null,
+        ?TaxIdCollection                       $taxIdCollection = null,
+        ?bool                                  $enablePhoneNumberCollection = null,
+        ?ConsentConfig                         $consentConfig = null,
+        ?CustomFieldCollection                 $customFields = null,
+        ?string                                $paymentMethodConfigurationId = null,
+        ?PaymentMethodTypeCollection           $allowedPaymentMethodTypes = null,
+        ?SavedPaymentMethodOptions             $savedPaymentMethodOptions = null,
+        ?Metadata                              $metadata = null,
+        ?string                                $idempotencyKey = null,
+    ) : NewEmbeddedCheckoutSession
+    {
+        $session = $this->createSubscriptionSession(
+            $flow->getStripeParams(),
+            $items,
+            $subscriptionData,
+            $clientReferenceId,
+            $discount,
+            $allowPromoCodes,
+            $locale,
+            $currency,
+            $customer,
+            $invoiceCreation,
+            $customTextOptions,
+            $automaticTax,
+            $expiresAt,
+            $afterExpiration,
+            $adaptivePricing,
+            $billingAddressCollection,
+            $shippingAddressCollection,
+            $taxIdCollection,
+            $enablePhoneNumberCollection,
+            $consentConfig,
+            $customFields,
+            $paymentMethodConfigurationId,
+            $allowedPaymentMethodTypes,
+            $savedPaymentMethodOptions,
+            $metadata,
+            $idempotencyKey
+        );
+
+        return new NewEmbeddedCheckoutSession($session);
     }
 
 
@@ -1307,6 +1689,62 @@ final readonly class StripeClient
     {
         $subscription = $this->m_underlyingStripeClient->subscriptions->retrieve($subscriptionId);
         return Subscription::createFromStripeObject($subscription, $this);
+    }
+
+
+    /**
+     * Retrieve a payment intent by ID.
+     * https://docs.stripe.com/api/payment_intents/retrieve
+     * @param string $paymentIntentId - the ID of the payment intent, e.g. "pi_123".
+     * @return PaymentIntent
+     * @throws ApiErrorException - if there's no such payment intent, or Stripe can't be reached.
+     */
+    public function retrievePaymentIntent(string $paymentIntentId) : PaymentIntent
+    {
+        $paymentIntent = $this->m_underlyingStripeClient->paymentIntents->retrieve($paymentIntentId);
+        return PaymentIntent::createFromStripeObject($paymentIntent, $this);
+    }
+
+
+    /**
+     * Retrieve a charge by ID.
+     * https://docs.stripe.com/api/charges/retrieve
+     * @param string $chargeId - the ID of the charge, e.g. "ch_123".
+     * @return Charge
+     * @throws ApiErrorException - if there's no such charge, or Stripe can't be reached.
+     */
+    public function retrieveCharge(string $chargeId) : Charge
+    {
+        $charge = $this->m_underlyingStripeClient->charges->retrieve($chargeId);
+        return Charge::createFromStripeObject($charge, $this);
+    }
+
+
+    /**
+     * Retrieve a refund by ID.
+     * https://docs.stripe.com/api/refunds/retrieve
+     * @param string $refundId - the ID of the refund, e.g. "re_123".
+     * @return Refund
+     * @throws ApiErrorException - if there's no such refund, or Stripe can't be reached.
+     */
+    public function retrieveRefund(string $refundId) : Refund
+    {
+        $refund = $this->m_underlyingStripeClient->refunds->retrieve($refundId);
+        return Refund::createFromStripeObject($refund, $this);
+    }
+
+
+    /**
+     * Retrieve a payment method by ID.
+     * https://docs.stripe.com/api/payment_methods/retrieve
+     * @param string $paymentMethodId - the ID of the payment method, e.g. "pm_123".
+     * @return PaymentMethod
+     * @throws ApiErrorException - if there's no such payment method, or Stripe can't be reached.
+     */
+    public function retrievePaymentMethod(string $paymentMethodId) : PaymentMethod
+    {
+        $paymentMethod = $this->m_underlyingStripeClient->paymentMethods->retrieve($paymentMethodId);
+        return PaymentMethod::createFromStripeObject($paymentMethod, $this);
     }
 
 
@@ -1546,13 +1984,14 @@ final readonly class StripeClient
 
         if ($paymentMethodType !== null) { $params['type'] = $paymentMethodType->value; }
 
-        $requestPage = function (array $pageParams) use ($customerId): Collection {
-            return $this->m_underlyingStripeClient->customers->allPaymentMethods($customerId, $pageParams);
+        $requestPage = function (int $pageSize) use ($customerId, $params): Collection {
+            $params['limit'] = $pageSize;
+            return $this->m_underlyingStripeClient->customers->allPaymentMethods($customerId, $params);
         };
 
         $paymentMethods = [];
 
-        foreach ($this->fetchEveryPage($requestPage, $params, $limit, 'payment methods') as $object)
+        foreach ($this->fetchEveryPage($requestPage, $limit, 'payment methods') as $object)
         {
             $paymentMethods[] = PaymentMethod::createFromStripeObject($object, $this);
         }
@@ -1567,10 +2006,8 @@ final readonly class StripeClient
      * Get every object a list request matches, up to its limit, asking Stripe for up to 100 at a time (its maximum),
      * with the SDK's own paging, which carries the filters and cursor from one page to the next.
      *
-     * @param callable(array<string, mixed>): Collection<covariant \Stripe\StripeObject> $requestPage - asks Stripe
-     * for one page, with the parameters given.
-     *
-     * @param array<string, mixed> $params - the list's filters and cursor.
+     * @param callable(int): Collection<covariant \Stripe\StripeObject> $requestPage - asks Stripe for the first
+     * page, of the size given, with the list's filters and cursor.
      *
      * @param ResultLimit|null $limit - how many to get, or null for up to the safety cap, which throws if more match.
      *
@@ -1583,7 +2020,6 @@ final readonly class StripeClient
      */
     private function fetchEveryPage(
         callable $requestPage,
-        array $params,
         ?ResultLimit $limit,
         string $whatIsListed
     ) : array
@@ -1606,11 +2042,11 @@ final readonly class StripeClient
 
         # Don't ask for more than are wanted, though up to the safety cap, a full page is asked for, to find out if
         # there are more.
-        $params['limit'] = ($maximum === null || $throwIfMore) ? 100 : min(100, $maximum);
+        $pageSize = ($maximum === null || $throwIfMore) ? 100 : min(100, $maximum);
         $objects = [];
         $isOverLimit = false;
 
-        foreach ($requestPage($params)->autoPagingIterator() as $object)
+        foreach ($requestPage($pageSize)->autoPagingIterator() as $object)
         {
             if ($maximum !== null && count($objects) >= $maximum)
             {
@@ -1637,7 +2073,7 @@ final readonly class StripeClient
      * Get the parameters for where a list should start or end, for paging through it.
      * @param string|null $startingAfter - the ID of the object to start after, or null.
      * @param string|null $endingBefore - the ID of the object to end before, or null.
-     * @return array<string, mixed>
+     * @return array{starting_after?: string, ending_before?: string}
      */
     private static function getPagingParams(?string $startingAfter, ?string $endingBefore) : array
     {
@@ -1676,8 +2112,165 @@ final readonly class StripeClient
 
 
     /**
+     * Create a checkout session for a single payment, for createHostedCheckoutSessionForSinglePayment() and
+     * createEmbeddedCheckoutSessionForSinglePayment(), whose docblocks describe the parameters.
+     *
+     * @param FlowParams $flowParams - the flow's parameters, from its getStripeParams().
+     *
+     * @return CheckoutSession
+     *
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    private function createSinglePaymentSession(
+        array                            $flowParams,
+        SinglePaymentLineItemsCollection $items,
+        ?PaymentIntentData               $paymentIntentData,
+        ?string                          $clientReferenceId,
+        ?Discount                        $discount,
+        ?bool                            $allowPromoCodes,
+        ?Locale                          $locale,
+        ?Currency                        $currency,
+        ?SinglePaymentCheckoutCustomer   $customer,
+        ?InvoiceCreation                 $invoiceCreation,
+        ?CustomTextOptions               $customTextOptions,
+        ?AutomaticTax                    $automaticTax,
+        ?\DateTimeImmutable              $expiresAt,
+        ?AfterExpiration                 $afterExpiration,
+        ?bool                            $adaptivePricing,
+        BillingAddressCollection         $billingAddressCollection,
+        ?ShippingCountryCodeCollection   $shippingAddressCollection,
+        ?TaxIdCollection                 $taxIdCollection,
+        ?bool                            $enablePhoneNumberCollection,
+        ?ConsentConfig                   $consentConfig,
+        ?CustomFieldCollection           $customFields,
+        ?string                          $paymentMethodConfigurationId,
+        ?PaymentMethodTypeCollection     $allowedPaymentMethodTypes,
+        ?SavedPaymentMethodOptions       $savedPaymentMethodOptions,
+        SubmitType                       $submitType,
+        ?Metadata                        $metadata,
+        ?string                          $idempotencyKey,
+    ) : CheckoutSession
+    {
+        $params = $flowParams;
+        $params['mode'] = SessionMode::PAYMENT->value;
+        $params['line_items'] = $items->toStripeArrayForm();
+        $params['submit_type'] = $submitType->value;
+        if ($customer !== null) { $params = array_merge($params, $customer->getStripeParams()); }
+        if ($paymentIntentData !== null) { $params['payment_intent_data'] = $paymentIntentData->toArray(); }
+        if ($invoiceCreation !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
+
+        $sharedParams = self::getSharedCheckoutParams(
+            $clientReferenceId,
+            $discount,
+            $allowPromoCodes,
+            $locale,
+            $currency,
+            $customTextOptions,
+            $automaticTax,
+            $expiresAt,
+            $afterExpiration,
+            $adaptivePricing,
+            $billingAddressCollection,
+            $shippingAddressCollection,
+            $taxIdCollection,
+            $enablePhoneNumberCollection,
+            $consentConfig,
+            $customFields,
+            $paymentMethodConfigurationId,
+            $allowedPaymentMethodTypes,
+            $savedPaymentMethodOptions,
+            $metadata
+        );
+
+        $params = array_merge($params, $sharedParams);
+        $options = $this->getRequestOptions($idempotencyKey);
+        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        return CheckoutSession::createFromStripeObject($session, $this);
+    }
+
+
+    /**
+     * Create a checkout session for a subscription, for createHostedCheckoutSessionForSubscription() and
+     * createEmbeddedCheckoutSessionForSubscription(), whose docblocks describe the parameters.
+     *
+     * @param FlowParams $flowParams - the flow's parameters, from its getStripeParams().
+     *
+     * @return CheckoutSession
+     *
+     * @throws ExceptionUnexpectedResponse - if Stripe's response is missing a field the package needs.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    private function createSubscriptionSession(
+        array                                  $flowParams,
+        SubscriptionCheckoutLineItemCollection $items,
+        ?SubscriptionData                      $subscriptionData,
+        ?string                                $clientReferenceId,
+        ?Discount                              $discount,
+        ?bool                                  $allowPromoCodes,
+        ?Locale                                $locale,
+        ?Currency                              $currency,
+        ?SubscriptionCheckoutCustomer          $customer,
+        ?InvoiceCreation                       $invoiceCreation,
+        ?CustomTextOptions                     $customTextOptions,
+        ?AutomaticTax                          $automaticTax,
+        ?\DateTimeImmutable                    $expiresAt,
+        ?AfterExpiration                       $afterExpiration,
+        ?bool                                  $adaptivePricing,
+        BillingAddressCollection               $billingAddressCollection,
+        ?ShippingCountryCodeCollection         $shippingAddressCollection,
+        ?TaxIdCollection                       $taxIdCollection,
+        ?bool                                  $enablePhoneNumberCollection,
+        ?ConsentConfig                         $consentConfig,
+        ?CustomFieldCollection                 $customFields,
+        ?string                                $paymentMethodConfigurationId,
+        ?PaymentMethodTypeCollection           $allowedPaymentMethodTypes,
+        ?SavedPaymentMethodOptions             $savedPaymentMethodOptions,
+        ?Metadata                              $metadata,
+        ?string                                $idempotencyKey,
+    ) : CheckoutSession
+    {
+        $params = $flowParams;
+        $params['mode'] = SessionMode::SUBSCRIPTION->value;
+        $params['line_items'] = $items->toStripeArrayForm();
+        if ($customer !== null) { $params = array_merge($params, $customer->getStripeParams()); }
+
+        if ($subscriptionData !== null) { $params['subscription_data'] = $subscriptionData->toArray(); }
+        if ($invoiceCreation !== null) { $params['invoice_creation'] = $invoiceCreation->toArray(); }
+
+        $sharedParams = self::getSharedCheckoutParams(
+            $clientReferenceId,
+            $discount,
+            $allowPromoCodes,
+            $locale,
+            $currency,
+            $customTextOptions,
+            $automaticTax,
+            $expiresAt,
+            $afterExpiration,
+            $adaptivePricing,
+            $billingAddressCollection,
+            $shippingAddressCollection,
+            $taxIdCollection,
+            $enablePhoneNumberCollection,
+            $consentConfig,
+            $customFields,
+            $paymentMethodConfigurationId,
+            $allowedPaymentMethodTypes,
+            $savedPaymentMethodOptions,
+            $metadata
+        );
+
+        $params = array_merge($params, $sharedParams);
+        $options = $this->getRequestOptions($idempotencyKey);
+        $session = $this->m_underlyingStripeClient->checkout->sessions->create($params, $options);
+        return CheckoutSession::createFromStripeObject($session, $this);
+    }
+
+
+    /**
      * Get the checkout session parameters that are the same for a single payment and a subscription. Each argument
-     * is the parameter of the same name in createCheckoutSessionForSinglePayment(), and is left out if null.
+     * is the parameter of the same name in createHostedCheckoutSessionForSinglePayment(), and is left out if null.
      *
      * @param string|null $clientReferenceId
      * @param Discount|null $discount
@@ -1691,7 +2284,7 @@ final readonly class StripeClient
      * @param bool|null $adaptivePricing
      * @param BillingAddressCollection $billingAddressCollection
      * @param ShippingCountryCodeCollection|null $shippingAddressCollection
-     * @param TaxIdCollectionConfig|null $taxIdCollection
+     * @param TaxIdCollection|null $taxIdCollection
      * @param bool|null $enablePhoneNumberCollection
      * @param ConsentConfig|null $consentConfig
      * @param CustomFieldCollection|null $customFields
@@ -1700,7 +2293,7 @@ final readonly class StripeClient
      * @param SavedPaymentMethodOptions|null $savedPaymentMethodOptions
      * @param Metadata|null $metadata
      *
-     * @return array<string, mixed> - the parameters to add to the checkout session.
+     * @return SharedCheckoutParams - the parameters to add to the checkout session.
      */
     private static function getSharedCheckoutParams(
         ?string $clientReferenceId,
@@ -1715,7 +2308,7 @@ final readonly class StripeClient
         ?bool $adaptivePricing,
         BillingAddressCollection $billingAddressCollection,
         ?ShippingCountryCodeCollection $shippingAddressCollection,
-        ?TaxIdCollectionConfig $taxIdCollection,
+        ?TaxIdCollection $taxIdCollection,
         ?bool $enablePhoneNumberCollection,
         ?ConsentConfig $consentConfig,
         ?CustomFieldCollection $customFields,
@@ -1730,14 +2323,14 @@ final readonly class StripeClient
         if ($automaticTax !== null) { $params['automatic_tax'] = $automaticTax->toArray(); }
         if ($clientReferenceId !== null) { $params['client_reference_id'] = $clientReferenceId; }
         if ($metadata !== null) { $params['metadata'] = $metadata->toStripeArrayForm(); }
-        if ($adaptivePricing !== null) { $params['adaptive_pricing'] = $adaptivePricing; }
+        if ($adaptivePricing !== null) { $params['adaptive_pricing'] = ['enabled' => $adaptivePricing]; }
         if ($afterExpiration !== null) { $params['after_expiration'] = $afterExpiration->toArray(); }
         if ($allowPromoCodes !== null) { $params['allow_promotion_codes'] = $allowPromoCodes; }
         if ($consentConfig !== null) { $params['consent_collection'] = $consentConfig->toArray(); }
         if ($currency !== null) { $params['currency'] = $currency->value; }
         if ($customFields !== null) { $params['custom_fields'] = $customFields->toStripeArrayForm(); }
         if ($customTextOptions !== null) { $params['custom_text'] = $customTextOptions->toArray(); }
-        if ($taxIdCollection !== null) { $params['tax_id_collection'] = $taxIdCollection->toArray(); }
+        if ($taxIdCollection !== null) { $params['tax_id_collection'] = $taxIdCollection->toStripeArrayForm(); }
 
         if ($shippingAddressCollection !== null)
         {

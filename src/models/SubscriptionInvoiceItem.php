@@ -16,9 +16,25 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type PriceDataForInvoiceItemArray from PriceDataForInvoiceItem
+ *
+ * @phpstan-import-type SubscriptionItemDiscountArray from SubscriptionItemDiscount
+ *
+ * @phpstan-type SubscriptionInvoiceItemArray array{
+ *     quantity: int,
+ *     discounts?: list<SubscriptionItemDiscountArray>,
+ *     metadata?: array<string, string>,
+ *     period?: array{end: array{type: string, timestamp?: int}, start: array{type: string, timestamp?: int}},
+ *     price?: string,
+ *     price_data?: PriceDataForInvoiceItemArray,
+ *     tax_rates?: list<string>
+ * }
+ * @phpstan-type PriceParams array{price: string}|array{price_data: PriceDataForInvoiceItemArray}
+ */
 final readonly class SubscriptionInvoiceItem implements Arrayable
 {
-    /** @var array<string, mixed> */
+    /** @var PriceParams */
     private array $m_priceParams;
 
     private int $m_quantity;
@@ -31,7 +47,7 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
     /**
      * This is private, so use forPrice() or forPriceData(), whose parameters of the same names this takes.
      *
-     * @param array<string, mixed> $priceParams - the item's parameters for the price.
+     * @param PriceParams $priceParams - the item's parameters for the price.
      *
      * @param int $quantity
      *
@@ -138,7 +154,7 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return SubscriptionInvoiceItemArray
      */
     public function toArray() : array
     {

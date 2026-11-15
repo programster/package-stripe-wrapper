@@ -37,7 +37,7 @@ final readonly class CustomerUpdateConfig implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{address: string, name: string, shipping: string}
      */
     public function toArray() : array
     {

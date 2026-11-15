@@ -14,15 +14,21 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-type CustomerUpdateArray array{address: string, name: string, shipping: string}
+ * @phpstan-type CustomerParams array{customer: string, customer_update?: CustomerUpdateArray}
+ *     |array{customer_email: string, customer_creation?: string}
+ *     |array{customer_creation: string}
+ */
 final readonly class SinglePaymentCheckoutCustomer
 {
-    /** @var array<string, mixed> */
+    /** @var CustomerParams */
     private array $m_stripeParams;
 
 
     /**
      * This is private, so use existing(), withEmail() or create().
-     * @param array<string, mixed> $stripeParams - the checkout session's parameters for the customer.
+     * @param CustomerParams $stripeParams - the checkout session's parameters for the customer.
      */
     private function __construct(array $stripeParams)
     {
@@ -106,7 +112,7 @@ final readonly class SinglePaymentCheckoutCustomer
 
     /**
      * Get the parameters to add to a checkout session for this customer.
-     * @return array<string, mixed>
+     * @return CustomerParams
      */
     public function getStripeParams() : array
     {

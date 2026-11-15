@@ -12,6 +12,13 @@ use Programster\Stripe\Exceptions\ExceptionMissingRequiredParameter;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-type SavedPaymentMethodOptionsArray array{
+ *     payment_method_save?: string,
+ *     payment_method_remove?: string,
+ *     allow_redisplay_filters?: list<string>
+ * }
+ */
 final readonly class SavedPaymentMethodOptions implements Arrayable
 {
     private readonly ?bool $m_enableSavingOfPaymentMethod;
@@ -64,7 +71,7 @@ final readonly class SavedPaymentMethodOptions implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return SavedPaymentMethodOptionsArray
      */
     public function toArray() : array
     {

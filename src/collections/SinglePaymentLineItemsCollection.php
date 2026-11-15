@@ -12,6 +12,8 @@ use Programster\Stripe\Models\SinglePaymentLineItem;
 
 /**
  * @extends AbstractReadonlyCollection<SinglePaymentLineItem>
+ *
+ * @phpstan-import-type SinglePaymentLineItemArray from SinglePaymentLineItem
  */
 final readonly class SinglePaymentLineItemsCollection extends AbstractReadonlyCollection
 {
@@ -23,7 +25,7 @@ final readonly class SinglePaymentLineItemsCollection extends AbstractReadonlyCo
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<SinglePaymentLineItemArray>
      */
     public function toStripeArrayForm() : array
     {

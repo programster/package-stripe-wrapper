@@ -4,6 +4,7 @@
 - [Reading a response](#reading-a-response)
 - [Statuses](#statuses)
 - [Related objects](#related-objects)
+- [Narrower types](#narrower-types)
 - [Anything else Stripe sent](#anything-else-stripe-sent)
 - [Webhooks](#webhooks)
 
@@ -13,11 +14,17 @@ namespace, rather than the Stripe SDK's objects, so your IDE knows what's in the
 
 | Method | Returns |
 |---|---|
-| `createCheckoutSessionForSinglePayment()`, `createCheckoutSessionForSubscription()`, `retrieveCheckoutSession()` | `CheckoutSession` |
+| `createHostedCheckoutSessionForSinglePayment()`, `createHostedCheckoutSessionForSubscription()` | `NewHostedCheckoutSession` |
+| `createEmbeddedCheckoutSessionForSinglePayment()`, `createEmbeddedCheckoutSessionForSubscription()` | `NewEmbeddedCheckoutSession` |
+| `retrieveCheckoutSession()` | `CheckoutSession` |
 | `createCustomer()`, `retrieveCustomer()` | `Customer` |
 | `createSubscription()`, `retrieveSubscription()`, `cancelSubscription()` | `Subscription` |
 | `updateSubscriptionItem()` | `SubscriptionItem` |
 | `retrieveInvoice()` | `Invoice` |
+| `retrievePaymentIntent()` | `PaymentIntent` |
+| `retrieveCharge()` | `Charge` |
+| `retrieveRefund()` | `Refund` |
+| `retrievePaymentMethod()` | `PaymentMethod` |
 | Each `list...()` method | A readonly collection of them, e.g. `CustomerCollection` (see [Listing](listing.md)) |
 
 ## Reading a response
@@ -84,6 +91,36 @@ if ($session->getSubscriptionId() !== null)
   `hasAllItems()` says whether it's safe to call, and `fetchItems()` always gets them all.
 - **An invoice's payments** aren't included unless they're asked for: `$invoice->fetchPayments()` gets them, or
   `listInvoicesWithPayments()` gives `InvoiceWithPayments`, whose `getPayments()` already has them.
+
+Each model's related objects:
+
+| Model | `fetch...()` methods |
+|---|---|
+| `CheckoutSession` | `fetchCustomer()`, `fetchSubscription()`, `fetchPaymentIntent()`, `fetchInvoice()` |
+| `Customer` | `fetchSubscriptions()` (whatever their status), `fetchPaymentMethods()` |
+| `Subscription` | `fetchCustomer()`, `fetchItems()`, `fetchLatestInvoice()`, `fetchDefaultPaymentMethod()` |
+| `SubscriptionItem` | `fetchSubscription()` |
+| `Invoice` | `fetchCustomer()`, `fetchSubscription()`, `fetchPayments()` |
+| `InvoicePayment` | `fetchInvoice()`, `fetchPaymentIntent()` |
+| `PaymentIntent` | `fetchCustomer()`, `fetchLatestCharge()`, `fetchPaymentMethod()`, `fetchCharges()`, `fetchRefunds()` |
+| `Charge` | `fetchCustomer()`, `fetchPaymentIntent()`, `fetchPaymentMethod()`, `fetchRefunds()` |
+| `Refund` | `fetchCharge()`, `fetchPaymentIntent()` |
+| `PaymentMethod` | `fetchCustomer()` |
+
+The ones that return a collection get every match, however many there are.
+
+## Narrower types
+Where something guarantees more than Stripe always sends, a narrower type holds the guarantee, so the field can't be
+null:
+
+- **What a method asked for:** `listInvoicesWithPayments()` returns `InvoiceWithPayments`, which has the payments.
+- **How a session was just made:** a `NewHostedCheckoutSession` always has its URL, and a `NewEmbeddedCheckoutSession`
+  its client secret (see [Checkout sessions](checkout.md#hosted-or-embedded)).
+- **An object's state:** `$session->toCompleted()` returns a `CompletedCheckoutSession`, which always has the
+  customer's details, and throws an `ExceptionWrongStatus` if the session hasn't been completed (see
+  [Checkout sessions](checkout.md#a-completed-session)).
+
+Each wraps the general model, which `getSession()` or `getInvoice()` returns.
 
 ## Anything else Stripe sent
 The models have the fields people commonly need. For anything else, `getStripeObject()` returns a fresh copy of the

@@ -46,6 +46,8 @@ foreach ($testFiles as $testFile)
     require $testFile;
 }
 
+# The accessors are one line, with no docblock, so these say what their lists hold, as their properties do.
+/** @var list<string> $failures */
 $failures = $smoke->getFailures();
 
 # With STRIPE_WRAPPER_TEST_ONLY, a name that matches nothing would otherwise pass without checking anything.

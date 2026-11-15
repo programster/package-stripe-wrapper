@@ -23,7 +23,7 @@ final readonly class CustomerTaxIdDataCollection extends AbstractReadonlyCollect
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, value: string}>
      */
     public function toStripeArrayForm() : array
     {

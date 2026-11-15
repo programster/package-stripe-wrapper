@@ -7,9 +7,11 @@
 
 namespace Programster\Stripe\Responses;
 
+use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
 use Programster\Stripe\StripeClient;
+use Stripe\Exception\ApiErrorException;
 
 final readonly class InvoicePayment extends AbstractResponse
 {
@@ -38,6 +40,38 @@ final readonly class InvoicePayment extends AbstractResponse
         $this->m_amountRequested = new Money($fields->getInt('amount_requested'), $fields->getString('currency'));
         $this->m_paymentIntentId = $payment->getOptionalId('payment_intent');
         $this->m_isDefault = $fields->getBool('is_default');
+    }
+
+
+    /**
+     * Ask Stripe for the invoice the payment was made against.
+     * @return Invoice
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchInvoice(): Invoice
+    {
+        return $this->m_client->retrieveInvoice($this->m_invoiceId);
+    }
+
+
+    /**
+     * Ask Stripe for the payment's payment intent.
+     *
+     * @return PaymentIntent
+     *
+     * @throws ExceptionNoRelatedObject - if the payment wasn't made with a payment intent (e.g. it was paid out of
+     * band). Check getPaymentIntentId() first.
+     *
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchPaymentIntent(): PaymentIntent
+    {
+        if ($this->m_paymentIntentId === null)
+        {
+            throw new ExceptionNoRelatedObject("Invoice payment {$this->getId()} wasn't paid with a payment intent.");
+        }
+
+        return $this->m_client->retrievePaymentIntent($this->m_paymentIntentId);
     }
 
 

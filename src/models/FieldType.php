@@ -12,22 +12,28 @@ use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type DropdownOptionArray from DropdownOption
+ * @phpstan-type LengthConfigArray array{minimum_length: int, maximum_length: int, default_value?: string}
+ * @phpstan-type DropdownConfigArray array{options: list<DropdownOptionArray>, default_value?: string}
+ * @phpstan-type FieldTypeArray array{type: 'numeric', numeric: LengthConfigArray}|array{
+ *     type: 'text',
+ *     text: LengthConfigArray
+ * }|array{type: 'dropdown', dropdown: DropdownConfigArray}
+ */
 final readonly class FieldType implements Arrayable
 {
-    private CustomFieldType $m_type;
-    /** @var array<string, mixed> */
-    private array $m_childConfig;
+    /** @var FieldTypeArray */
+    private array $m_stripeForm;
 
 
     /**
      * This is private, so use one of the static create methods.
-     * @param CustomFieldType $type - the type of field.
-     * @param array<string, mixed> $childConfig - the settings for that type, in the form Stripe takes them.
+     * @param FieldTypeArray $stripeForm - the type of field, and its settings, in the form Stripe takes them.
      */
-    private function __construct(CustomFieldType $type, array $childConfig)
+    private function __construct(array $stripeForm)
     {
-        $this->m_type = $type;
-        $this->m_childConfig = $childConfig;
+        $this->m_stripeForm = $stripeForm;
     }
 
 
@@ -53,7 +59,7 @@ final readonly class FieldType implements Arrayable
 
         $childConfig = self::buildLengthConfig($defaultValue, $minLength, $maxLength);
 
-        return new FieldType(CustomFieldType::NUMERIC, $childConfig);
+        return new FieldType(['type' => CustomFieldType::NUMERIC->value, 'numeric' => $childConfig]);
     }
 
 
@@ -78,7 +84,7 @@ final readonly class FieldType implements Arrayable
 
         $childConfig = self::buildLengthConfig($defaultValue, $minLength, $maxLength);
 
-        return new FieldType(CustomFieldType::TEXT, $childConfig);
+        return new FieldType(['type' => CustomFieldType::TEXT->value, 'text' => $childConfig]);
     }
 
 
@@ -126,19 +132,16 @@ final readonly class FieldType implements Arrayable
             $childConfig['default_value'] = $defaultOption->getValue();
         }
 
-        return new FieldType(CustomFieldType::DROPDOWN, $childConfig);
+        return new FieldType(['type' => CustomFieldType::DROPDOWN->value, 'dropdown' => $childConfig]);
     }
 
 
     /**
-     * @return array<string, mixed>
+     * @return FieldTypeArray
      */
     public function toArray() : array
     {
-        return [
-            'type' => $this->m_type->value,
-            $this->m_type->value => $this->m_childConfig,
-        ];
+        return $this->m_stripeForm;
     }
 
 
@@ -148,7 +151,7 @@ final readonly class FieldType implements Arrayable
      * @param string $defaultValue - the value to pre-fill the field with, or an empty string for none.
      * @param int $minLength - the minimum length.
      * @param int $maxLength - the maximum length.
-     * @return array<string, int|string>
+     * @return LengthConfigArray
      */
     private static function buildLengthConfig(string $defaultValue, int $minLength, int $maxLength): array
     {
@@ -186,5 +189,5 @@ final readonly class FieldType implements Arrayable
 
 
     # Accessors
-    public function getType() : string { return $this->m_type->value; }
+    public function getType() : string { return $this->m_stripeForm['type']; }
 }

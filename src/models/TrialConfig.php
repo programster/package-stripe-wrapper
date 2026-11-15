@@ -10,6 +10,13 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\EndTrialBehaviorIfMissingPaymentMethod;
 
 
+/**
+ * @phpstan-type TrialArray array{
+ *     trial_period_days?: int,
+ *     trial_end?: int,
+ *     trial_settings?: array{end_behavior: array{missing_payment_method: string}}
+ * }
+ */
 final readonly class TrialConfig
 {
     private ?int $m_numDays;
@@ -78,7 +85,7 @@ final readonly class TrialConfig
 
     /**
      * Get the trial's settings, as the parameters Stripe takes for them.
-     * @return array<string, mixed>
+     * @return TrialArray
      */
     public function getStripeParams() : array
     {

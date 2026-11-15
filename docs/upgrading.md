@@ -2,6 +2,7 @@
 
 - [From 0.2.x to 1.0.0](#from-02x-to-100)
     - [What the methods return](#what-the-methods-return)
+    - [Checkout sessions](#checkout-sessions)
     - [Listing](#listing)
     - [One type per parameter](#one-type-per-parameter)
     - [Times](#times)
@@ -34,6 +35,31 @@ fields with their getters, rather than as properties:
 - **Times are `DateTimeImmutable`s, and amounts are `Money`**, rather than unix timestamps and plain ints.
 - **For a field the models don't have yet**, `getStripeObject()` returns a copy of the SDK's object, as before.
 - **The models can't be serialized**, as they hold the client, and so your secret key. Store IDs instead.
+
+### Checkout sessions
+Each checkout method is now two, one for a session hosted by Stripe, and one for a session embedded in your site, so
+what each returns is certain to have what you need from it:
+
+| 0.2.x | 1.0.0 |
+|---|---|
+| `createCheckoutSessionForSinglePayment(FlowConfig::createHosted(...), ...)` | `createHostedCheckoutSessionForSinglePayment(new HostedFlow(...), ...)` |
+| `createCheckoutSessionForSinglePayment(FlowConfig::createEmbedded(...), ...)` | `createEmbeddedCheckoutSessionForSinglePayment(new EmbeddedFlow(...), ...)` |
+| `createCheckoutSessionForSubscription(...)` | `createHostedCheckoutSessionForSubscription(...)` or `createEmbeddedCheckoutSessionForSubscription(...)`, in the same way |
+| `flowConfig: $flowConfig` | `flow: $flow` |
+| `$session->url` | `$session->getUrl()`, which is a string, never null |
+| `$session->client_secret` | `$session->getClientSecret()`, which is a string, never null |
+
+- **The hosted methods return a `NewHostedCheckoutSession`**, and the embedded ones a `NewEmbeddedCheckoutSession`.
+  `getId()` gives the session's ID, and `getSession()` the `CheckoutSession` itself, for its other details.
+- **`FlowConfig` has been replaced by `HostedFlow` and `EmbeddedFlow`**, which take the same arguments as
+  `createHosted()` and `createEmbedded()` did, so a hosted flow can't be given to an embedded method, or the other way
+  round.
+- **`TaxIdCollectionConfig` has been replaced by the `TaxIdCollection` enum**:
+  `TaxIdCollection::REQUIRED_WHERE_SUPPORTED` for `new TaxIdCollectionConfig(true, true)`, and
+  `TaxIdCollection::OPTIONAL` for `new TaxIdCollectionConfig(true, false)`. For `new TaxIdCollectionConfig(false, ...)`,
+  which did nothing, leave `$taxIdCollection` out.
+- **`$session->toCompleted()` returns a `CompletedCheckoutSession`**, whose customer details can't be null, e.g. for a
+  `checkout.session.completed` webhook. It throws an `ExceptionWrongStatus` if the session hasn't been completed.
 
 ### Listing
 - **Each list method returns a readonly collection of everything that matches** (e.g. `CustomerCollection`), rather
@@ -100,9 +126,13 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
   Checkout can collect shipping addresses for, which are fewer.
 
 ### Other changes
-- **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `listInvoicePayments()` and
+- **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `retrievePaymentIntent()`,
+  `retrieveCharge()`, `retrieveRefund()`, `retrievePaymentMethod()`, `listInvoicePayments()` and
   `listInvoicesWithPayments()`, and `fetch...()` methods on the models for their related objects, e.g.
-  `$subscription->fetchCustomer()`.
+  `$subscription->fetchLatestInvoice()`. See [Responses](responses.md#related-objects) for the full list.
+- **`listCharges()`'s `$paymentIntent` is now `$paymentIntentId`**, like the other methods' IDs.
+- **`$adaptivePricing` works.** The checkout methods sent it as a bare bool, which Stripe rejected, so any session
+  created with it failed. It's now sent in the form Stripe takes. Nothing needs to change in your code.
 - **The request collections are readonly**, built on `programster/collections` 2.0's readonly collections, so they
   can't be changed after they're created: `append()`, `$collection[] = ...` and the other `ArrayObject` methods are
   gone. Create the collection with everything in it instead.

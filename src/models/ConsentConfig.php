@@ -9,6 +9,13 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type ConsentConfigArray array{
+ *     terms_of_service: string,
+ *     payment_method_reuse_agreement?: array{position: string},
+ *     promotions?: string
+ * }
+ */
 final readonly class ConsentConfig implements Arrayable
 {
     private bool $m_showTermsOfServiceCheckbox;
@@ -49,7 +56,7 @@ final readonly class ConsentConfig implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return ConsentConfigArray
      */
     public function toArray() : array
     {

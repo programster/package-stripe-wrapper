@@ -55,7 +55,7 @@ final readonly class SubscriptionTransferData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{destination: string, amount_percent?: float}
      */
     public function toArray(): array
     {

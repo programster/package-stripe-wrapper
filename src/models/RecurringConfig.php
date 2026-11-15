@@ -12,6 +12,9 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-type RecurringArray array{interval: string, interval_count: int}
+ */
 final readonly class RecurringConfig implements Arrayable
 {
     private readonly RecurringInterval $m_interval;
@@ -42,7 +45,7 @@ final readonly class RecurringConfig implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return RecurringArray
      */
     public function toArray() : array
     {

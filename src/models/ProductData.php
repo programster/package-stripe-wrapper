@@ -13,6 +13,15 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-type ProductDataArray array{
+ *     name: string,
+ *     description?: string,
+ *     images?: list<string>,
+ *     metadata?: array<string, string>,
+ *     tax_code?: string
+ * }
+ */
 final readonly class ProductData implements Arrayable
 {
     private string $m_name;
@@ -70,7 +79,7 @@ final readonly class ProductData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return ProductDataArray
      */
     public function toArray() : array
     {

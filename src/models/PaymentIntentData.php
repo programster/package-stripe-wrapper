@@ -13,6 +13,9 @@ use Programster\Stripe\Enums\PaymentIntentSetupFutureUsage;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-import-type ShippingConfigArray from ShippingConfig
+ */
 final readonly class PaymentIntentData implements Arrayable
 {
     private ?int $m_applicationFeeAmount;
@@ -108,7 +111,20 @@ final readonly class PaymentIntentData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     capture_method: string,
+     *     application_fee_amount?: int,
+     *     description?: string,
+     *     metadata?: array<string, string>,
+     *     on_behalf_of?: string,
+     *     receipt_email?: string,
+     *     setup_future_usage?: string,
+     *     shipping?: ShippingConfigArray,
+     *     statement_descriptor?: string,
+     *     statement_descriptor_suffix?: string,
+     *     transfer_data?: array{destination: string, amount?: int},
+     *     transfer_group?: string
+     * }
      */
     public function toArray() : array
     {

@@ -67,7 +67,7 @@ abstract readonly class AbstractResponse
         }
 
         $idDescription = is_string($id) ? $id : 'with an invalid ID';
-        return new static(new ResponseFields($values, "{$expectedType} {$idDescription}"), $client);
+        return new static(ResponseFields::createFromArray($values, "{$expectedType} {$idDescription}"), $client);
     }
 
 

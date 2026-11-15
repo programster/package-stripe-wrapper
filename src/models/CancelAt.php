@@ -8,15 +8,18 @@
 namespace Programster\Stripe\Models;
 
 
+/**
+ * @phpstan-type CancelAtParams array{cancel_at_period_end: true}|array{cancel_at: int|string}
+ */
 final readonly class CancelAt
 {
-    /** @var array<string, int|string|bool> */
+    /** @var CancelAtParams */
     private array $m_stripeParams;
 
 
     /**
      * This is private, so use one of the static creators.
-     * @param array<string, int|string|bool> $stripeParams - the subscription's parameters for when it cancels.
+     * @param CancelAtParams $stripeParams - the subscription's parameters for when it cancels.
      */
     private function __construct(array $stripeParams)
     {
@@ -68,7 +71,7 @@ final readonly class CancelAt
 
     /**
      * Get the parameters to add to a subscription for when it cancels.
-     * @return array<string, int|string|bool>
+     * @return CancelAtParams
      */
     public function getStripeParams() : array
     {

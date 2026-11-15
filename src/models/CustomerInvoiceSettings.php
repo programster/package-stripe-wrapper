@@ -47,7 +47,12 @@ final readonly class CustomerInvoiceSettings implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     custom_fields?: list<array{name: string, value: string}>,
+     *     default_payment_method?: string,
+     *     footer?: string,
+     *     rendering_options?: array{amount_tax_display?: string, template_id?: string}
+     * }
      */
     public function toArray() : array
     {

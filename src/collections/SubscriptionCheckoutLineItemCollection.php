@@ -12,6 +12,8 @@ use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 
 /**
  * @extends AbstractReadonlyCollection<SubscriptionCheckoutLineItem>
+ *
+ * @phpstan-import-type SubscriptionCheckoutLineItemArray from SubscriptionCheckoutLineItem
  */
 final readonly class SubscriptionCheckoutLineItemCollection extends AbstractReadonlyCollection
 {
@@ -23,7 +25,7 @@ final readonly class SubscriptionCheckoutLineItemCollection extends AbstractRead
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<SubscriptionCheckoutLineItemArray>
      */
     public function toStripeArrayForm() : array
     {

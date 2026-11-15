@@ -72,6 +72,7 @@ final class FakeStripeHttpClient implements ClientInterface
      * @return array{0: string, 1: int, 2: array<string, string>} - the response body, HTTP status code and headers.
      *
      * @throws \Exception - if the URL has no path, which the SDK never sends.
+     * @throws \JsonException - if the response can't be encoded, which would be a bug in the test.
      */
     public function request(
         $method,
@@ -108,10 +109,21 @@ final class FakeStripeHttpClient implements ClientInterface
         }
 
         # A test can say exactly what the next responses should be, e.g. several pages of a list. Otherwise, a list
-        # holds the recorded object of its type, and anything else is the recorded object of its type.
+        # holds the recorded object of its type, and anything else is the recorded object of its type, apart from a
+        # new embedded checkout session, which is answered with the recorded embedded one.
+        $isNewEmbeddedSession = (
+               $method === 'post'
+            && $objectType === 'checkout.session'
+            && ($params['ui_mode'] ?? null) === 'embedded'
+        );
+
         if (count($this->m_queuedBodies) > 0)
         {
             $body = array_shift($this->m_queuedBodies);
+        }
+        elseif ($isNewEmbeddedSession)
+        {
+            $body = self::loadFixture('checkout-session-embedded');
         }
         elseif ($isList)
         {
@@ -127,7 +139,7 @@ final class FakeStripeHttpClient implements ClientInterface
             $body = ['id' => 'fake_123', 'object' => $objectType];
         }
 
-        return [json_encode($body), 200, ['request-id' => 'req_fake']];
+        return [json_encode($body, JSON_THROW_ON_ERROR), 200, ['request-id' => 'req_fake']];
     }
 
 
@@ -161,12 +173,24 @@ final class FakeStripeHttpClient implements ClientInterface
 
         $body = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
+        $fields = [];
+
         if (!is_array($body))
         {
             throw new \Exception("The recorded response {$name} isn't an object.");
         }
 
-        return $body;
+        foreach ($body as $key => $value)
+        {
+            if (!is_string($key))
+            {
+                throw new \Exception("The recorded response {$name} is a list, not an object.");
+            }
+
+            $fields[$key] = $value;
+        }
+
+        return $fields;
     }
 
 

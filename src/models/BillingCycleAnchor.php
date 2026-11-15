@@ -11,15 +11,20 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 
 
+/**
+ * @phpstan-type AnchorConfigArray array{day_of_month: int, month?: int, hour?: int, minute?: int, second?: int}
+ * @phpstan-type BillingCycleAnchorParams array{billing_cycle_anchor: int}
+ *     |array{billing_cycle_anchor_config: AnchorConfigArray}
+ */
 final readonly class BillingCycleAnchor
 {
-    /** @var array<string, mixed> */
+    /** @var BillingCycleAnchorParams */
     private array $m_stripeParams;
 
 
     /**
      * This is private, so use at() or onDayOfMonth().
-     * @param array<string, mixed> $stripeParams - the subscription's parameters for the anchor.
+     * @param BillingCycleAnchorParams $stripeParams - the subscription's parameters for the anchor.
      */
     private function __construct(array $stripeParams)
     {
@@ -99,7 +104,7 @@ final readonly class BillingCycleAnchor
 
     /**
      * Get the parameters to add to a subscription for the anchor.
-     * @return array<string, mixed>
+     * @return BillingCycleAnchorParams
      */
     public function getStripeParams() : array
     {

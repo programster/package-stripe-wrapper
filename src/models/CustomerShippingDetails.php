@@ -9,6 +9,9 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-import-type AddressArray from Address
+ */
 final readonly class CustomerShippingDetails implements Arrayable
 {
     private Address $m_address;
@@ -32,7 +35,7 @@ final readonly class CustomerShippingDetails implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{address: AddressArray, name: string, phone?: string}
      */
     public function toArray() : array
     {

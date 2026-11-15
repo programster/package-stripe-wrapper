@@ -6,29 +6,42 @@
 - [The customer](#the-customer)
 - [Other options](#other-options)
 - [Retrieving a session](#retrieving-a-session)
+- [A completed session](#a-completed-session)
 
 A checkout session is a page, hosted by Stripe or embedded in your site, where the customer pays. There's a method for
-each kind: `createCheckoutSessionForSinglePayment()` for a one-off payment, and `createCheckoutSessionForSubscription()`
-for a subscription (which can also include one-off items). Each returns a [`CheckoutSession`](responses.md).
+each kind of payment and each place it's shown:
+
+| | Hosted by Stripe | Embedded in your site |
+|---|---|---|
+| A one-off payment | `createHostedCheckoutSessionForSinglePayment()` | `createEmbeddedCheckoutSessionForSinglePayment()` |
+| A subscription (which can also include one-off items) | `createHostedCheckoutSessionForSubscription()` | `createEmbeddedCheckoutSessionForSubscription()` |
 
 ## Hosted or embedded
-A `FlowConfig` says where the checkout is shown, and where the customer goes afterwards:
+A hosted session's method takes a `HostedFlow`, and returns a `NewHostedCheckoutSession`, whose `getUrl()` is the
+payment page to send the customer to. An embedded session's method takes an `EmbeddedFlow`, and returns a
+`NewEmbeddedCheckoutSession`, whose `getClientSecret()` is what Stripe's JavaScript needs to show the payment form.
+Each is certain to have its URL or client secret, so neither can be null, and a flow can't be given to the other kind
+of method. `getSession()` returns the [`CheckoutSession`](responses.md) itself, for its other details.
 
 ```php
 $client = new StripeClient('sk_test_...');
 
 // On Stripe's own page, which the customer is sent to, and returned from.
-$hosted = FlowConfig::createHosted(
+$hosted = new HostedFlow(
     successUrl: "https://example.com/success",
     cancelUrl: "https://example.com/basket",
 );
 
-// Embedded in your own page, with Stripe's JavaScript. The session's client_secret is what the page needs.
-$embedded = FlowConfig::createEmbedded(
+// Embedded in your own page, with Stripe's JavaScript.
+$embedded = new EmbeddedFlow(
     returnUrl: "https://example.com/return",
     redirectOnCompletion: RedirectOnCompletion::IF_REQUIRED,
 );
 ```
+
+The URL and client secret are only certain when the session has just been created: Stripe empties the URL once the
+session is completed or expires, so a session retrieved later is a plain `CheckoutSession`, whose `getUrl()` and
+`getClientSecret()` can return null.
 
 ## A one-off payment
 Each line item is for a price you've already created in Stripe, with `forPrice()`, or for a price created inline, with
@@ -47,8 +60,12 @@ $items = new SinglePaymentLineItemsCollection(
     SinglePaymentLineItem::forPrice('price_123', quantity: 2),
 );
 
-$session = $client->createCheckoutSessionForSinglePayment(flowConfig: $hosted, items: $items);
+$session = $client->createHostedCheckoutSessionForSinglePayment(flow: $hosted, items: $items);
 $paymentPageUrl = $session->getUrl();
+
+// Or, embedded in your own page.
+$embeddedSession = $client->createEmbeddedCheckoutSessionForSinglePayment(flow: $embedded, items: $items);
+$clientSecret = $embeddedSession->getClientSecret();
 ```
 
 A price can't be negative, an `AdjustableQuantityConfig`'s minimum can't be more than its maximum, and a product's ID
@@ -86,8 +103,8 @@ $subscriptionData = new SubscriptionData(
     trialConfig: TrialConfig::createForNumDays(14, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
 );
 
-$session = $client->createCheckoutSessionForSubscription(
-    flowConfig: $hosted,
+$session = $client->createHostedCheckoutSessionForSubscription(
+    flow: $hosted,
     items: new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::forPriceData($plan, 1)),
     subscriptionData: $subscriptionData,
 );
@@ -105,14 +122,14 @@ Stripe creates a customer:
 ```php
 // An existing customer, whose address Stripe may update from what they enter.
 $existing = SinglePaymentCheckoutCustomer::existing('cus_123', new CustomerUpdateConfig(address: Updateable::AUTO));
-$session = $client->createCheckoutSessionForSinglePayment($hosted, $items, customer: $existing);
+$session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $items, customer: $existing);
 
 // Their email address, with a customer always created for them.
 $newCustomer = SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS);
-$session = $client->createCheckoutSessionForSinglePayment($hosted, $items, customer: $newCustomer);
+$session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $items, customer: $newCustomer);
 
 // No email address, but still always creating a customer.
-$session = $client->createCheckoutSessionForSinglePayment(
+$session = $client->createHostedCheckoutSessionForSinglePayment(
     $hosted,
     $items,
     customer: SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS),
@@ -132,11 +149,11 @@ $customer = SinglePaymentCheckoutCustomer::withEmail('cus_123');
 ```
 
 ## Other options
-Both methods take many more optional parameters, each typed and documented in `StripeClient`. Some of the most useful:
+The methods take many more optional parameters, each typed and documented in `StripeClient`. Some of the most useful:
 
 ```php
-$session = $client->createCheckoutSessionForSinglePayment(
-    flowConfig: $hosted,
+$session = $client->createHostedCheckoutSessionForSinglePayment(
+    flow: $hosted,
     items: $items,
     clientReferenceId: 'order-42',
     expiresAt: new DateTimeImmutable('+1 hour'),
@@ -157,3 +174,20 @@ For example, on the success page, to check what was paid:
 $session = $client->retrieveCheckoutSession('cs_test_123');
 $isPaid = $session->isPaid();
 ```
+
+## A completed session
+`toCompleted()` returns a `CompletedCheckoutSession`, whose `getCustomerDetails()` is certain to be there, e.g. when
+handling a `checkout.session.completed` webhook. It throws an `ExceptionWrongStatus` if the session hasn't been
+completed, so check `isComplete()` first:
+
+```php
+// Or, in a webhook, CheckoutSession::createFromStripeObject($event->data->object, $client).
+$session = $client->retrieveCheckoutSession('cs_test_123');
+
+if ($session->isComplete())
+{
+    $email = $session->toCompleted()->getCustomerDetails()->getEmail();
+}
+```
+
+The details' fields, such as the email address, can still be null, as Stripe only fills in what was collected.

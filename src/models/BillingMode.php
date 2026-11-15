@@ -51,7 +51,7 @@ final readonly class BillingMode implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{type: string, flexible?: array{proration_discounts: string}}
      */
     public function toArray() : array
     {

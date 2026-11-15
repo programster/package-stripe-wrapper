@@ -14,6 +14,11 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-import-type TrialArray from TrialConfig
+ *
+ * @phpstan-import-type AccountReferenceArray from AccountReference
+ */
 final readonly class SubscriptionData implements Arrayable
 {
     private readonly ?float $m_applicationFeePercent;
@@ -109,7 +114,21 @@ final readonly class SubscriptionData implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     application_fee_percent?: float,
+     *     proration_behavior?: string,
+     *     invoice_settings?: array{issuer: AccountReferenceArray},
+     *     billing_cycle_anchor?: int,
+     *     billing_mode?: array{type: string, flexible?: array{proration_discounts: string}},
+     *     default_tax_rates?: list<string>,
+     *     description?: string,
+     *     metadata?: array<string, string>,
+     *     on_behalf_of?: string,
+     *     transfer_data?: array{destination: string, amount_percent?: float},
+     *     trial_period_days?: int,
+     *     trial_end?: int,
+     *     trial_settings?: array{end_behavior: array{missing_payment_method: string}}
+     * }
      */
     public function toArray() : array
     {

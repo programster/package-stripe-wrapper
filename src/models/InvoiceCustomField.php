@@ -46,7 +46,7 @@ final readonly class InvoiceCustomField implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{name: string, value: string}
      */
     public function toArray() : array
     {

@@ -46,7 +46,7 @@ final readonly class InvoiceRenderingOptions implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{amount_tax_display?: string, template_id?: string}
      */
     public function toArray() : array
     {

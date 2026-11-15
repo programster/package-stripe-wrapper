@@ -26,7 +26,7 @@ final readonly class BillingThresholds
 
     /**
      * Get the form to send to Stripe. Stripe takes an empty string to mean "remove any thresholds".
-     * @return array<string, int>|string
+     * @return array{usage_gte: int}|''
      */
     public function toStripeForm() : array|string
     {

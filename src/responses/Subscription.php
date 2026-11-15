@@ -13,6 +13,7 @@ use Programster\Stripe\Enums\SubscriptionCollectionMethod;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Exceptions\ExceptionCustomerDeleted;
 use Programster\Stripe\Exceptions\ExceptionIncompleteList;
+use Programster\Stripe\Exceptions\ExceptionNoRelatedObject;
 use Programster\Stripe\Exceptions\ExceptionTooManyResults;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
 use Programster\Stripe\Internal\ResponseFields;
@@ -214,6 +215,44 @@ final readonly class Subscription extends AbstractResponse
     public function fetchCustomer(): Customer
     {
         return $this->m_client->retrieveCustomer($this->m_customerId);
+    }
+
+
+    /**
+     * Ask Stripe for the subscription's latest invoice.
+     * @return Invoice
+     * @throws ExceptionNoRelatedObject - if the subscription has no invoice yet. Check getLatestInvoiceId() first.
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchLatestInvoice(): Invoice
+    {
+        if ($this->m_latestInvoiceId === null)
+        {
+            throw new ExceptionNoRelatedObject("Subscription {$this->getId()} has no invoice yet.");
+        }
+
+        return $this->m_client->retrieveInvoice($this->m_latestInvoiceId);
+    }
+
+
+    /**
+     * Ask Stripe for the subscription's default payment method.
+     *
+     * @return PaymentMethod
+     *
+     * @throws ExceptionNoRelatedObject - if the subscription has no default payment method of its own. Check
+     * getDefaultPaymentMethodId() first.
+     *
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchDefaultPaymentMethod(): PaymentMethod
+    {
+        if ($this->m_defaultPaymentMethodId === null)
+        {
+            throw new ExceptionNoRelatedObject("Subscription {$this->getId()} has no default payment method.");
+        }
+
+        return $this->m_client->retrievePaymentMethod($this->m_defaultPaymentMethodId);
     }
 
 

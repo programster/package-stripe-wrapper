@@ -1,9 +1,9 @@
 # PHPStan settings. Run with: vendor/bin/phpstan
-# Level 6 is the highest that's clean. Level 7 and above also check each request array against the exact shape the
-# Stripe SDK declares, and the elements of the collections, which programster/collections 0.1.0 types as mixed. Both
-# are for 1.0.0, with its typed models and programster/collections 2.x.
+# Level 10, the highest. Each request model's array form declares its exact shape, so PHPStan checks what's sent
+# against the shapes the Stripe SDK declares for each request. The one exception, ignored below, is the empty string
+# that removes billing thresholds, which Stripe takes but the SDK's shapes leave out.
 parameters:
-    level: 6
+    level: 10
     phpVersion:
         min: 80200
         max: 80599
@@ -17,6 +17,14 @@ parameters:
     bootstrapFiles:
         - testing/settings.php.tmpl
     ignoreErrors:
+        # Stripe takes an empty string to remove billing thresholds, which BillingThresholds(null) sends, but the
+        # SDK's array shapes for these two calls leave the empty string out, so they can't be satisfied without
+        # changing what's sent.
+        -
+            message: '#^Parameter \#\d \$params of method Stripe\\Service\\Subscription(Item)?Service::(update|create)\(\) expects .*billing_thresholds\?: \x27\x27\|array\{usage_gte: int\}#'
+            identifier: argument.type
+            path: src/StripeClient.php
+            count: 2
         # Accessors are one line, with no docblock, so these can't say what their arrays hold. The properties they
         # return do say.
         -

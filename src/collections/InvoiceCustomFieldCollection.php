@@ -23,7 +23,7 @@ final readonly class InvoiceCustomFieldCollection extends AbstractReadonlyCollec
 
     /**
      * Get the collection in the form Stripe takes: a list of each item's array forms.
-     * @return list<array<string, mixed>>
+     * @return list<array{name: string, value: string}>
      */
     public function toStripeArrayForm() : array
     {

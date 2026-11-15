@@ -15,11 +15,27 @@ use Programster\Stripe\Interfaces\Arrayable;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type PriceDataForSubscriptionItemArray from PriceDataForSubscriptionItem
+ *
+ * @phpstan-import-type SubscriptionItemDiscountArray from SubscriptionItemDiscount
+ *
+ * @phpstan-type SubscriptionItemArray array{
+ *     quantity: int,
+ *     tax_rates?: list<string>,
+ *     price?: string,
+ *     price_data?: PriceDataForSubscriptionItemArray,
+ *     metadata?: array<string, string>,
+ *     discounts?: list<SubscriptionItemDiscountArray>,
+ *     billing_thresholds?: array{usage_gte: int}|''
+ * }
+ * @phpstan-type PriceParams array{price: string}|array{price_data: PriceDataForSubscriptionItemArray}
+ */
 final readonly class SubscriptionItem implements Arrayable
 {
     private int $m_quantity;
 
-    /** @var array<string, mixed> */
+    /** @var PriceParams */
     private array $m_priceParams;
 
     private ?Metadata $m_metadata;
@@ -33,7 +49,7 @@ final readonly class SubscriptionItem implements Arrayable
      *
      * @param int $quantity
      *
-     * @param array<string, mixed> $priceParams - the item's parameters for the price.
+     * @param PriceParams $priceParams - the item's parameters for the price.
      *
      * @param Metadata|null $metadata
      *
@@ -150,7 +166,7 @@ final readonly class SubscriptionItem implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return SubscriptionItemArray
      */
     public function toArray() : array
     {
@@ -158,7 +174,7 @@ final readonly class SubscriptionItem implements Arrayable
 
         if ($this->m_taxRates !== null)
         {
-            $arrayForm['tax_rates'] = $this->m_taxRates->getTaxRates();
+            $arrayForm['tax_rates'] = $this->m_taxRates->toStripeArrayForm();
         }
 
         $arrayForm = array_merge($arrayForm, $this->m_priceParams);

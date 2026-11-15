@@ -11,6 +11,9 @@ use Programster\Stripe\Exceptions\ExceptionInvalidDropdownValue;
 use Programster\Stripe\Exceptions\ExceptionValueTooLong;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type DropdownOptionArray array{label: string, value: string}
+ */
 final readonly class DropdownOption implements Arrayable
 {
     private string $m_label;
@@ -51,7 +54,7 @@ final readonly class DropdownOption implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return DropdownOptionArray
      */
     public function toArray() : array
     {

@@ -15,7 +15,7 @@ final readonly class TaxRates
 {
     private bool $m_isDynamic;
 
-    /** @var string[] */
+    /** @var list<string> */
     private array $m_taxRates;
 
 
@@ -38,6 +38,16 @@ final readonly class TaxRates
 
         $this->m_isDynamic = $isDynamic;
         $this->m_taxRates = array_values($taxRates);
+    }
+
+
+    /**
+     * Get the tax rates' IDs, in the form Stripe takes them.
+     * @return list<string>
+     */
+    public function toStripeArrayForm() : array
+    {
+        return $this->m_taxRates;
     }
 
 

@@ -10,6 +10,16 @@ namespace Programster\Stripe\Models;
 use Programster\Stripe\Enums\CountryCode;
 use Programster\Stripe\Interfaces\Arrayable;
 
+/**
+ * @phpstan-type AddressArray array{
+ *     line1: string,
+ *     line2?: string,
+ *     city?: string,
+ *     country?: string,
+ *     postal_code?: string,
+ *     state?: string
+ * }
+ */
 final readonly class Address implements Arrayable
 {
     private string $m_addressLine1;
@@ -54,7 +64,7 @@ final readonly class Address implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return AddressArray
      */
     public function toArray() : array
     {

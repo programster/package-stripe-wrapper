@@ -38,7 +38,7 @@ final readonly class CancellationDetails implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return array{feedback?: string, comment?: string}
      */
     public function toArray() : array
     {

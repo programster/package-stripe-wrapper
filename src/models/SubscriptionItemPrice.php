@@ -12,15 +12,19 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Internal\StripeIds;
 
 
+/**
+ * @phpstan-import-type PriceDataForSubscriptionItemArray from PriceDataForSubscriptionItem
+ * @phpstan-type PriceParams array{price: string}|array{price_data: PriceDataForSubscriptionItemArray}
+ */
 final readonly class SubscriptionItemPrice
 {
-    /** @var array<string, mixed> */
+    /** @var PriceParams */
     private array $m_stripeParams;
 
 
     /**
      * This is private, so use forPrice() or forPriceData().
-     * @param array<string, mixed> $stripeParams - the subscription item's parameters for the price.
+     * @param PriceParams $stripeParams - the subscription item's parameters for the price.
      */
     private function __construct(array $stripeParams)
     {
@@ -54,7 +58,7 @@ final readonly class SubscriptionItemPrice
 
     /**
      * Get the parameters to add to a subscription item for the price.
-     * @return array<string, mixed>
+     * @return PriceParams
      */
     public function getStripeParams() : array
     {

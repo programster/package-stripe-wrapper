@@ -68,6 +68,8 @@ finally
     $cleanUpProblems = $fixtures->cleanUp();
 }
 
+# The accessors are one line, with no docblock, so these say what their lists hold, as their properties do.
+/** @var list<string> $failures */
 $failures = $smoke->getFailures();
 printf("PHP %s, live: %d passed, %d failed\n", PHP_VERSION, $smoke->getNumPassed(), count($failures));
 
@@ -76,7 +78,10 @@ foreach ($failures as $failure)
     echo "  FAIL {$failure}\n";
 }
 
-foreach ($smoke->getSkipped() as $skipped)
+/** @var list<string> $skippedTests */
+$skippedTests = $smoke->getSkipped();
+
+foreach ($skippedTests as $skipped)
 {
     echo "  SKIPPED {$skipped}\n";
 }

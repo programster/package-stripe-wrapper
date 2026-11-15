@@ -12,6 +12,9 @@ use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Interfaces\Arrayable;
 
 
+/**
+ * @phpstan-type SubscriptionItemDiscountArray array{coupon?: string, discount?: string, promotion_code?: string}
+ */
 final readonly class SubscriptionItemDiscount implements Arrayable
 {
     private ?string $m_couponId;
@@ -87,7 +90,7 @@ final readonly class SubscriptionItemDiscount implements Arrayable
 
 
     /**
-     * @return array<string, mixed>
+     * @return SubscriptionItemDiscountArray
      */
     public function toArray() : array
     {

@@ -102,7 +102,7 @@ $smoke->run("createSubscription: trial, metadata and description", function () u
 
     SmokeTest::assertSame(
         'cancel',
-        $subscription->getStripeObject()->trial_settings->end_behavior->missing_payment_method,
+        $subscription->getStripeObject()->trial_settings?->end_behavior->missing_payment_method,
         "trial end"
     );
 });
@@ -141,17 +141,15 @@ $smoke->run("createSubscription: billing, discounts, tax rates and invoice items
 
     SmokeTest::assertSame(
         'on_subscription',
-        $subscription->getStripeObject()->payment_settings->save_default_payment_method,
+        $subscription->getStripeObject()->payment_settings?->save_default_payment_method,
         "save"
     );
 
     SmokeTest::assertSame('flexible', $subscription->getStripeObject()->billing_mode->type, "billing mode");
 
-    SmokeTest::assertSame(
-        $fixtures->getTaxRateId(),
-        $subscription->getStripeObject()->default_tax_rates[0]->id,
-        "tax rate"
-    );
+    $taxRates = $subscription->getStripeObject()->default_tax_rates;
+    assert(isset($taxRates[0]), "the subscription has no default tax rates");
+    SmokeTest::assertSame($fixtures->getTaxRateId(), $taxRates[0]->id, "tax rate");
 });
 
 $smoke->run("createSubscription: sent as an invoice", function () use (
@@ -200,7 +198,7 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
 
         SmokeTest::assertSame(
             20.0,
-            (float)$subscription->getStripeObject()->transfer_data->amount_percent,
+            (float)$subscription->getStripeObject()->transfer_data?->amount_percent,
             "amount percent"
         );
     });
@@ -262,4 +260,53 @@ $smoke->run("listInvoices, listPaymentIntents, listCharges and listRefunds", fun
     $client->listPaymentIntents(customerId: $subscriberId);
     $client->listCharges(customerId: $subscriberId);
     $client->listRefunds(limit: ResultLimit::upTo(1));
+});
+
+$smoke->run("fetch methods follow the links between a subscription's objects", function () use (
+    $client,
+    $fixtures,
+    $items,
+    $metadata
+): void {
+    # A customer of its own, without the test clock, so the subscription is charged straight away (and a fourth
+    # subscription would be over the clock's limit). Deleting the customer afterwards cancels the subscription.
+    $customer = $client->createCustomer(metadata: $metadata, paymentMethodId: 'pm_card_visa');
+    $fixtures->trackCustomer($customer->getId());
+    $paymentMethod = $customer->fetchPaymentMethods()->first();
+    SmokeTest::assertSame($customer->getId(), $paymentMethod->fetchCustomer()->getId(), "the method's customer");
+
+    $subscription = $client->createSubscription(
+        SubscriptionCustomer::customer($customer->getId()),
+        $items,
+        Currency::GBP,
+        defaultPaymentMethodId: $paymentMethod->getId(),
+    );
+
+    $defaultPaymentMethod = $subscription->fetchDefaultPaymentMethod();
+    SmokeTest::assertSame($paymentMethod->getId(), $defaultPaymentMethod->getId(), "default payment method");
+    SmokeTest::assertSame(1, count($customer->fetchSubscriptions()), "the customer's subscriptions");
+    $invoice = $subscription->fetchLatestInvoice();
+    SmokeTest::assertSame($subscription->getId(), $invoice->getSubscriptionId(), "the invoice's subscription");
+    $payment = $invoice->fetchPayments()->first();
+    SmokeTest::assertSame($invoice->getId(), $payment->fetchInvoice()->getId(), "the payment's invoice");
+    $paymentIntent = $payment->fetchPaymentIntent();
+    assert($paymentIntent->isSucceeded(), "the subscription's first payment didn't succeed");
+    SmokeTest::assertSame($customer->getId(), $paymentIntent->fetchCustomer()->getId(), "the intent's customer");
+    $intentPaymentMethod = $paymentIntent->fetchPaymentMethod();
+    SmokeTest::assertSame($paymentMethod->getId(), $intentPaymentMethod->getId(), "the intent's payment method");
+    $charge = $paymentIntent->fetchLatestCharge();
+    SmokeTest::assertSame($paymentIntent->getId(), $charge->fetchPaymentIntent()->getId(), "the charge's intent");
+    SmokeTest::assertSame(1, count($paymentIntent->fetchCharges()), "the intent's charges");
+    SmokeTest::assertSame($customer->getId(), $charge->fetchCustomer()->getId(), "the charge's customer");
+    SmokeTest::assertSame($paymentMethod->getId(), $charge->fetchPaymentMethod()->getId(), "the charge's method");
+
+    # The package doesn't create refunds, so make one with the SDK.
+    $refundParams = ['charge' => $charge->getId(), 'amount' => 100, 'metadata' => LiveFixtures::METADATA];
+    $fixtures->getSdk()->refunds->create($refundParams);
+    $refund = $charge->fetchRefunds()->first();
+    SmokeTest::assertSame(100, $refund->getAmount()->getAmount(), "the refund's amount");
+    SmokeTest::assertSame($charge->getId(), $refund->fetchCharge()->getId(), "the refund's charge");
+    SmokeTest::assertSame($paymentIntent->getId(), $refund->fetchPaymentIntent()->getId(), "the refund's intent");
+    SmokeTest::assertSame(1, count($paymentIntent->fetchRefunds()), "the intent's refunds");
+    SmokeTest::assertSame($refund->getId(), $client->retrieveRefund($refund->getId())->getId(), "retrieveRefund()");
 });

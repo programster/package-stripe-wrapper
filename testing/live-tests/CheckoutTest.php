@@ -33,6 +33,7 @@ use Programster\Stripe\Enums\RedirectOnCompletion;
 use Programster\Stripe\Enums\ShippingCountryCode;
 use Programster\Stripe\Enums\SubmitType;
 use Programster\Stripe\Enums\TaxBehavior;
+use Programster\Stripe\Enums\TaxIdCollection;
 use Programster\Stripe\Enums\Updateable;
 use Programster\Stripe\Models\AccountReference;
 use Programster\Stripe\Models\Address;
@@ -46,8 +47,9 @@ use Programster\Stripe\Models\CustomField;
 use Programster\Stripe\Models\CustomTextOptions;
 use Programster\Stripe\Models\Discount;
 use Programster\Stripe\Models\DropdownOption;
+use Programster\Stripe\Models\EmbeddedFlow;
 use Programster\Stripe\Models\FieldType;
-use Programster\Stripe\Models\FlowConfig;
+use Programster\Stripe\Models\HostedFlow;
 use Programster\Stripe\Models\InvoiceCreation;
 use Programster\Stripe\Models\InvoiceCustomField;
 use Programster\Stripe\Models\InvoiceData;
@@ -66,7 +68,6 @@ use Programster\Stripe\Models\SinglePaymentLineItem;
 use Programster\Stripe\Models\SubscriptionCheckoutCustomer;
 use Programster\Stripe\Models\SubscriptionCheckoutLineItem;
 use Programster\Stripe\Models\SubscriptionData;
-use Programster\Stripe\Models\TaxIdCollectionConfig;
 use Programster\Stripe\Models\TaxRates;
 use Programster\Stripe\Models\PaymentTransferData;
 use Programster\Stripe\Models\TrialConfig;
@@ -81,7 +82,7 @@ use Programster\Stripe\Testing\SmokeTest;
 
 $client = new StripeClient(STRIPE_SECRET_KEY);
 $metadata = new Metadata(new MetadataItem('created_by', LiveFixtures::METADATA['created_by']));
-$hosted = FlowConfig::createHosted('https://example.com/success', cancelUrl: 'https://example.com/cancel');
+$hosted = new HostedFlow('https://example.com/success', cancelUrl: 'https://example.com/cancel');
 $productData = new ProductData('Live test T-shirt', metadata: $metadata);
 $shirtPrice = PriceDataForSinglePayment::forProductData(Currency::GBP, 2000, $productData);
 $shirts = new SinglePaymentLineItemsCollection(SinglePaymentLineItem::forPriceData($shirtPrice, 1));
@@ -101,9 +102,9 @@ $subscriptionItem = SubscriptionCheckoutLineItem::forPriceData($subscriptionPric
 $subscriptionItems = new SubscriptionCheckoutLineItemCollection($subscriptionItem);
 
 # Track a session the package created, for expiring afterwards, and get what Stripe stored for it.
-$retrieve = function (CheckoutSession $session) use ($client, $fixtures): CheckoutSession {
-    $fixtures->trackCheckoutSession($session->getId());
-    return $client->retrieveCheckoutSession($session->getId());
+$retrieve = function (string $sessionId) use ($client, $fixtures): CheckoutSession {
+    $fixtures->trackCheckoutSession($sessionId);
+    return $client->retrieveCheckoutSession($sessionId);
 };
 
 $smoke->run("single payment: hosted flow and basic options", function () use (
@@ -124,7 +125,7 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
         new TaxRates(false, $taxRateId)
     );
 
-    $session = $client->createCheckoutSessionForSinglePayment(
+    $session = $client->createHostedCheckoutSessionForSinglePayment(
         $hosted,
         new SinglePaymentLineItemsCollection($item),
         clientReferenceId: 'order-123',
@@ -139,7 +140,9 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
         metadata: $metadata,
     );
 
-    $stored = $retrieve($session);
+    $stored = $retrieve($session->getId());
+    assert(str_starts_with($session->getUrl(), 'https://checkout.stripe.com/'), "not a Stripe payment page URL");
+    SmokeTest::assertSame($session->getUrl(), $stored->getUrl(), "the URL Stripe stored");
     SmokeTest::assertSame('payment', $stored->getMode(), "mode");
     SmokeTest::assertSame('https://example.com/cancel', $stored->getCancelUrl(), "cancel URL");
     SmokeTest::assertSame('order-123', $stored->getClientReferenceId(), "client reference");
@@ -150,7 +153,7 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
 
     SmokeTest::assertSame(
         true,
-        $stored->getStripeObject()->phone_number_collection->enabled,
+        $stored->getStripeObject()->phone_number_collection?->enabled,
         "phone number collection"
     );
 
@@ -159,9 +162,11 @@ $smoke->run("single payment: hosted flow and basic options", function () use (
 
 $smoke->run("single payment: coupon discount", function () use ($client, $retrieve, $hosted, $shirts, $couponId): void {
     $discount = Discount::createCoupon($couponId);
-    $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, discount: $discount);
-    $stored = $retrieve($session);
-    SmokeTest::assertSame($couponId, $stored->getStripeObject()->discounts[0]->coupon, "coupon");
+    $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, discount: $discount);
+    $stored = $retrieve($session->getId());
+    $discounts = $stored->getStripeObject()->discounts;
+    assert(isset($discounts[0]), "the session has no discounts");
+    SmokeTest::assertSame($couponId, $discounts[0]->coupon, "coupon");
 });
 
 $smoke->run("single payment: promotion codes and recovery", function () use (
@@ -170,19 +175,19 @@ $smoke->run("single payment: promotion codes and recovery", function () use (
     $hosted,
     $shirts
 ): void {
-    $session = $client->createCheckoutSessionForSinglePayment(
+    $session = $client->createHostedCheckoutSessionForSinglePayment(
         $hosted,
         $shirts,
         allowPromoCodes: true,
         afterExpiration: AfterExpiration::createEnabled(true),
     );
 
-    $stored = $retrieve($session);
-    SmokeTest::assertSame(true, $stored->getStripeObject()->after_expiration->recovery->enabled, "recovery");
+    $stored = $retrieve($session->getId());
+    SmokeTest::assertSame(true, $stored->getStripeObject()->after_expiration?->recovery?->enabled, "recovery");
 
     SmokeTest::assertSame(
         true,
-        $stored->getStripeObject()->after_expiration->recovery->allow_promotion_codes,
+        $stored->getStripeObject()->after_expiration?->recovery?->allow_promotion_codes,
         "promotion codes"
     );
 });
@@ -207,8 +212,8 @@ $smoke->run("single payment: payment intent data", function () use (
         transferGroup: 'live-test-group',
     );
 
-    $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, $paymentIntentData);
-    $retrieve($session);
+    $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, $paymentIntentData);
+    $retrieve($session->getId());
 });
 
 $smoke->run("single payment: post-purchase invoice", function () use (
@@ -227,11 +232,11 @@ $smoke->run("single payment: post-purchase invoice", function () use (
         renderingOptions: new InvoiceRenderingOptions(includeTax: false),
     );
 
-    $invoiceCreation = InvoiceCreation::createEnabled($invoiceData);
-    $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, invoiceCreation: $invoiceCreation);
-    $stored = $retrieve($session);
-    SmokeTest::assertSame(true, $stored->getStripeObject()->invoice_creation->enabled, "invoice creation");
-    SmokeTest::assertSame('Thank you', $stored->getStripeObject()->invoice_creation->invoice_data->footer, "footer");
+    $creation = InvoiceCreation::createEnabled($invoiceData);
+    $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, invoiceCreation: $creation);
+    $stored = $retrieve($session->getId());
+    SmokeTest::assertSame(true, $stored->getStripeObject()->invoice_creation?->enabled, "invoice creation");
+    SmokeTest::assertSame('Thank you', $stored->getStripeObject()->invoice_creation?->invoice_data->footer, "footer");
 });
 
 $smoke->run("single payment: custom fields, custom text and shipping", function () use (
@@ -250,7 +255,7 @@ $smoke->run("single payment: custom fields, custom text and shipping", function 
 
     $customText = new CustomTextOptions('Thanks for your order', 'We ship worldwide', 'Pay securely');
 
-    $session = $client->createCheckoutSessionForSinglePayment(
+    $session = $client->createHostedCheckoutSessionForSinglePayment(
         $hosted,
         $shirts,
         customTextOptions: $customText,
@@ -258,13 +263,13 @@ $smoke->run("single payment: custom fields, custom text and shipping", function 
         customFields: $customFields,
     );
 
-    $stored = $retrieve($session);
+    $stored = $retrieve($session->getId());
     SmokeTest::assertSame(3, count($stored->getStripeObject()->custom_fields), "number of custom fields");
     SmokeTest::assertSame(false, $stored->getStripeObject()->custom_fields[0]->optional, "colour is required");
 
     SmokeTest::assertSame(
         'red',
-        $stored->getStripeObject()->custom_fields[0]['dropdown']['default_value'],
+        SmokeTest::getNested($stored->getStripeObject()->toArray(), 'custom_fields', 0, 'dropdown', 'default_value'),
         "dropdown default"
     );
 
@@ -272,15 +277,15 @@ $smoke->run("single payment: custom fields, custom text and shipping", function 
 
     SmokeTest::assertSame(
         10,
-        $stored->getStripeObject()->custom_fields[2]['numeric']['maximum_length'],
+        SmokeTest::getNested($stored->getStripeObject()->toArray(), 'custom_fields', 2, 'numeric', 'maximum_length'),
         "numeric maximum length"
     );
 
-    SmokeTest::assertSame('Pay securely', $stored->getStripeObject()->custom_text->submit->message, "submit text");
+    SmokeTest::assertSame('Pay securely', $stored->getStripeObject()->custom_text->submit?->message, "submit text");
 
     SmokeTest::assertSame(
         ['GB', 'US'],
-        $stored->getStripeObject()->shipping_address_collection->allowed_countries,
+        $stored->getStripeObject()->shipping_address_collection?->allowed_countries,
         "countries"
     );
 });
@@ -300,24 +305,25 @@ $smoke->run("single payment: existing customer, saved payment methods, tax IDs",
 
     $customerUpdate = new CustomerUpdateConfig(Updateable::AUTO, Updateable::AUTO, Updateable::AUTO);
 
-    $session = $client->createCheckoutSessionForSinglePayment(
+    $session = $client->createHostedCheckoutSessionForSinglePayment(
         $hosted,
         $shirts,
         customer: SinglePaymentCheckoutCustomer::existing($checkoutCustomerId, $customerUpdate),
-        taxIdCollection: new TaxIdCollectionConfig(true, true),
+        taxIdCollection: TaxIdCollection::REQUIRED_WHERE_SUPPORTED,
         savedPaymentMethodOptions: $savedPaymentMethods,
     );
 
-    $stored = $retrieve($session);
+    $stored = $retrieve($session->getId());
     SmokeTest::assertSame($checkoutCustomerId, $stored->getCustomerId(), "customer");
 
     SmokeTest::assertSame(
         'enabled',
-        $stored->getStripeObject()->saved_payment_method_options->payment_method_save,
+        $stored->getStripeObject()->saved_payment_method_options?->payment_method_save,
         "save"
     );
 
-    SmokeTest::assertSame('if_supported', $stored->getStripeObject()->tax_id_collection->required, "tax ID collection");
+    $taxIdRequired = $stored->getStripeObject()->tax_id_collection?->required;
+    SmokeTest::assertSame('if_supported', $taxIdRequired, "tax ID collection");
 });
 
 if (STRIPE_TERMS_OF_SERVICE_URL_IS_SET)
@@ -329,12 +335,12 @@ if (STRIPE_TERMS_OF_SERVICE_URL_IS_SET)
         $shirts
     ): void {
         $consent = new ConsentConfig(true, hidePaymentMethodReuseAgreement: true);
-        $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, consentConfig: $consent);
-        $stored = $retrieve($session);
+        $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, consentConfig: $consent);
+        $stored = $retrieve($session->getId());
 
         SmokeTest::assertSame(
             'required',
-            $stored->getStripeObject()->consent_collection->terms_of_service,
+            $stored->getStripeObject()->consent_collection?->terms_of_service,
             "terms of service"
         );
     });
@@ -349,8 +355,8 @@ if (STRIPE_TAX_IS_SET_UP)
 {
     $smoke->run("single payment: automatic tax", function () use ($client, $retrieve, $hosted, $shirts): void {
         $automaticTax = new AutomaticTax(true);
-        $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, automaticTax: $automaticTax);
-        $stored = $retrieve($session);
+        $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, automaticTax: $automaticTax);
+        $stored = $retrieve($session->getId());
         SmokeTest::assertSame(true, $stored->getStripeObject()->automatic_tax->enabled, "automatic tax");
     });
 }
@@ -369,8 +375,8 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
     ): void {
         $transferData = new PaymentTransferData(STRIPE_CONNECTED_ACCOUNT_ID, 500);
         $paymentIntentData = new PaymentIntentData(transferData: $transferData);
-        $session = $client->createCheckoutSessionForSinglePayment($hosted, $shirts, $paymentIntentData);
-        $retrieve($session);
+        $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $shirts, $paymentIntentData);
+        $retrieve($session->getId());
     });
 }
 else
@@ -395,7 +401,7 @@ $smoke->run("subscription: hosted flow with subscription data", function () use 
         trialConfig: TrialConfig::createForNumDays(14, EndTrialBehaviorIfMissingPaymentMethod::PAUSE),
     );
 
-    $session = $client->createCheckoutSessionForSubscription(
+    $session = $client->createHostedCheckoutSessionForSubscription(
         $hosted,
         $subscriptionItems,
         $subscriptionData,
@@ -403,7 +409,7 @@ $smoke->run("subscription: hosted flow with subscription data", function () use 
         metadata: $metadata,
     );
 
-    $stored = $retrieve($session);
+    $stored = $retrieve($session->getId());
     SmokeTest::assertSame('subscription', $stored->getMode(), "mode");
 });
 
@@ -426,18 +432,24 @@ $smoke->run("subscription: billing cycle anchor and tax-inclusive price", functi
     $nextMonth = new DateTimeImmutable('first day of next month');
     $none = ProrationBehavior::NONE;
     $subscriptionData = new SubscriptionData(billingCycleAnchor: $nextMonth, prorationBehavior: $none);
-    $session = $client->createCheckoutSessionForSubscription($hosted, $items, $subscriptionData);
-    $retrieve($session);
+    $session = $client->createHostedCheckoutSessionForSubscription($hosted, $items, $subscriptionData);
+    $retrieve($session->getId());
 });
 
 $smoke->run("subscription: embedded flow", function () use ($client, $retrieve, $subscriptionItems): void {
-    $embedded = FlowConfig::createEmbedded('https://example.com/return', RedirectOnCompletion::IF_REQUIRED);
-    $session = $client->createCheckoutSessionForSubscription($embedded, $subscriptionItems);
-    $stored = $retrieve($session);
+    $embedded = new EmbeddedFlow('https://example.com/return', RedirectOnCompletion::IF_REQUIRED);
+    $session = $client->createEmbeddedCheckoutSessionForSubscription($embedded, $subscriptionItems);
+    $stored = $retrieve($session->getId());
     SmokeTest::assertSame('if_required', $stored->getStripeObject()->redirect_on_completion, "redirect on completion");
+    SmokeTest::assertSame('embedded', $stored->getUiMode(), "UI mode");
+    assert($session->getClientSecret() !== '', "the client secret for embedding is empty");
+});
 
-    assert(
-        is_string($stored->getClientSecret()) && $stored->getClientSecret() !== '',
-        "no client secret for embedding"
-    );
+$smoke->run("single payment: embedded flow", function () use ($client, $retrieve, $shirts): void {
+    $embedded = new EmbeddedFlow('https://example.com/return');
+    $session = $client->createEmbeddedCheckoutSessionForSinglePayment($embedded, $shirts);
+    $stored = $retrieve($session->getId());
+    SmokeTest::assertSame('embedded', $stored->getUiMode(), "UI mode");
+    SmokeTest::assertSame('always', $stored->getStripeObject()->redirect_on_completion, "redirect on completion");
+    assert($session->getClientSecret() !== '', "the client secret for embedding is empty");
 });
