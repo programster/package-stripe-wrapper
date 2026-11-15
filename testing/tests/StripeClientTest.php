@@ -492,6 +492,33 @@ $smoke->run("lists get every page, carrying on from the last object", function (
     SmokeTest::assertSame('jo@example.com', $lastRequest->getParams()['email'], "the last page kept the filter");
 });
 
+$smoke->run("what each client returns makes its requests with that client's key", function () use (
+    $fakeHttpClient,
+    $makeCustomerPage
+): void {
+    $first = new StripeClient('sk_test_first');
+    $second = new StripeClient('sk_test_second');
+
+    # A related object is fetched with the key of the client the model came from, even after another is used.
+    $subscription = $first->retrieveSubscription('sub_123');
+    $second->retrieveCustomer('cus_123');
+    $subscription->fetchCustomer();
+    SmokeTest::assertSame('sk_test_first', $fakeHttpClient->takeLastRequest()->getApiKey(), "a fetch");
+
+    # A list's later pages are asked for with the same key as its first.
+    $fakeHttpClient->queueResponse($makeCustomerPage(1, 100, true));
+    $fakeHttpClient->queueResponse($makeCustomerPage(101, 1, false));
+    $second->listCustomers();
+    SmokeTest::assertSame('sk_test_second', $fakeHttpClient->takeLastRequest()->getApiKey(), "a later page");
+
+    # A model made from a webhook's object uses the client it's given.
+    $webhookObject = \Stripe\Subscription::constructFrom(FakeStripeHttpClient::loadFixture('subscription-active'));
+    $fromWebhook = \Programster\Stripe\Responses\Subscription::createFromStripeObject($webhookObject, $second);
+    $first->retrieveCustomer('cus_123');
+    $fromWebhook->fetchCustomer();
+    SmokeTest::assertSame('sk_test_second', $fakeHttpClient->takeLastRequest()->getApiKey(), "a webhook's model");
+});
+
 $smoke->run("lists throw rather than quietly stop at the safety cap", function () use (
     $client,
     $fakeHttpClient,
