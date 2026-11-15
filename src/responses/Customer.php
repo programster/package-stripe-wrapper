@@ -81,7 +81,7 @@ final readonly class Customer extends AbstractResponse
      */
     public function fetchPaymentMethods(): PaymentMethodCollection
     {
-        return $this->m_client->listCustomerPaymentMethods($this->getId(), limit: ResultLimit::all());
+        return $this->m_client->listCustomerPaymentMethods($this->getId(), limit: ResultLimit::createAll());
     }
 
 
@@ -95,7 +95,7 @@ final readonly class Customer extends AbstractResponse
         return $this->m_client->listSubscriptions(
             customerId: $this->getId(),
             subscriptionStatus: SubscriptionStatus::ALL,
-            limit: ResultLimit::all()
+            limit: ResultLimit::createAll()
         );
     }
 

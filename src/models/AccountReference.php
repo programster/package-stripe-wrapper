@@ -46,7 +46,7 @@ final readonly class AccountReference implements Arrayable
      * @param string $account - the ID of the other Stripe account.
      * @return AccountReference
      */
-    public static function createRelatedAccount(string $account) : AccountReference
+    public static function createUsingRelatedAccountId(string $account) : AccountReference
     {
         return new AccountReference(AccountReferenceType::ACCOUNT, $account);
     }

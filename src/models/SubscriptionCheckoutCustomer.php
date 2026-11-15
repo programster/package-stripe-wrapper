@@ -11,6 +11,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Internal\StripeIds;
+use Programster\Stripe\Responses\Customer;
 
 
 /**
@@ -25,7 +26,7 @@ final readonly class SubscriptionCheckoutCustomer
 
 
     /**
-     * This is private, so use existing() or withEmail().
+     * This is private, so use createUsingCustomerId(), createUsingCustomer() or createUsingEmail().
      * @param CustomerParams $stripeParams - the checkout session's parameters for the customer.
      */
     private function __construct(array $stripeParams)
@@ -35,7 +36,7 @@ final readonly class SubscriptionCheckoutCustomer
 
 
     /**
-     * The session is for an existing customer.
+     * The session is for an existing customer, by its ID.
      *
      * @param string $customerId - the customer's ID, e.g. "cus_123".
      *
@@ -46,7 +47,7 @@ final readonly class SubscriptionCheckoutCustomer
      *
      * @throws ExceptionInvalidValue - if $customerId isn't a customer's ID.
      */
-    public static function existing(
+    public static function createUsingCustomerId(
         string $customerId,
         ?CustomerUpdateConfig $customerUpdateConfig = null
     ) : SubscriptionCheckoutCustomer
@@ -64,12 +65,32 @@ final readonly class SubscriptionCheckoutCustomer
 
 
     /**
+     * The session is for an existing customer, such as one just retrieved or created. Only its ID is used, so it must
+     * be in the same Stripe account as the client the session is created with.
+     *
+     * @param Customer $customer - the customer.
+     *
+     * @param CustomerUpdateConfig|null $customerUpdateConfig - optionally, which of the customer's details the session
+     * may update with what the customer enters.
+     *
+     * @return SubscriptionCheckoutCustomer
+     */
+    public static function createUsingCustomer(
+        Customer $customer,
+        ?CustomerUpdateConfig $customerUpdateConfig = null
+    ) : SubscriptionCheckoutCustomer
+    {
+        return self::createUsingCustomerId($customer->getId(), $customerUpdateConfig);
+    }
+
+
+    /**
      * The session is for someone who isn't a customer yet, whose email address is filled in for them.
      * @param string $email - the email address.
      * @return SubscriptionCheckoutCustomer
      * @throws ExceptionInvalidValue - if $email isn't an email address.
      */
-    public static function withEmail(string $email) : SubscriptionCheckoutCustomer
+    public static function createUsingEmail(string $email) : SubscriptionCheckoutCustomer
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false)
         {

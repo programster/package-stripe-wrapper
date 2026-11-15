@@ -150,7 +150,7 @@ $smoke->run("createCustomer: payment method and source", function () use ($clien
 });
 
 $smoke->run("listCustomers by email", function () use ($client, $runId): void {
-    $customers = $client->listCustomers(email: "jo.{$runId}@example.com", limit: ResultLimit::upTo(10));
+    $customers = $client->listCustomers(email: "jo.{$runId}@example.com", limit: ResultLimit::createUpTo(10));
     SmokeTest::assertSame(1, count($customers), "number of customers found");
 });
 

@@ -151,7 +151,7 @@ final readonly class Charge extends AbstractResponse
      */
     public function fetchRefunds(): RefundCollection
     {
-        return $this->m_client->listRefunds(chargeId: $this->getId(), limit: ResultLimit::all());
+        return $this->m_client->listRefunds(chargeId: $this->getId(), limit: ResultLimit::createAll());
     }
 
 

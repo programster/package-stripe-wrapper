@@ -2,7 +2,7 @@
 
 /*
  * A line item in a one-time payment checkout session, for an existing price, or one created inline.
- * Create one with forPrice() or forPriceData().
+ * Create one with createUsingExistingPrice() or createUsingInlinePrice().
  * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items
  */
 
@@ -38,7 +38,7 @@ final readonly class SinglePaymentLineItem implements Arrayable
 
 
     /**
-     * This is private, so use forPrice() or forPriceData().
+     * This is private, so use createUsingExistingPrice() or createUsingInlinePrice().
      *
      * @param int $quantity - the number of this item to be purchased.
      *
@@ -63,7 +63,8 @@ final readonly class SinglePaymentLineItem implements Arrayable
 
 
     /**
-     * Create a line item for an existing price.
+     * Create a line item for a price that's already in Stripe, by its ID, so the price has to have been created
+     * beforehand (in the dashboard or through the API).
      *
      * @param string $priceId - the price's ID, e.g. "price_123" (or a legacy plan's ID).
      *
@@ -79,7 +80,7 @@ final readonly class SinglePaymentLineItem implements Arrayable
      *
      * @throws ExceptionInvalidValue - if $priceId is empty, or a product's ID.
      */
-    public static function forPrice(
+    public static function createUsingExistingPrice(
         string $priceId,
         int $quantity,
         ?AdjustableQuantityConfig $adjustableQuantityConfig = null,
@@ -92,7 +93,8 @@ final readonly class SinglePaymentLineItem implements Arrayable
 
 
     /**
-     * Create a line item with a price created inline.
+     * Create a line item with its price described here, which Stripe creates along with it, so nothing has to be
+     * set up in Stripe beforehand.
      *
      * @param PriceDataForSinglePayment $priceData - the price.
      *
@@ -106,7 +108,7 @@ final readonly class SinglePaymentLineItem implements Arrayable
      *
      * @return SinglePaymentLineItem
      */
-    public static function forPriceData(
+    public static function createUsingInlinePrice(
         PriceDataForSinglePayment $priceData,
         int $quantity,
         ?AdjustableQuantityConfig $adjustableQuantityConfig = null,

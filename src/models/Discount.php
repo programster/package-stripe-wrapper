@@ -21,7 +21,7 @@ final readonly class Discount implements Arrayable
 
     /**
      * Create a discount object for a coupon or promotion code. Stripe only allows one to be set. This is private, so
-     * use createPromoCode() or createCoupon().
+     * use createUsingPromotionCodeId() or createUsingCouponId().
      *
      * @param DiscountType $type - whether this is a promotion code or a coupon.
      *
@@ -39,7 +39,7 @@ final readonly class Discount implements Arrayable
      * @param string $value - the ID of the promotion code.
      * @return Discount
      */
-    public static function createPromoCode(string $value) : Discount
+    public static function createUsingPromotionCodeId(string $value) : Discount
     {
         return new Discount(DiscountType::PROMOTION_CODE, $value);
     }
@@ -50,7 +50,7 @@ final readonly class Discount implements Arrayable
      * @param string $value - the ID of the coupon.
      * @return Discount
      */
-    public static function createCoupon(string $value) : Discount
+    public static function createUsingCouponId(string $value) : Discount
     {
         return new Discount(DiscountType::COUPON, $value);
     }

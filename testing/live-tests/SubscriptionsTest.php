@@ -53,7 +53,7 @@ $client = new StripeClient(STRIPE_SECRET_KEY);
 $metadata = new Metadata(new MetadataItem('created_by', LiveFixtures::METADATA['created_by']));
 $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
 $price = new PriceDataForSubscriptionItem(Currency::GBP, 1000, $fixtures->getProductId(), $monthly);
-$items = new SubscriptionLineItemCollection(SubscriptionItem::forPriceData($price, 1));
+$items = new SubscriptionLineItemCollection(SubscriptionItem::createUsingInlinePrice($price, 1));
 $subscriberId = '';
 $paymentMethodId = '';
 $trialSubscriptionId = '';
@@ -86,14 +86,14 @@ $smoke->run("createSubscription: trial, metadata and description", function () u
     &$trialSubscriptionId
 ): void {
     $subscription = $client->createSubscription(
-        SubscriptionCustomer::customer($subscriberId),
+        SubscriptionCustomer::createUsingCustomerId($subscriberId),
         $items,
         Currency::GBP,
         description: 'Live test trial subscription',
         defaultPaymentMethodId: $paymentMethodId,
         metadata: $metadata,
-        cancelAt: CancelAt::atPeriodEnd(),
-        trialConfig: TrialConfig::createForNumDays(7, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
+        cancelAt: CancelAt::createAtPeriodEnd(),
+        trialConfig: TrialConfig::createUsingNumDays(7, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
     );
 
     $trialSubscriptionId = $subscription->getId();
@@ -117,19 +117,26 @@ $smoke->run("createSubscription: billing, discounts, tax rates and invoice items
     $invoiceItemPrice = new PriceDataForInvoiceItem(Currency::GBP, $fixtures->getProductId(), 250);
     $period = new InvoiceItemPeriod(PeriodStart::createMaxItemPeriodStart(), PeriodEnd::createMinItemPeriodEnd());
     $taxRates = new StringCollection($fixtures->getTaxRateId());
-    $invoiceItem = SubscriptionInvoiceItem::forPriceData($invoiceItemPrice, 1, period: $period, taxRates: $taxRates);
-    $discounts = new DiscountCollection(SubscriptionItemDiscount::createFromCouponId($fixtures->getCouponId()));
+
+    $invoiceItem = SubscriptionInvoiceItem::createUsingInlinePrice(
+        $invoiceItemPrice,
+        1,
+        period: $period,
+        taxRates: $taxRates
+    );
+
+    $discounts = new DiscountCollection(SubscriptionItemDiscount::createUsingCouponId($fixtures->getCouponId()));
     $cardOnly = new PaymentMethodTypeCollection(PaymentMethodType::CARD);
 
     $subscription = $client->createSubscription(
-        SubscriptionCustomer::customer($subscriberId),
+        SubscriptionCustomer::createUsingCustomerId($subscriberId),
         $items,
         Currency::GBP,
         defaultPaymentMethodId: $paymentMethodId,
         addInvoiceItems: new SubscriptionInvoiceItemCollection($invoiceItem),
-        billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1),
+        billingCycleAnchor: BillingCycleAnchor::createOnDayOfMonth(1),
         billingMode: BillingMode::createFlexible(ProrationDiscountConfig::ITEMIZED),
-        cancelAt: CancelAt::atLongestItemPeriodEnd(),
+        cancelAt: CancelAt::createAtLongestItemPeriodEnd(),
         collectionMethod: SubscriptionCollectionMethod::CHARGE_AUTOMATICALLY,
         defaultTaxRates: $taxRates,
         discounts: $discounts,
@@ -159,10 +166,10 @@ $smoke->run("createSubscription: sent as an invoice", function () use (
     &$invoicedSubscriptionId
 ): void {
     $subscription = $client->createSubscription(
-        SubscriptionCustomer::customer($subscriberId),
+        SubscriptionCustomer::createUsingCustomerId($subscriberId),
         $items,
         Currency::GBP,
-        cancelAt: CancelAt::at(new DateTimeImmutable('+90 days')),
+        cancelAt: CancelAt::createAt(new DateTimeImmutable('+90 days')),
         collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE,
         daysUntilDue: 30,
         # This must be more frequent than the monthly price.
@@ -189,7 +196,7 @@ if (STRIPE_CONNECTED_ACCOUNT_ID !== '')
         $paymentMethods = $client->listCustomerPaymentMethods($customer->getId(), PaymentMethodType::CARD);
 
         $subscription = $client->createSubscription(
-            SubscriptionCustomer::customer($customer->getId()),
+            SubscriptionCustomer::createUsingCustomerId($customer->getId()),
             $items,
             Currency::GBP,
             defaultPaymentMethodId: $paymentMethods->first()->getId(),
@@ -234,7 +241,7 @@ $smoke->run("listSubscriptionItems and updateSubscriptionItem", function () use 
         metadata: $metadata,
         prorationBehavior: ProrationBehavior::NONE,
         quantity: 2,
-        discounts: new DiscountCollection(SubscriptionItemDiscount::createFromCouponId($fixtures->getCouponId())),
+        discounts: new DiscountCollection(SubscriptionItemDiscount::createUsingCouponId($fixtures->getCouponId())),
         taxRateIds: new StringCollection($fixtures->getTaxRateId()),
     );
 
@@ -259,7 +266,7 @@ $smoke->run("listInvoices, listPaymentIntents, listCharges and listRefunds", fun
     $client->listInvoices(collectionMethod: SubscriptionCollectionMethod::SEND_INVOICE);
     $client->listPaymentIntents(customerId: $subscriberId);
     $client->listCharges(customerId: $subscriberId);
-    $client->listRefunds(limit: ResultLimit::upTo(1));
+    $client->listRefunds(limit: ResultLimit::createUpTo(1));
 });
 
 $smoke->run("fetch methods follow the links between a subscription's objects", function () use (
@@ -276,7 +283,7 @@ $smoke->run("fetch methods follow the links between a subscription's objects", f
     SmokeTest::assertSame($customer->getId(), $paymentMethod->fetchCustomer()->getId(), "the method's customer");
 
     $subscription = $client->createSubscription(
-        SubscriptionCustomer::customer($customer->getId()),
+        SubscriptionCustomer::createUsingCustomerId($customer->getId()),
         $items,
         Currency::GBP,
         defaultPaymentMethodId: $paymentMethod->getId(),

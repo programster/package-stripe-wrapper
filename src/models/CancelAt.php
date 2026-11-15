@@ -31,7 +31,7 @@ final readonly class CancelAt
      * Cancel at the end of the current billing period.
      * @return CancelAt
      */
-    public static function atPeriodEnd() : CancelAt
+    public static function createAtPeriodEnd() : CancelAt
     {
         return new CancelAt(['cancel_at_period_end' => true]);
     }
@@ -43,7 +43,7 @@ final readonly class CancelAt
      * @param \DateTimeImmutable $time - when to cancel.
      * @return CancelAt
      */
-    public static function at(\DateTimeImmutable $time) : CancelAt
+    public static function createAt(\DateTimeImmutable $time) : CancelAt
     {
         return new CancelAt(['cancel_at' => $time->getTimestamp()]);
     }
@@ -53,7 +53,7 @@ final readonly class CancelAt
      * Cancel at the latest end of the subscription's items' current billing periods.
      * @return CancelAt
      */
-    public static function atLongestItemPeriodEnd() : CancelAt
+    public static function createAtLongestItemPeriodEnd() : CancelAt
     {
         return new CancelAt(['cancel_at' => 'max_period_end']);
     }
@@ -63,7 +63,7 @@ final readonly class CancelAt
      * Cancel at the earliest end of the subscription's items' current billing periods.
      * @return CancelAt
      */
-    public static function atShortestItemPeriodEnd() : CancelAt
+    public static function createAtShortestItemPeriodEnd() : CancelAt
     {
         return new CancelAt(['cancel_at' => 'min_period_end']);
     }

@@ -2,7 +2,7 @@
 
 /*
  * The price to change a subscription item to, with updateSubscriptionItem(): an existing price, or one created
- * inline. Create one with forPrice() or forPriceData().
+ * inline. Create one with createUsingExistingPrice() or createUsingInlinePrice().
  * https://docs.stripe.com/api/subscription_items/update#update_subscription_item-price
  */
 
@@ -23,7 +23,7 @@ final readonly class SubscriptionItemPrice
 
 
     /**
-     * This is private, so use forPrice() or forPriceData().
+     * This is private, so use createUsingExistingPrice() or createUsingInlinePrice().
      * @param PriceParams $stripeParams - the subscription item's parameters for the price.
      */
     private function __construct(array $stripeParams)
@@ -33,12 +33,13 @@ final readonly class SubscriptionItemPrice
 
 
     /**
-     * Change to an existing price.
+     * Change to a price that's already in Stripe, by its ID, so the price has to have been created beforehand
+     * (in the dashboard or through the API).
      * @param string $priceId - the price's ID, e.g. "price_123" (or a legacy plan's ID).
      * @return SubscriptionItemPrice
      * @throws ExceptionInvalidValue - if $priceId is empty, or a product's ID.
      */
-    public static function forPrice(string $priceId) : SubscriptionItemPrice
+    public static function createUsingExistingPrice(string $priceId) : SubscriptionItemPrice
     {
         StripeIds::checkPriceId($priceId);
         return new SubscriptionItemPrice(['price' => $priceId]);
@@ -46,11 +47,12 @@ final readonly class SubscriptionItemPrice
 
 
     /**
-     * Change to a price created inline.
+     * Change to a price described here, which Stripe creates along with the change, so nothing has to be set
+     * up in Stripe beforehand.
      * @param PriceDataForSubscriptionItem $priceData - the price.
      * @return SubscriptionItemPrice
      */
-    public static function forPriceData(PriceDataForSubscriptionItem $priceData) : SubscriptionItemPrice
+    public static function createUsingInlinePrice(PriceDataForSubscriptionItem $priceData) : SubscriptionItemPrice
     {
         return new SubscriptionItemPrice(['price_data' => $priceData->toArray()]);
     }

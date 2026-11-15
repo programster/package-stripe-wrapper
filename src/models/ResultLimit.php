@@ -36,7 +36,7 @@ final readonly class ResultLimit
      * @return ResultLimit
      * @throws ExceptionInvalidValue - if the maximum is less than 1.
      */
-    public static function upTo(int $maximum): ResultLimit
+    public static function createUpTo(int $maximum): ResultLimit
     {
         if ($maximum < 1)
         {
@@ -52,7 +52,7 @@ final readonly class ResultLimit
      * it when the filters are known to keep the number of results small enough.
      * @return ResultLimit
      */
-    public static function all(): ResultLimit
+    public static function createAll(): ResultLimit
     {
         return new ResultLimit(null);
     }

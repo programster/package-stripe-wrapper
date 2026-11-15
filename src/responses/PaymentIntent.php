@@ -143,7 +143,7 @@ final readonly class PaymentIntent extends AbstractResponse
      */
     public function fetchCharges(): ChargeCollection
     {
-        return $this->m_client->listCharges(paymentIntentId: $this->getId(), limit: ResultLimit::all());
+        return $this->m_client->listCharges(paymentIntentId: $this->getId(), limit: ResultLimit::createAll());
     }
 
 
@@ -154,7 +154,7 @@ final readonly class PaymentIntent extends AbstractResponse
      */
     public function fetchRefunds(): RefundCollection
     {
-        return $this->m_client->listRefunds(paymentIntentId: $this->getId(), limit: ResultLimit::all());
+        return $this->m_client->listRefunds(paymentIntentId: $this->getId(), limit: ResultLimit::createAll());
     }
 
 

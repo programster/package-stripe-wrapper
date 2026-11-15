@@ -186,9 +186,9 @@ final readonly class StripeClient
      *
      * @param string|null $testClock - optionally, only list subscriptions on this test clock.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -381,9 +381,9 @@ final readonly class StripeClient
      *
      * @param string $subscriptionId - the ID of the subscription to list the items of.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -435,8 +435,8 @@ final readonly class StripeClient
      * can't be made.
      *
      * @param SubscriptionItemPrice|null $price - optionally, the price to change the item to: an existing one, with
-     * SubscriptionItemPrice::forPrice(), or one created inline, with SubscriptionItemPrice::forPriceData(). Leave as
-     * null to not change it.
+     * SubscriptionItemPrice::createUsingExistingPrice(), or one created inline, with
+     * SubscriptionItemPrice::createUsingInlinePrice(). Leave as null to not change it.
      *
      * @param ProrationBehavior|null $prorationBehavior - Determines how to handle prorations when the billing cycle
      * changes (e.g., when switching plans, resetting billing_cycle_anchor=now, or starting a trial), or if an item’s
@@ -557,9 +557,9 @@ final readonly class StripeClient
      *
      * @param string|null $testClock - optionally, only list payment intents on this test clock.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -625,9 +625,9 @@ final readonly class StripeClient
      *
      * @param string|null $testClock - optionally, only list invoices on this test clock.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -699,9 +699,9 @@ final readonly class StripeClient
      *
      * @param string|null $testClock - optionally, only list invoices on this test clock.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -763,9 +763,9 @@ final readonly class StripeClient
      *
      * @param string $invoiceId - the ID of the invoice.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -828,9 +828,9 @@ final readonly class StripeClient
      *
      * @param string|null $testClock - optionally, only list customers on this test clock.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -884,9 +884,9 @@ final readonly class StripeClient
      *
      * @param TimePeriod|null $created - optionally, only list refunds created in this time period.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -942,9 +942,9 @@ final readonly class StripeClient
      *
      * @param string|null $transferGroup - optionally, only list charges in this transfer group.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -1023,9 +1023,9 @@ final readonly class StripeClient
      * multiple possible currencies.
      *
      * @param SinglePaymentCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
-     * (SinglePaymentCheckoutCustomer::existing()), an email address to fill in (withEmail()), or neither, with whether
-     * Stripe creates a customer (create()). Leave as null for none of these, and Stripe's default of only creating a
-     * customer if it's needed.
+     * (SinglePaymentCheckoutCustomer::createUsingCustomerId()), an email address to fill in (createUsingEmail()), or
+     * neither, with whether Stripe creates a customer (create()). Leave as null for none of these, and Stripe's default
+     * of only creating a customer if it's needed.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
      *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice for the one-time payment
@@ -1192,9 +1192,9 @@ final readonly class StripeClient
      * multiple possible currencies.
      *
      * @param SinglePaymentCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
-     * (SinglePaymentCheckoutCustomer::existing()), an email address to fill in (withEmail()), or neither, with whether
-     * Stripe creates a customer (create()). Leave as null for none of these, and Stripe's default of only creating a
-     * customer if it's needed.
+     * (SinglePaymentCheckoutCustomer::createUsingCustomerId()), an email address to fill in (createUsingEmail()), or
+     * neither, with whether Stripe creates a customer (create()). Leave as null for none of these, and Stripe's default
+     * of only creating a customer if it's needed.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-customer_creation
      *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice for the one-time payment
@@ -1363,8 +1363,9 @@ final readonly class StripeClient
      * multiple possible currencies.
      *
      * @param SubscriptionCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
-     * (SubscriptionCheckoutCustomer::existing()), or an email address to fill in (withEmail()). Leave as null for
-     * neither, so the customer enters their email address. Stripe always creates a customer for a new subscriber.
+     * (SubscriptionCheckoutCustomer::createUsingCustomerId()), or an email address to fill in (createUsingEmail()).
+     * Leave as null for neither, so the customer enters their email address. Stripe always creates a customer for a new
+     * subscriber.
      *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice should be created.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
@@ -1524,8 +1525,9 @@ final readonly class StripeClient
      * multiple possible currencies.
      *
      * @param SubscriptionCheckoutCustomer|null $customer - optionally, who the session is for: an existing customer
-     * (SubscriptionCheckoutCustomer::existing()), or an email address to fill in (withEmail()). Leave as null for
-     * neither, so the customer enters their email address. Stripe always creates a customer for a new subscriber.
+     * (SubscriptionCheckoutCustomer::createUsingCustomerId()), or an email address to fill in (createUsingEmail()).
+     * Leave as null for neither, so the customer enters their email address. Stripe always creates a customer for a new
+     * subscriber.
      *
      * @param InvoiceCreation|null $invoiceCreation - specify whether a post-purchase invoice should be created.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation
@@ -1754,8 +1756,9 @@ final readonly class StripeClient
      * to just create the subscription and have it send an invoice to the customer instead.
      * https://docs.stripe.com/api/subscriptions/create
      *
-     * @param SubscriptionCustomer $customer - who to subscribe: a customer, with SubscriptionCustomer::customer(), or
-     * a customer account, with SubscriptionCustomer::customerAccount().
+     * @param SubscriptionCustomer $customer - who to subscribe: a customer, with
+     * SubscriptionCustomer::createUsingCustomerId() (or createUsingCustomer()), or a customer account, with
+     * SubscriptionCustomer::createUsingCustomerAccountId().
      *
      * @param SubscriptionLineItemCollection $items - items that should be charged in this subscription.
      *
@@ -1797,8 +1800,8 @@ final readonly class StripeClient
      * be combined with trials and the billing cycle anchor.
      *
      * @param BillingCycleAnchor|null $billingCycleAnchor - optionally, what to anchor the billing cycle to: a time,
-     * with BillingCycleAnchor::at(), or a day of the month, with BillingCycleAnchor::onDayOfMonth(), which is only
-     * valid with monthly and yearly prices.
+     * with BillingCycleAnchor::createAt(), or a day of the month, with BillingCycleAnchor::createOnDayOfMonth(), which
+     * is only valid with monthly and yearly prices.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_cycle_anchor
      *
      * @param BillingMode|null $billingMode - Controls how prorations and invoices for subscriptions are calculated and
@@ -1809,8 +1812,8 @@ final readonly class StripeClient
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_thresholds
      *
      * @param CancelAt|null $cancelAt - optionally, when the subscription cancels: at the end of the current period
-     * (CancelAt::atPeriodEnd()), at a time (CancelAt::at()), or at the latest or earliest end of its items' billing
-     * periods (CancelAt::atLongestItemPeriodEnd() or CancelAt::atShortestItemPeriodEnd()).
+     * (CancelAt::createAtPeriodEnd()), at a time (CancelAt::createAt()), or at the latest or earliest end of its items'
+     * billing periods (CancelAt::createAtLongestItemPeriodEnd() or CancelAt::createAtShortestItemPeriodEnd()).
      *
      * @param SubscriptionCollectionMethod|null $collectionMethod - Either charge_automatically, or send_invoice. When
      * charging automatically, Stripe will attempt to pay this subscription at the end of the cycle using the default
@@ -1957,9 +1960,9 @@ final readonly class StripeClient
      *
      * @param PaymentMethodType|null $paymentMethodType - optionally, only list payment methods of this type.
      *
-     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::upTo() a number, or
-     * ResultLimit::all(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an ExceptionTooManyResults
-     * is thrown if more match, rather than quietly giving back only some of them.
+     * @param ResultLimit|null $limit - optionally, how many to get: ResultLimit::createUpTo() a number, or
+     * ResultLimit::createAll(). Without one, up to ResultLimit::DEFAULT_SAFETY_CAP are got, and an
+     * ExceptionTooManyResults is thrown if more match, rather than quietly giving back only some of them.
      *
      * @param string|null $startingAfter - optionally, the ID of the object to start after, e.g. the last one a
      * previous call gave back, to page through the list. The list is newest first, so this goes back in time.
@@ -2061,7 +2064,7 @@ final readonly class StripeClient
         {
             throw new ExceptionTooManyResults(
                 "More than {$maximum} {$whatIsListed} match. Narrow the filters, or pass a limit: " .
-                "ResultLimit::upTo() a number, or ResultLimit::all()."
+                "ResultLimit::createUpTo() a number, or ResultLimit::createAll()."
             );
         }
 

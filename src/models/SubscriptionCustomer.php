@@ -2,7 +2,8 @@
 
 /*
  * Who a subscription created with createSubscription() is for: a customer, or a customer account (an account that's
- * also a customer, with Stripe's Accounts v2). Create one with customer() or customerAccount().
+ * also a customer, with Stripe's Accounts v2). Create one with createUsingCustomerId(),
+ * createUsingCustomer() or createUsingCustomerAccountId().
  * https://docs.stripe.com/api/subscriptions/create#create_subscription-customer
  */
 
@@ -10,6 +11,7 @@ namespace Programster\Stripe\Models;
 
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Internal\StripeIds;
+use Programster\Stripe\Responses\Customer;
 
 
 /**
@@ -22,7 +24,7 @@ final readonly class SubscriptionCustomer
 
 
     /**
-     * This is private, so use customer() or customerAccount().
+     * This is private, so use createUsingCustomerId(), createUsingCustomer() or createUsingCustomerAccountId().
      * @param CustomerParams $stripeParams - the subscription's parameters for the customer.
      */
     private function __construct(array $stripeParams)
@@ -32,15 +34,29 @@ final readonly class SubscriptionCustomer
 
 
     /**
-     * The subscription is for a customer.
+     * The subscription is for a customer, by its ID.
      * @param string $customerId - the customer's ID, e.g. "cus_123".
      * @return SubscriptionCustomer
      * @throws ExceptionInvalidValue - if $customerId isn't a customer's ID.
      */
-    public static function customer(string $customerId) : SubscriptionCustomer
+    public static function createUsingCustomerId(string $customerId) : SubscriptionCustomer
     {
         StripeIds::checkCustomerId($customerId);
         return new SubscriptionCustomer(['customer' => $customerId]);
+    }
+
+
+    /**
+     * The subscription is for a customer, such as one just retrieved or created. Only its ID is used, so it must be in
+     * the same Stripe account as the client the subscription is created with.
+     *
+     * @param Customer $customer - the customer.
+     *
+     * @return SubscriptionCustomer
+     */
+    public static function createUsingCustomer(Customer $customer) : SubscriptionCustomer
+    {
+        return self::createUsingCustomerId($customer->getId());
     }
 
 
@@ -50,7 +66,7 @@ final readonly class SubscriptionCustomer
      * @return SubscriptionCustomer
      * @throws ExceptionInvalidValue - if $accountId isn't an account's ID.
      */
-    public static function customerAccount(string $accountId) : SubscriptionCustomer
+    public static function createUsingCustomerAccountId(string $accountId) : SubscriptionCustomer
     {
         StripeIds::checkAccountId($accountId);
         return new SubscriptionCustomer(['customer_account' => $accountId]);

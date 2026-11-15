@@ -202,7 +202,7 @@ final readonly class Subscription extends AbstractResponse
      */
     public function fetchItems(): SubscriptionItemCollection
     {
-        return $this->m_client->listSubscriptionItems($this->getId(), limit: ResultLimit::all());
+        return $this->m_client->listSubscriptionItems($this->getId(), limit: ResultLimit::createAll());
     }
 
 

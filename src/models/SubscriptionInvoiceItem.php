@@ -2,7 +2,7 @@
 
 /*
  * An invoice item to add to a subscription's next invoice, for an existing price, or one created inline. Create one
- * with forPrice() or forPriceData().
+ * with createUsingExistingPrice() or createUsingInlinePrice().
  * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items
  */
 
@@ -45,7 +45,8 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
 
 
     /**
-     * This is private, so use forPrice() or forPriceData(), whose parameters of the same names this takes.
+     * This is private, so use createUsingExistingPrice() or createUsingInlinePrice(), whose parameters of the same
+     * names this takes.
      *
      * @param PriceParams $priceParams - the item's parameters for the price.
      *
@@ -78,7 +79,8 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
 
 
     /**
-     * Create an invoice item for an existing price.
+     * Create an invoice item for a price that's already in Stripe, by its ID, so the price has to have been created
+     * beforehand (in the dashboard or through the API).
      *
      * @param string $priceId - the price's ID, e.g. "price_123".
      *
@@ -104,7 +106,7 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
      *
      * @throws ExceptionInvalidValue - if $priceId is empty, or a product's ID.
      */
-    public static function forPrice(
+    public static function createUsingExistingPrice(
         string $priceId,
         int $quantity,
         ?DiscountCollection $discounts = null,
@@ -120,7 +122,8 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
 
 
     /**
-     * Create an invoice item with a price created inline.
+     * Create an invoice item with its price described here, which Stripe creates along with it, so nothing has to be
+     * set up in Stripe beforehand.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-add_invoice_items-price_data
      *
      * @param PriceDataForInvoiceItem $priceData - the price.
@@ -139,7 +142,7 @@ final readonly class SubscriptionInvoiceItem implements Arrayable
      *
      * @return SubscriptionInvoiceItem
      */
-    public static function forPriceData(
+    public static function createUsingInlinePrice(
         PriceDataForInvoiceItem $priceData,
         int $quantity,
         ?DiscountCollection $discounts = null,

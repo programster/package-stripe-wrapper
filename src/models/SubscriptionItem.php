@@ -2,7 +2,7 @@
 
 /*
  * An item in a subscription, for when creating a subscription directly, rather than through a checkout session, for
- * an existing price, or one created inline. Create one with forPrice() or forPriceData().
+ * an existing price, or one created inline. Create one with createUsingExistingPrice() or createUsingInlinePrice().
  * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
  */
 
@@ -45,7 +45,8 @@ final readonly class SubscriptionItem implements Arrayable
 
 
     /**
-     * This is private, so use forPrice() or forPriceData(), whose parameters of the same names this takes.
+     * This is private, so use createUsingExistingPrice() or createUsingInlinePrice(), whose parameters of the same
+     * names this takes.
      *
      * @param int $quantity
      *
@@ -88,7 +89,8 @@ final readonly class SubscriptionItem implements Arrayable
 
 
     /**
-     * Create an item for an existing price.
+     * Create an item for a price that's already in Stripe, by its ID, so the price has to have been created beforehand
+     * (in the dashboard or through the API).
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items
      *
      * @param string $priceId - the price's ID, e.g. "price_123" (or a legacy plan's ID).
@@ -113,7 +115,7 @@ final readonly class SubscriptionItem implements Arrayable
      *
      * @throws ExceptionInvalidValue - if $priceId is empty or a product's ID, or dynamic tax rates are given.
      */
-    public static function forPrice(
+    public static function createUsingExistingPrice(
         string $priceId,
         int $quantity,
         ?Metadata $metadata = null,
@@ -129,7 +131,8 @@ final readonly class SubscriptionItem implements Arrayable
 
 
     /**
-     * Create an item with a price created inline.
+     * Create an item with its price described here, which Stripe creates along with it, so nothing has to be
+     * set up in Stripe beforehand.
      * https://docs.stripe.com/api/subscriptions/create#create_subscription-items-price_data
      *
      * @param PriceDataForSubscriptionItem $priceData - the price.
@@ -151,7 +154,7 @@ final readonly class SubscriptionItem implements Arrayable
      *
      * @throws ExceptionInvalidValue - if dynamic tax rates are given.
      */
-    public static function forPriceData(
+    public static function createUsingInlinePrice(
         PriceDataForSubscriptionItem $priceData,
         int $quantity,
         ?Metadata $metadata = null,

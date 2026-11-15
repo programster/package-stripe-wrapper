@@ -2,7 +2,7 @@
 
 /*
  * The data for an inline price, for a line item in a one-time payment checkout session.
- * Create one with forProduct() or forProductData().
+ * Create one with createUsingExistingProduct() or createUsingInlineProduct().
  * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-line_items-price_data
  */
 
@@ -36,7 +36,8 @@ final readonly class PriceDataForSinglePayment implements Arrayable
 
 
     /**
-     * This is private, so use forProduct() or forProductData(), whose parameters of the same names this takes.
+     * This is private, so use createUsingExistingProduct() or createUsingInlineProduct(), whose parameters of the same
+     * names this takes.
      *
      * @param Currency $currency
      *
@@ -64,7 +65,8 @@ final readonly class PriceDataForSinglePayment implements Arrayable
 
 
     /**
-     * Create a price for an existing product.
+     * Create a price for a product that's already in Stripe, by its ID, so the product has to have been created
+     * beforehand (in the dashboard or through the API).
      *
      * @param Currency $currency - the currency of the price.
      *
@@ -77,7 +79,7 @@ final readonly class PriceDataForSinglePayment implements Arrayable
      *
      * @throws ExceptionInvalidValue - if $unitAmount is negative, or $productId is empty or a price's ID.
      */
-    public static function forProduct(
+    public static function createUsingExistingProduct(
         Currency $currency,
         int $unitAmount,
         string $productId,
@@ -89,7 +91,8 @@ final readonly class PriceDataForSinglePayment implements Arrayable
 
 
     /**
-     * Create a price for a product created inline.
+     * Create a price for a product described here, which Stripe creates along with the price, so nothing has to
+     * be set up in Stripe beforehand.
      *
      * @param Currency $currency - the currency of the price.
      *
@@ -102,7 +105,7 @@ final readonly class PriceDataForSinglePayment implements Arrayable
      *
      * @throws ExceptionInvalidValue - if $unitAmount is negative.
      */
-    public static function forProductData(
+    public static function createUsingInlineProduct(
         Currency $currency,
         int $unitAmount,
         ProductData $productData,

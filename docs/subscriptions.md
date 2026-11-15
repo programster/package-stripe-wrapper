@@ -21,26 +21,28 @@ $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
 $price = new PriceDataForSubscriptionItem(Currency::GBP, 999, 'prod_123', $monthly);
 
 $subscription = $client->createSubscription(
-    customer: SubscriptionCustomer::customer('cus_123'),
-    items: new SubscriptionLineItemCollection(SubscriptionItem::forPriceData($price, quantity: 1)),
+    customer: SubscriptionCustomer::createUsingCustomerId('cus_123'),
+    items: new SubscriptionLineItemCollection(SubscriptionItem::createUsingInlinePrice($price, quantity: 1)),
     currency: Currency::GBP,
     defaultPaymentMethodId: 'pm_123',
-    billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1),
-    cancelAt: CancelAt::atLongestItemPeriodEnd(),
-    trialConfig: TrialConfig::createForNumDays(7),
+    billingCycleAnchor: BillingCycleAnchor::createOnDayOfMonth(1),
+    cancelAt: CancelAt::createAtLongestItemPeriodEnd(),
+    trialConfig: TrialConfig::createUsingNumDays(7),
 );
 ```
 
-- **The customer** is a `SubscriptionCustomer`: a customer, with `SubscriptionCustomer::customer('cus_...')`, or a
-  customer account, with `SubscriptionCustomer::customerAccount('acct_...')`. An ID that doesn't start with the right
-  prefix throws an `ExceptionInvalidValue` (see below).
-- **An item** is for an existing price, with `SubscriptionItem::forPrice('price_...', quantity: 1)`, or one created
-  inline, with `forPriceData()`. Invoice items (`SubscriptionInvoiceItem`) work the same way.
-- **`$cancelAt`** is a `CancelAt`: `CancelAt::atPeriodEnd()`, `CancelAt::at(new DateTimeImmutable(...))`, or the
-  latest or earliest end of the items' billing periods, with `CancelAt::atLongestItemPeriodEnd()` or
-  `CancelAt::atShortestItemPeriodEnd()`.
-- **`$billingCycleAnchor`** is a `BillingCycleAnchor`: a time, with `BillingCycleAnchor::at()`, or a day of the month
-  (and optionally the month and time of day), with `BillingCycleAnchor::onDayOfMonth()`.
+- **The customer** is a `SubscriptionCustomer`: a customer, with
+  `SubscriptionCustomer::createUsingCustomerId('cus_...')` (or `createUsingCustomer()`, given a `Customer` you've
+  retrieved or created), or a customer account, with `SubscriptionCustomer::createUsingCustomerAccountId('acct_...')`.
+  An ID that doesn't start with the right prefix throws an `ExceptionInvalidValue` (see below).
+- **An item** is for a price that's already in Stripe, with
+  `SubscriptionItem::createUsingExistingPrice('price_...', quantity: 1)`, or one described in the call, which Stripe
+  creates along with it, with `createUsingInlinePrice()`. Invoice items (`SubscriptionInvoiceItem`) work the same way.
+- **`$cancelAt`** is a `CancelAt`: `CancelAt::createAtPeriodEnd()`, `CancelAt::createAt(new DateTimeImmutable(...))`, or
+  the latest or earliest end of the items' billing periods, with `CancelAt::createAtLongestItemPeriodEnd()` or
+  `CancelAt::createAtShortestItemPeriodEnd()`.
+- **`$billingCycleAnchor`** is a `BillingCycleAnchor`: a time, with `BillingCycleAnchor::createAt()`, or a day of the
+  month (and optionally the month and time of day), with `BillingCycleAnchor::createOnDayOfMonth()`.
 - **Times are `DateTimeImmutable`s**, e.g. `backdateStartDate: new DateTimeImmutable('-1 month')`. They aren't checked
   against the current time, as a subscription on a test clock goes by the clock's time instead.
 - **A subscription's items can't have an adjustable quantity or dynamic tax rates**, which Stripe only allows in a
@@ -50,7 +52,7 @@ $subscription = $client->createSubscription(
 
 ```php
 // Throws ExceptionInvalidValue (a customer's ID isn't a customer account's)
-$customer = SubscriptionCustomer::customerAccount('cus_123');
+$customer = SubscriptionCustomer::createUsingCustomerAccountId('cus_123');
 ```
 
 ## Reading a subscription
@@ -90,7 +92,8 @@ foreach ($items as $item)
 }
 
 // Or change an item's price.
-$updated = $client->updateSubscriptionItem('si_123', price: SubscriptionItemPrice::forPrice('price_456'));
+$newPrice = SubscriptionItemPrice::createUsingExistingPrice('price_456');
+$updated = $client->updateSubscriptionItem('si_123', price: $newPrice);
 ```
 
 ## Cancelling a subscription

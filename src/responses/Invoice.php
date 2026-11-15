@@ -118,7 +118,7 @@ final readonly class Invoice extends AbstractResponse
      */
     public function fetchPayments(): InvoicePaymentCollection
     {
-        return $this->m_client->listInvoicePayments($this->getId(), ResultLimit::all());
+        return $this->m_client->listInvoicePayments($this->getId(), ResultLimit::createAll());
     }
 
 

@@ -8,6 +8,7 @@ Stripe Wrapper
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+- [Examples](docs/examples.md)
 - [Checkout sessions](docs/checkout.md)
 - [Customers](docs/customers.md)
 - [Subscriptions](docs/subscriptions.md)
@@ -48,7 +49,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
 $client = new StripeClient('sk_test_...');
 $flow = new HostedFlow(successUrl: "https://example.com/success");
 
-$shirt = PriceDataForSinglePayment::forProductData(
+$shirt = PriceDataForSinglePayment::createUsingInlineProduct(
     currency: Currency::GBP,
     unitAmount: 2000,
     productData: new ProductData(
@@ -58,7 +59,7 @@ $shirt = PriceDataForSinglePayment::forProductData(
 );
 
 $items = new SinglePaymentLineItemsCollection(
-    SinglePaymentLineItem::forPriceData(
+    SinglePaymentLineItem::createUsingInlinePrice(
         priceData: $shirt,
         quantity: 1,
         adjustableQuantityConfig: new AdjustableQuantityConfig(1, 100)
@@ -76,8 +77,8 @@ header('Location: ' . $checkoutSession->getUrl());
 ```
 
 Every class used above is in the `Programster\Stripe` namespace, e.g. `Programster\Stripe\StripeClient` and
-`Programster\Stripe\Enums\Currency`. See [Checkout sessions](docs/checkout.md) for subscriptions, embedded checkouts,
-existing customers and the other options.
+`Programster\Stripe\Enums\Currency`. See [Examples](docs/examples.md) for common tasks from start to finish, and
+[Checkout sessions](docs/checkout.md) for subscriptions, embedded checkouts, existing customers and the other options.
 
 ## Design principles
 - **Mistakes are caught where they're made.** Options with a fixed set of values are enums, a parameter that takes one

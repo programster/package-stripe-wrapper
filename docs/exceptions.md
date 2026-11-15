@@ -22,7 +22,7 @@ as asked. They're all in the `Programster\Stripe\Exceptions` namespace:
 
 ```php
 // Throws ExceptionInvalidValue
-$price = PriceDataForSinglePayment::forProduct(Currency::GBP, -1, 'prod_123');
+$price = PriceDataForSinglePayment::createUsingExistingProduct(Currency::GBP, -1, 'prod_123');
 ```
 
 When Stripe itself rejects a request, or can't be reached, the methods throw `stripe/stripe-php`'s

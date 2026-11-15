@@ -2,7 +2,7 @@
 
 /*
  * What a subscription created with createSubscription() anchors its billing cycle to: a time, or a day of the month.
- * Create one with at() or onDayOfMonth().
+ * Create one with at() or createOnDayOfMonth().
  * https://docs.stripe.com/api/subscriptions/create#create_subscription-billing_cycle_anchor
  */
 
@@ -23,7 +23,7 @@ final readonly class BillingCycleAnchor
 
 
     /**
-     * This is private, so use at() or onDayOfMonth().
+     * This is private, so use at() or createOnDayOfMonth().
      * @param BillingCycleAnchorParams $stripeParams - the subscription's parameters for the anchor.
      */
     private function __construct(array $stripeParams)
@@ -38,7 +38,7 @@ final readonly class BillingCycleAnchor
      * @param \DateTimeImmutable $time - the time to anchor to.
      * @return BillingCycleAnchor
      */
-    public static function at(\DateTimeImmutable $time) : BillingCycleAnchor
+    public static function createAt(\DateTimeImmutable $time) : BillingCycleAnchor
     {
         return new BillingCycleAnchor(['billing_cycle_anchor' => $time->getTimestamp()]);
     }
@@ -63,7 +63,7 @@ final readonly class BillingCycleAnchor
      *
      * @throws ExceptionInvalidValue - if any value is out of its range.
      */
-    public static function onDayOfMonth(
+    public static function createOnDayOfMonth(
         int  $dayOfMonth,
         ?int $month = null,
         ?int $hour = null,

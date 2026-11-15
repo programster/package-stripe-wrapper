@@ -22,8 +22,8 @@ final readonly class InvoiceRenderingOptions implements Arrayable
      *
      * @param ?bool $includeTax - How line-item prices and amounts will be displayed with respect to tax on invoice
      * PDFs. One of exclude_tax (false) or include_inclusive_tax (true). include_inclusive_tax will include inclusive
-     * tax (and exclude exclusive tax) in invoice PDF amounts. exclude_tax will exclude all tax (inclusive and
-     * exclusive alike) from invoice PDF amounts.
+     * tax (and exclude exclusive tax) in invoice PDF amounts. exclude_tax will exclude all tax (inclusive and exclusive
+     * alike) from invoice PDF amounts.
      * https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-invoice_creation-invoice_data-rendering_options-amount_tax_display
      *
      * @param string|null $templateId - ID of the invoice rendering template to use for this invoice.

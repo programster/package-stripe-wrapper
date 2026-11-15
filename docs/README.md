@@ -1,5 +1,6 @@
 # Stripe Wrapper documentation
 
+- [Examples](examples.md)
 - [Checkout sessions](checkout.md)
 - [Customers](customers.md)
 - [Subscriptions](subscriptions.md)

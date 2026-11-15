@@ -55,7 +55,7 @@ final readonly class TrialConfig
      *
      * @return TrialConfig
      */
-    public static function createForEndTime(
+    public static function createUsingEndTime(
         \DateTimeImmutable $endTime,
         ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null
     ) : TrialConfig
@@ -74,7 +74,7 @@ final readonly class TrialConfig
      *
      * @return TrialConfig
      */
-    public static function createForNumDays(
+    public static function createUsingNumDays(
         int $numDays,
         ?EndTrialBehaviorIfMissingPaymentMethod $endTrialBehaviorIfMissingPaymentMethod = null
     ) : TrialConfig

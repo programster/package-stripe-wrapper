@@ -44,20 +44,22 @@ session is completed or expires, so a session retrieved later is a plain `Checko
 `getClientSecret()` can return null.
 
 ## A one-off payment
-Each line item is for a price you've already created in Stripe, with `forPrice()`, or for a price created inline, with
-`forPriceData()`. In the same way, an inline price is for an existing product, with `forProduct()`, or one created
-inline, with `forProductData()`:
+Each line item's price is either one that's already in Stripe, with `createUsingExistingPrice()` and the price's ID, or
+one described in the call, with `createUsingInlinePrice()`, which Stripe creates along with the session. An existing
+price has to have been created beforehand (in the dashboard or through the API), while an inline one needs nothing set
+up first. In the same way, an inline price is for a product that's already in Stripe, with
+`createUsingExistingProduct()`, or one described in the call, with `createUsingInlineProduct()`:
 
 ```php
-$shirt = PriceDataForSinglePayment::forProductData(
+$shirt = PriceDataForSinglePayment::createUsingInlineProduct(
     currency: Currency::GBP,
     unitAmount: 2000, // In pennies, so £20.00.
     productData: new ProductData(name: "T-shirt", description: "A designer t-shirt."),
 );
 
 $items = new SinglePaymentLineItemsCollection(
-    SinglePaymentLineItem::forPriceData($shirt, quantity: 1),
-    SinglePaymentLineItem::forPrice('price_123', quantity: 2),
+    SinglePaymentLineItem::createUsingInlinePrice($shirt, quantity: 1),
+    SinglePaymentLineItem::createUsingExistingPrice('price_123', quantity: 2),
 );
 
 $session = $client->createHostedCheckoutSessionForSinglePayment(flow: $hosted, items: $items);
@@ -74,12 +76,16 @@ can't be given where a price's is needed (or the other way round), so mistakes l
 
 ```php
 // Throws ExceptionInvalidValue
-$refund = PriceDataForSinglePayment::forProduct(currency: Currency::GBP, unitAmount: -500, productId: 'prod_123');
+$refund = PriceDataForSinglePayment::createUsingExistingProduct(
+    currency: Currency::GBP,
+    unitAmount: -500,
+    productId: 'prod_123',
+);
 ```
 
 ```php
 // Throws ExceptionInvalidValue (it's a product's ID)
-$item = SinglePaymentLineItem::forPrice('prod_123', quantity: 1);
+$item = SinglePaymentLineItem::createUsingExistingPrice('prod_123', quantity: 1);
 ```
 
 A price's ID isn't checked for starting `price_`, as a legacy plan's ID can be one you chose, and neither is a
@@ -91,7 +97,7 @@ A subscription's prices need a `RecurringConfig`, to say how often they're charg
 ```php
 $monthly = new RecurringConfig(RecurringInterval::MONTH, 1);
 
-$plan = PriceDataForSubscriptionCheckoutSession::forProductData(
+$plan = PriceDataForSubscriptionCheckoutSession::createUsingInlineProduct(
     currency: Currency::GBP,
     unitAmount: 999,
     productData: new ProductData(name: "Monthly plan"),
@@ -100,12 +106,12 @@ $plan = PriceDataForSubscriptionCheckoutSession::forProductData(
 
 $subscriptionData = new SubscriptionData(
     description: "Monthly plan",
-    trialConfig: TrialConfig::createForNumDays(14, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
+    trialConfig: TrialConfig::createUsingNumDays(14, EndTrialBehaviorIfMissingPaymentMethod::CANCEL),
 );
 
 $session = $client->createHostedCheckoutSessionForSubscription(
     flow: $hosted,
-    items: new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::forPriceData($plan, 1)),
+    items: new SubscriptionCheckoutLineItemCollection(SubscriptionCheckoutLineItem::createUsingInlinePrice($plan, 1)),
     subscriptionData: $subscriptionData,
 );
 ```
@@ -114,18 +120,20 @@ A proration behaviour can only be given along with a billing cycle anchor, which
 `new SubscriptionData(prorationBehavior: ProrationBehavior::NONE)` on its own throws an `ExceptionInvalidValue`.
 
 ## The customer
-`$customer` says who the session is for: a customer that's already in Stripe, with `existing()`, or someone whose
-email address you know, to fill it in for them, with `withEmail()`. Each method has its own type, a
+`$customer` says who the session is for: a customer that's already in Stripe, with `createUsingCustomerId()` (or
+`createUsingCustomer()`, given a `Customer` you've retrieved or created), or someone whose email address you know, to
+fill it in for them, with `createUsingEmail()`. Each method has its own type, a
 `SinglePaymentCheckoutCustomer` or a `SubscriptionCheckoutCustomer`, as only a single payment lets you choose whether
 Stripe creates a customer:
 
 ```php
 // An existing customer, whose address Stripe may update from what they enter.
-$existing = SinglePaymentCheckoutCustomer::existing('cus_123', new CustomerUpdateConfig(address: Updateable::AUTO));
+$updateAddress = new CustomerUpdateConfig(address: Updateable::AUTO);
+$existing = SinglePaymentCheckoutCustomer::createUsingCustomerId('cus_123', $updateAddress);
 $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $items, customer: $existing);
 
 // Their email address, with a customer always created for them.
-$newCustomer = SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS);
+$newCustomer = SinglePaymentCheckoutCustomer::createUsingEmail('jo@example.com', CustomerCreation::ALWAYS);
 $session = $client->createHostedCheckoutSessionForSinglePayment($hosted, $items, customer: $newCustomer);
 
 // No email address, but still always creating a customer.
@@ -136,16 +144,26 @@ $session = $client->createHostedCheckoutSessionForSinglePayment(
 );
 
 // For a subscription, Stripe always creates the customer.
-$subscriber = SubscriptionCheckoutCustomer::withEmail('jo@example.com');
+$subscriber = SubscriptionCheckoutCustomer::createUsingEmail('jo@example.com');
+
+// Or a customer you've just created.
+$created = $client->createCustomer(email: 'jo@example.com', name: 'Jo Bloggs');
+
+$session = $client->createHostedCheckoutSessionForSinglePayment(
+    $hosted,
+    $items,
+    customer: SinglePaymentCheckoutCustomer::createUsingCustomer($created),
+);
 ```
 
-Stripe doesn't allow a customer to be created when there's already one, so `existing()` doesn't take a
-`CustomerCreation`, and a `CustomerUpdateConfig` only goes with `existing()`. A customer's ID that doesn't start
-`cus_`, or an email address that isn't one, throws an `ExceptionInvalidValue`, which catches them being mixed up:
+Stripe doesn't allow a customer to be created when there's already one, so `createUsingCustomerId()` and
+`createUsingCustomer()` don't take a `CustomerCreation`, and a `CustomerUpdateConfig` only goes with them. A customer's
+ID that doesn't start `cus_`, or an email address that isn't one, throws an `ExceptionInvalidValue`, which catches them
+being mixed up:
 
 ```php
 // Throws ExceptionInvalidValue
-$customer = SinglePaymentCheckoutCustomer::withEmail('cus_123');
+$customer = SinglePaymentCheckoutCustomer::createUsingEmail('cus_123');
 ```
 
 ## Other options
@@ -157,7 +175,7 @@ $session = $client->createHostedCheckoutSessionForSinglePayment(
     items: $items,
     clientReferenceId: 'order-42',
     expiresAt: new DateTimeImmutable('+1 hour'),
-    discount: Discount::createCoupon('coupon_123'),
+    discount: Discount::createUsingCouponId('coupon_123'),
     locale: Locale::FRENCH,
     billingAddressCollection: BillingAddressCollection::REQUIRED,
     shippingAddressCollection: new ShippingCountryCodeCollection(ShippingCountryCode::GB, ShippingCountryCode::FR),

@@ -61,7 +61,7 @@ final readonly class SubscriptionItemDiscount implements Arrayable
      * @param string $couponId - the ID of the coupon.
      * @return SubscriptionItemDiscount
      */
-    public static function createFromCouponId(string $couponId) : SubscriptionItemDiscount
+    public static function createUsingCouponId(string $couponId) : SubscriptionItemDiscount
     {
         return new SubscriptionItemDiscount($couponId, null, null);
     }
@@ -72,7 +72,7 @@ final readonly class SubscriptionItemDiscount implements Arrayable
      * @param string $discountId - the ID of the discount.
      * @return SubscriptionItemDiscount
      */
-    public static function createFromDiscountId(string $discountId) : SubscriptionItemDiscount
+    public static function createUsingDiscountId(string $discountId) : SubscriptionItemDiscount
     {
         return new SubscriptionItemDiscount(null, $discountId, null);
     }
@@ -83,7 +83,7 @@ final readonly class SubscriptionItemDiscount implements Arrayable
      * @param string $promotionCode - the ID of the promotion code.
      * @return SubscriptionItemDiscount
      */
-    public static function createFromPromotionCode(string $promotionCode) : SubscriptionItemDiscount
+    public static function createUsingPromotionCodeId(string $promotionCode) : SubscriptionItemDiscount
     {
         return new SubscriptionItemDiscount(null, null, $promotionCode);
     }

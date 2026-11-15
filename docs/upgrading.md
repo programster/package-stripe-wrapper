@@ -64,8 +64,8 @@ what each returns is certain to have what you need from it:
 ### Listing
 - **Each list method returns a readonly collection of everything that matches** (e.g. `CustomerCollection`), rather
   than a `\Stripe\Collection` of one page, so `->data` and `->has_more` go: loop over the collection itself.
-- **`$limit` is a `ResultLimit`**: `ResultLimit::upTo(50)`, or `ResultLimit::all()`, rather than an int from 1 to 100.
-  Without one, up to 1,000 are got, and an `ExceptionTooManyResults` is thrown if more match. See
+- **`$limit` is a `ResultLimit`**: `ResultLimit::createUpTo(50)`, or `ResultLimit::createAll()`, rather than an int from
+  1 to 100. Without one, up to 1,000 are got, and an `ExceptionTooManyResults` is thrown if more match. See
   [Listing](listing.md#how-many-you-get).
 - **`$cursorStartingAfter` and `$cursorEndingBefore` are now `$startingAfter` and `$endingBefore`**, and come after the
   filters and `$limit`. Use named arguments, e.g. `startingAfter: $page->last()->getId()`.
@@ -79,26 +79,27 @@ a product's ID where a price's was, throws an `ExceptionInvalidValue` on the lin
 
 | 0.2.x | 1.0.0 |
 |---|---|
-| `existingStripeCustomerOrEmail: new ExistingCustomer('cus_123', $update)` | `customer: SinglePaymentCheckoutCustomer::existing('cus_123', $update)` (or `SubscriptionCheckoutCustomer`, for a subscription) |
-| `existingStripeCustomerOrEmail: 'jo@example.com'` | `customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com')` |
-| `customerCreation: CustomerCreation::ALWAYS` | `customer: SinglePaymentCheckoutCustomer::withEmail('jo@example.com', CustomerCreation::ALWAYS)`, or `SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS)` without an email address |
-| `createSubscription(new ExistingCustomer('cus_123'), ...)` | `createSubscription(SubscriptionCustomer::customer('cus_123'), ...)` |
-| `createSubscription('acct_123', ...)` | `createSubscription(SubscriptionCustomer::customerAccount('acct_123'), ...)` |
-| `cancelAt: true` | `cancelAt: CancelAt::atPeriodEnd()` |
-| `cancelAt: $timestamp` | `cancelAt: CancelAt::at($time)` |
-| `cancelAt: CancelAtEnum::MAX_PERIOD_END` (or `MIN_PERIOD_END`) | `cancelAt: CancelAt::atLongestItemPeriodEnd()` (or `atShortestItemPeriodEnd()`) |
-| `billingCycleAnchorTimestampOrConfig: $timestamp` | `billingCycleAnchor: BillingCycleAnchor::at($time)` |
-| `billingCycleAnchorTimestampOrConfig: new BillingCycleAnchorConfig(1)` | `billingCycleAnchor: BillingCycleAnchor::onDayOfMonth(1)` |
-| `new SinglePaymentLineItem(1, 'price_123')` | `SinglePaymentLineItem::forPrice('price_123', 1)` |
-| `new SinglePaymentLineItem(1, $priceData)` | `SinglePaymentLineItem::forPriceData($priceData, 1)` |
-| `new PriceDataForSinglePayment(Currency::GBP, 100, 'prod_123')` | `PriceDataForSinglePayment::forProduct(Currency::GBP, 100, 'prod_123')` |
-| `new PriceDataForSinglePayment(Currency::GBP, 100, $productData)` | `PriceDataForSinglePayment::forProductData(Currency::GBP, 100, $productData)` |
-| `updateSubscriptionItem(..., priceDataOrPriceId: 'price_123')` | `updateSubscriptionItem(..., price: SubscriptionItemPrice::forPrice('price_123'))` |
+| `existingStripeCustomerOrEmail: new ExistingCustomer('cus_123', $update)` | `customer: SinglePaymentCheckoutCustomer::createUsingCustomerId('cus_123', $update)` (or `SubscriptionCheckoutCustomer`, for a subscription) |
+| `existingStripeCustomerOrEmail: 'jo@example.com'` | `customer: SinglePaymentCheckoutCustomer::createUsingEmail('jo@example.com')` |
+| `customerCreation: CustomerCreation::ALWAYS` | `customer: SinglePaymentCheckoutCustomer::createUsingEmail('jo@example.com', CustomerCreation::ALWAYS)`, or `SinglePaymentCheckoutCustomer::create(CustomerCreation::ALWAYS)` without an email address |
+| `createSubscription(new ExistingCustomer('cus_123'), ...)` | `createSubscription(SubscriptionCustomer::createUsingCustomerId('cus_123'), ...)` |
+| `createSubscription('acct_123', ...)` | `createSubscription(SubscriptionCustomer::createUsingCustomerAccountId('acct_123'), ...)` |
+| `cancelAt: true` | `cancelAt: CancelAt::createAtPeriodEnd()` |
+| `cancelAt: $timestamp` | `cancelAt: CancelAt::createAt($time)` |
+| `cancelAt: CancelAtEnum::MAX_PERIOD_END` (or `MIN_PERIOD_END`) | `cancelAt: CancelAt::createAtLongestItemPeriodEnd()` (or `createAtShortestItemPeriodEnd()`) |
+| `billingCycleAnchorTimestampOrConfig: $timestamp` | `billingCycleAnchor: BillingCycleAnchor::createAt($time)` |
+| `billingCycleAnchorTimestampOrConfig: new BillingCycleAnchorConfig(1)` | `billingCycleAnchor: BillingCycleAnchor::createOnDayOfMonth(1)` |
+| `new SinglePaymentLineItem(1, 'price_123')` | `SinglePaymentLineItem::createUsingExistingPrice('price_123', 1)` |
+| `new SinglePaymentLineItem(1, $priceData)` | `SinglePaymentLineItem::createUsingInlinePrice($priceData, 1)` |
+| `new PriceDataForSinglePayment(Currency::GBP, 100, 'prod_123')` | `PriceDataForSinglePayment::createUsingExistingProduct(Currency::GBP, 100, 'prod_123')` |
+| `new PriceDataForSinglePayment(Currency::GBP, 100, $productData)` | `PriceDataForSinglePayment::createUsingInlineProduct(Currency::GBP, 100, $productData)` |
+| `updateSubscriptionItem(..., priceDataOrPriceId: 'price_123')` | `updateSubscriptionItem(..., price: SubscriptionItemPrice::createUsingExistingPrice('price_123'))` |
 
-- **`SubscriptionCheckoutLineItem`, `SubscriptionItem` and `SubscriptionInvoiceItem`** are created with `forPrice()`
-  and `forPriceData()` in the same way, and **`PriceDataForSubscriptionCheckoutSession`** with `forProduct()` and
-  `forProductData()`. Each takes the quantity after the price, which `SinglePaymentLineItem`,
-  `SubscriptionCheckoutLineItem` and `SubscriptionItem` used to take first.
+- **`SubscriptionCheckoutLineItem`, `SubscriptionItem` and `SubscriptionInvoiceItem`** are created with
+  `createUsingExistingPrice()` and `createUsingInlinePrice()` in the same way, and
+  **`PriceDataForSubscriptionCheckoutSession`** with `createUsingExistingProduct()` and `createUsingInlineProduct()`.
+  Each takes the quantity after the price, which `SinglePaymentLineItem`, `SubscriptionCheckoutLineItem` and
+  `SubscriptionItem` used to take first.
 - **`ExistingCustomer`, `BillingCycleAnchorConfig` and `CancelAtEnum` have been removed**, and so has the
   `$customerCreation` parameter.
 - **`cancelAt: false` has gone**, as it did the same as leaving it out.
@@ -114,8 +115,8 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
 - The checkout methods' `$expiresAt`, `createSubscription()`'s `$backdateStartDate`, `updateSubscriptionItem()`'s
   `$prorationDate`, and `SubscriptionData`'s `$billingCycleAnchor`.
 - `TimePeriod`'s start and end. An end before the start throws an `ExceptionInvalidValue`.
-- `TrialConfig::createForEndTimestamp()` is now `TrialConfig::createForEndTime()`, and `PeriodStart::createTimestamp()`
-  and `PeriodEnd::createTimestamp()` are now `createAt()`.
+- `TrialConfig::createForEndTimestamp()` is now `TrialConfig::createUsingEndTime()`, and
+  `PeriodStart::createTimestamp()` and `PeriodEnd::createTimestamp()` are now `createAt()`.
 
 ### Countries
 - **An `Address`'s country is a `CountryCode`**, e.g. `country: CountryCode::GB` rather than `country: 'GB'`. Stripe
@@ -126,6 +127,16 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
   Checkout can collect shipping addresses for, which are fewer.
 
 ### Other changes
+- **Creator methods say what they're created using**, so `Discount::createCoupon('SUMMER20')` no longer reads as if it
+  creates a coupon in Stripe:
+
+| 0.2.x | 1.0.0 |
+|---|---|
+| `TrialConfig::createForNumDays()` | `TrialConfig::createUsingNumDays()` |
+| `Discount::createCoupon()`, `Discount::createPromoCode()` | `Discount::createUsingCouponId()`, `Discount::createUsingPromotionCodeId()` |
+| `SubscriptionItemDiscount::createFromCouponId()`, `createFromDiscountId()`, `createFromPromotionCode()` | `SubscriptionItemDiscount::createUsingCouponId()`, `createUsingDiscountId()`, `createUsingPromotionCodeId()` |
+| `AccountReference::createRelatedAccount()` | `AccountReference::createUsingRelatedAccountId()` |
+
 - **New methods:** `retrieveCustomer()`, `retrieveSubscription()`, `retrieveInvoice()`, `retrievePaymentIntent()`,
   `retrieveCharge()`, `retrieveRefund()`, `retrievePaymentMethod()`, `listInvoicePayments()` and
   `listInvoicesWithPayments()`, and `fetch...()` methods on the models for their related objects, e.g.
@@ -149,7 +160,7 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
   arguments.
 - **`SubscriptionItem` no longer takes `$adjustableQuantityConfig`**, which Stripe never allowed on a subscription's
   items, so it always threw. Use named arguments for the parameters after it.
-- **`SubscriptionItemDiscount` can only be created with its `createFrom...()` methods**, as each gives exactly one ID.
+- **`SubscriptionItemDiscount` can only be created with its `createUsing...()` methods**, as each gives exactly one ID.
 - **These have been removed**, as they never worked, or weren't used: `OnBehalfOfConfig`, `StripeConnectPaymentConfig`
   and `StripeConnectSubscriptionConfig` (and the `$stripeConnectConfig` parameter they were for),
   `SubscriptionTrialConfig` (use `TrialConfig`), and `PaymentMethodType::getAll()` (use `PaymentMethodType::cases()`).

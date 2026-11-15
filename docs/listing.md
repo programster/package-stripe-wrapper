@@ -46,15 +46,15 @@ many requests, and a lot of memory. To get a different number, pass a `ResultLim
 
 ```php
 // Up to 50. If more match, only the newest 50 are given, without an exception.
-$recent = $client->listCustomers(limit: ResultLimit::upTo(50));
+$recent = $client->listCustomers(limit: ResultLimit::createUpTo(50));
 
 // Every one, however many there are. Only do this when the filters keep the number small enough.
-$everyone = $client->listCustomers(email: 'jo@example.com', limit: ResultLimit::all());
+$everyone = $client->listCustomers(email: 'jo@example.com', limit: ResultLimit::createAll());
 ```
 
 ```php
 // Throws ExceptionInvalidValue
-$nothing = ResultLimit::upTo(0);
+$nothing = ResultLimit::createUpTo(0);
 ```
 
 ## Paging through a list
@@ -62,11 +62,11 @@ To page through a list yourself, e.g. 50 at a time on a web page, start each pag
 before. An empty collection means there are no more:
 
 ```php
-$page = $client->listCustomers(limit: ResultLimit::upTo(50));
+$page = $client->listCustomers(limit: ResultLimit::createUpTo(50));
 
 if (!$page->isEmpty())
 {
-    $nextPage = $client->listCustomers(limit: ResultLimit::upTo(50), startingAfter: $page->last()->getId());
+    $nextPage = $client->listCustomers(limit: ResultLimit::createUpTo(50), startingAfter: $page->last()->getId());
 }
 ```
 
@@ -103,7 +103,7 @@ $lastMonth = new TimePeriod(
     end: new DateTimeImmutable('last day of last month 23:59:59'),
 );
 
-$lastMonthsCharges = $client->listCharges(created: $lastMonth, limit: ResultLimit::all());
+$lastMonthsCharges = $client->listCharges(created: $lastMonth, limit: ResultLimit::createAll());
 ```
 
 - **To page through a list, keep each page's cursor.** On a web page, put the ID of the last object shown into the
@@ -114,6 +114,6 @@ $lastMonthsCharges = $client->listCharges(created: $lastMonth, limit: ResultLimi
 // e.g. from the "next" link's query string, such as ?after=cus_123, or null for the first page.
 $after = 'cus_123';
 
-$page = $client->listCustomers(limit: ResultLimit::upTo(50), startingAfter: $after);
+$page = $client->listCustomers(limit: ResultLimit::createUpTo(50), startingAfter: $after);
 $nextLink = $page->isEmpty() ? null : "?after=" . $page->last()->getId();
 ```
