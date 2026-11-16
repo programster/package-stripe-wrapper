@@ -101,7 +101,10 @@ $sessionId = 'cs_test_123';
 
 $returned = $client->retrieveCheckoutSession($sessionId);
 $orderReference = $returned->getClientReferenceId();          // "order-42"
-$orderId = $returned->getMetadata()->toStripeArrayForm()['order_id'] ?? null;
+$metadata = $returned->getMetadata();
+
+// Anyone can visit with any session's ID, so it may not be one of yours.
+$orderId = $metadata->hasKey('order_id') ? $metadata->getValue('order_id') : null;    // "42"
 
 if ($returned->isPaid())
 {
@@ -226,21 +229,26 @@ function fulfilOrder(CompletedCheckoutSession $completed): void
 }
 
 
-function handleStripeWebhook(StripeClient $client, string $payload, string $signature, string $endpointSecret): void
+function handleStripeWebhook(StripeClient $client, WebhookSigningSecret $signingSecret): void
 {
     // Throws a \Stripe\Exception\SignatureVerificationException if the request didn't come from Stripe.
-    $event = \Stripe\Webhook::constructEvent($payload, $signature, $endpointSecret);
+    $event = $client->verifyWebhookEvent(
+        file_get_contents('php://input'),
+        $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '',
+        $signingSecret,
+    );
 
-    if ($event->type === 'checkout.session.completed')
+    if ($event->hasType(EventType::CHECKOUT_SESSION_COMPLETED))
     {
-        $session = CheckoutSession::createFromStripeObject($event->data->object, $client);
-        fulfilOrder($session->toCompleted());
+        fulfilOrder($event->getCheckoutSession()->toCompleted());
     }
 }
 
 // In your webhook endpoint, with the signing secret from the dashboard's webhook settings:
-// handleStripeWebhook($client, file_get_contents('php://input'), $_SERVER['HTTP_STRIPE_SIGNATURE'], 'whsec_...');
+// handleStripeWebhook($client, new WebhookSigningSecret('whsec_...'));
 ```
+
+See [Responses](responses.md#webhooks) for what to watch out for when checking a webhook's signature.
 
 A payment by bank transfer, or another slow method, can complete the session before it's paid. Stripe then sends
 `checkout.session.async_payment_succeeded` once it is, which can be handled the same way.
@@ -272,16 +280,28 @@ it from the `customer.subscription.updated` and `customer.subscription.deleted` 
 
 ## Moving a subscriber to another plan
 Change the subscription's item to the new plan's price. With `ProrationBehavior::CREATE`, the next invoice charges
-for the rest of this period at the new price, less what's unused at the old one:
+for the rest of this period at the new price, less what's unused at the old one. Preview it first, to show the
+customer what they'll pay, then make the change as of the preview's proration date, so they pay exactly that:
 
 ```php
 $subscription = $client->retrieveSubscription('sub_123');
 $currentItem = $subscription->fetchItems()->first();
+$premium = SubscriptionItemPrice::createUsingExistingPrice('price_premium');
 
+$preview = $client->previewSubscriptionChange(
+    $subscription->getId(),
+    new SubscriptionItemChangeCollection(SubscriptionItemChange::createUpdateUsingItem($currentItem, $premium)),
+    ProrationBehavior::CREATE,
+);
+
+$nextBill = $preview->getAmountDue()->getAmount();    // In pennies, e.g. to show as "£12.34".
+
+// Once the customer confirms:
 $upgraded = $client->updateSubscriptionItem(
     $currentItem->getId(),
-    price: SubscriptionItemPrice::createUsingExistingPrice('price_premium'),
+    price: $premium,
     prorationBehavior: ProrationBehavior::CREATE,
+    prorationDate: $preview->getProrationDate(),
 );
 
 $seats = $client->updateSubscriptionItem($currentItem->getId(), quantity: 5);

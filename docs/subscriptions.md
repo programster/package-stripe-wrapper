@@ -4,6 +4,7 @@
 - [Reading a subscription](#reading-a-subscription)
 - [Listing subscriptions](#listing-subscriptions)
 - [Changing a subscription's items](#changing-a-subscriptions-items)
+- [Previewing an invoice](#previewing-an-invoice)
 - [Cancelling a subscription](#cancelling-a-subscription)
 
 Most of the time, a customer should start a subscription through a [checkout session](checkout.md#a-subscription), so
@@ -95,6 +96,67 @@ foreach ($items as $item)
 $newPrice = SubscriptionItemPrice::createUsingExistingPrice('price_456');
 $updated = $client->updateSubscriptionItem('si_123', price: $newPrice);
 ```
+
+## Previewing an invoice
+Three methods show what an invoice would be, without creating anything in Stripe. Each returns an `InvoicePreview`,
+with the amounts (`getAmountDue()`, `getSubtotal()`, `getTotal()`), the dates, and each line, from `getLines()`:
+
+```php
+// A subscription's next invoice, as it stands (or $subscription->fetchUpcomingInvoicePreview()).
+$upcoming = $client->previewUpcomingInvoice('sub_123');
+
+foreach ($upcoming->getLines() as $line)
+{
+    $description = $line->getDescription();         // e.g. "1 × Premium (at £10.00 / month)"
+    $amount = $line->getAmount()->getAmount();      // In pennies. A credit for unused time is negative.
+    $isProration = $line->isProration();
+}
+
+// The next invoice if the subscription's items were changed, including the prorations for the change.
+$changes = new SubscriptionItemChangeCollection(
+    SubscriptionItemChange::createUpdateUsingItemId('si_123', quantity: 3),
+    SubscriptionItemChange::createRemovalUsingItemId('si_456'),
+    SubscriptionItemChange::createAddition(SubscriptionItem::createUsingExistingPrice('price_789', 1)),
+);
+
+$preview = $client->previewSubscriptionChange('sub_123', $changes, ProrationBehavior::CREATE);
+
+// Make the change as of the same moment, so the prorations are exactly what was previewed.
+$updated = $client->updateSubscriptionItem('si_123', quantity: 3, prorationDate: $preview->getProrationDate());
+
+// The first invoice of a subscription that hasn't been created yet, e.g. to show the price with tax before they
+// subscribe. It takes the same customer and items as createSubscription().
+$firstInvoice = $client->previewNewSubscription(
+    SubscriptionCustomer::createUsingCustomerId('cus_123'),
+    new SubscriptionLineItemCollection(SubscriptionItem::createUsingExistingPrice('price_789', 1)),
+);
+```
+
+- **Prorations depend on the moment they're worked out**, so pass the preview's `getProrationDate()` to
+  `updateSubscriptionItem()` when making the change, or the customer pays a slightly different amount from the one
+  they were shown. `previewSubscriptionChange()` also takes a `$prorationDate`, to preview a change as of another time.
+- **A change is to an existing item, by its ID** (`si_...`), or to one from `getItems()`, with
+  `createUpdateUsingItem()` or `createRemovalUsingItem()`. An update needs a new price, a new quantity, or both, and an
+  item can only be changed once in a preview, so these throw:
+
+```php
+// Throws ExceptionInvalidValue (nothing would change)
+$change = SubscriptionItemChange::createUpdateUsingItemId('si_123');
+```
+
+```php
+// Throws ExceptionDuplicateKey (put both in one change)
+$changes = new SubscriptionItemChangeCollection(
+    SubscriptionItemChange::createUpdateUsingItemId('si_123', quantity: 2),
+    SubscriptionItemChange::createRemovalUsingItemId('si_123'),
+);
+```
+
+- **`getLines()` only returns what Stripe included.** Stripe only includes the first few lines, so if it left any out,
+  `getLines()` throws an `ExceptionIncompleteList`. `hasAllLines()` says whether it's safe to call. The totals always
+  include every line.
+- **A preview isn't an `Invoice`**, as it isn't in Stripe, so it has no number, link or PDF, and can't be retrieved or
+  paid.
 
 ## Cancelling a subscription
 ```php

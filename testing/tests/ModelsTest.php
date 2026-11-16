@@ -28,6 +28,7 @@ use Programster\Stripe\Enums\ShippingCountryCode;
 use Programster\Stripe\Enums\SubscriptionStatus;
 use Programster\Stripe\Enums\TaxIdCollection;
 use Programster\Stripe\Enums\Updateable;
+use Programster\Stripe\Exceptions\ExceptionMissingMetadataKey;
 use Programster\Stripe\Exceptions\ExceptionDropdownOptionsMustBeUnique;
 use Programster\Stripe\Exceptions\ExceptionDuplicateKey;
 use Programster\Stripe\Exceptions\ExceptionInvalidDropdownValue;
@@ -252,6 +253,22 @@ $smoke->run("MetadataItem and Metadata check their keys", function (): void {
     };
 
     SmokeTest::expectException(ExceptionDuplicateKey::class, $createWithDuplicate, "'k'");
+});
+
+$smoke->run("Metadata finds a value by its key", function (): void {
+    $metadata = new Metadata(new MetadataItem('order_id', '42'), new MetadataItem('source', 'web'));
+    SmokeTest::assertSame(true, $metadata->hasKey('order_id'), "has a key it has");
+    SmokeTest::assertSame(false, $metadata->hasKey('ORDER_ID'), "keys are case-sensitive");
+    SmokeTest::assertSame(false, (new Metadata())->hasKey('order_id'), "empty metadata");
+    SmokeTest::assertSame('42', $metadata->getValue('order_id'), "first key's value");
+    SmokeTest::assertSame('web', $metadata->getValue('source'), "second key's value");
+    SmokeTest::assertSame('', (new Metadata(new MetadataItem('blank', '')))->getValue('blank'), "an empty value");
+
+    $getMissingKey = function () use ($metadata): void {
+        $metadata->getValue('customer_id');
+    };
+
+    SmokeTest::expectException(ExceptionMissingMetadataKey::class, $getMissingKey, "'customer_id'");
 });
 
 $smoke->run("PaymentIntentData", function (): void {

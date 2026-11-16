@@ -20,13 +20,14 @@ parameters:
         - testing/settings.php.tmpl
     ignoreErrors:
         # Stripe takes an empty string to remove billing thresholds, which BillingThresholds(null) sends, but the
-        # SDK's array shapes for these two calls leave the empty string out, so they can't be satisfied without
-        # changing what's sent.
+        # SDK's array shapes for these calls (creating a subscription, updating an item, and previewing a new or
+        # changed subscription's invoice) leave the empty string out, so they can't be satisfied without changing
+        # what's sent.
         -
-            message: '#^Parameter \#\d \$params of method Stripe\\Service\\Subscription(Item)?Service::(update|create)\(\) expects .*billing_thresholds\?: \x27\x27\|array\{usage_gte: int\}#'
+            message: '#^Parameter \#\d \$params of method Stripe\\Service\\(Subscription(Item)?Service::(update|create)|InvoiceService::createPreview)\(\) expects .*billing_thresholds\?: \x27\x27\|array\{usage_gte: int\}#'
             identifier: argument.type
             path: src/StripeClient.php
-            count: 2
+            count: 4
         # Accessors are one line, with no docblock, so these can't say what their arrays hold. The properties they
         # return do say.
         -

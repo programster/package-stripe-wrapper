@@ -21,10 +21,12 @@ namespace, rather than the Stripe SDK's objects, so your IDE knows what's in the
 | `createSubscription()`, `retrieveSubscription()`, `cancelSubscription()` | `Subscription` |
 | `updateSubscriptionItem()` | `SubscriptionItem` |
 | `retrieveInvoice()` | `Invoice` |
+| `previewUpcomingInvoice()`, `previewSubscriptionChange()`, `previewNewSubscription()` | `InvoicePreview` (see [Subscriptions](subscriptions.md#previewing-an-invoice)) |
 | `retrievePaymentIntent()` | `PaymentIntent` |
 | `retrieveCharge()` | `Charge` |
 | `retrieveRefund()` | `Refund` |
 | `retrievePaymentMethod()` | `PaymentMethod` |
+| `verifyWebhookEvent()` | `Event` (see [Webhooks](#webhooks)) |
 | Each `list...()` method | A readonly collection of them, e.g. `CustomerCollection` (see [Listing](listing.md)) |
 
 ## Reading a response
@@ -38,12 +40,16 @@ $customerId = $customer->getId();              // Always set.
 $email = $customer->getEmail();                // A string, or null if it isn't set.
 $city = $customer->getAddress()?->getCity();   // The address, and each part of it, can be empty.
 $created = $customer->getCreated();            // A DateTimeImmutable, in UTC.
-$userId = $customer->getMetadata()->toStripeArrayForm()['user_id'] ?? null;
+$metadata = $customer->getMetadata();
+$userId = $metadata->hasKey('user_id') ? $metadata->getValue('user_id') : null;
 ```
 
 - **Times** are `DateTimeImmutable`s, in UTC.
 - **Amounts** are `Money`: `getAmount()` in the currency's smallest unit (e.g. pennies), and `getCurrency()`, as
   Stripe sends it (e.g. `"gbp"`). `hasCurrency(Currency::GBP)` compares it with the `Currency` enum.
+- **Metadata** is a `Metadata` collection: `hasKey('user_id')` says whether a key is there, and `getValue('user_id')`
+  gives its value, throwing an `ExceptionMissingMetadataKey` if it isn't. Keys are case-sensitive, as they are in
+  Stripe. `toStripeArrayForm()` gives it all as an array.
 - **Related objects** are given by their ID, e.g. `getCustomerId()`, whether Stripe sent just the ID or the whole
   object.
 
@@ -98,7 +104,7 @@ Each model's related objects:
 |---|---|
 | `CheckoutSession` | `fetchCustomer()`, `fetchSubscription()`, `fetchPaymentIntent()`, `fetchInvoice()` |
 | `Customer` | `fetchSubscriptions()` (whatever their status), `fetchPaymentMethods()` |
-| `Subscription` | `fetchCustomer()`, `fetchItems()`, `fetchLatestInvoice()`, `fetchDefaultPaymentMethod()` |
+| `Subscription` | `fetchCustomer()`, `fetchItems()`, `fetchLatestInvoice()`, `fetchDefaultPaymentMethod()`, `fetchUpcomingInvoicePreview()` |
 | `SubscriptionItem` | `fetchSubscription()` |
 | `Invoice` | `fetchCustomer()`, `fetchSubscription()`, `fetchPayments()` |
 | `InvoicePayment` | `fetchInvoice()`, `fetchPaymentIntent()` |
@@ -114,6 +120,8 @@ Where something guarantees more than Stripe always sends, a narrower type holds 
 null:
 
 - **What a method asked for:** `listInvoicesWithPayments()` returns `InvoiceWithPayments`, which has the payments.
+- **Something that isn't in Stripe:** the preview methods return an `InvoicePreview`, rather than an `Invoice`, as
+  the invoice hasn't been created, so it can't be retrieved, paid or sent.
 - **How a session was just made:** a `NewHostedCheckoutSession` always has its URL, and a `NewEmbeddedCheckoutSession`
   its client secret (see [Checkout sessions](checkout.md#hosted-or-embedded)).
 - **An object's state:** `$session->toCompleted()` returns a `CompletedCheckoutSession`, which always has the
@@ -133,23 +141,73 @@ $invoiceSettings = $customer->getStripeObject()->invoice_settings;
 Changing the copy doesn't change the model. If there's a field you use often, it can be added to the model.
 
 ## Webhooks
-`createFromStripeObject()` turns the object in a webhook event into the same models, so the same code can handle it:
+`verifyWebhookEvent()` checks that a request to your webhook endpoint came from Stripe, from its signature, and gives
+the `Event` it holds. Give it the request's body exactly as it arrived, its `Stripe-Signature` header, and the
+endpoint's signing secret, as a `WebhookSigningSecret`:
 
 ```php
-$event = \Stripe\Event::constructFrom([
+function handleStripeWebhook(StripeClient $client, WebhookSigningSecret $signingSecret): void
+{
+    try
+    {
+        $event = $client->verifyWebhookEvent(
+            file_get_contents('php://input'),
+            $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '',
+            $signingSecret,
+        );
+    }
+    catch (\Stripe\Exception\SignatureVerificationException $e)
+    {
+        // Not from Stripe, or not for this endpoint.
+        http_response_code(400);
+        exit;
+    }
+
+    if ($event->hasType(EventType::CUSTOMER_SUBSCRIPTION_UPDATED))
+    {
+        $subscription = $event->getSubscription();
+        // Update your own records from $subscription->getStatus(), etc.
+    }
+
+    http_response_code(200);
+}
+
+// With the endpoint's signing secret, from the dashboard's webhook settings (or "stripe listen", for the CLI):
+// handleStripeWebhook($client, new WebhookSigningSecret('whsec_...'));
+```
+
+- **The signing secret starts `whsec_`**, and each endpoint has its own. It isn't your API's secret key, so
+  `WebhookSigningSecret` throws an `ExceptionInvalidValue` if given one, and it's kept out of `var_dump()` and
+  `print_r()` output, like the client's key.
+- **The body must be exactly what arrived.** Decoding the JSON and encoding it again changes it, so the signature no
+  longer matches.
+- **Old requests are rejected**, so one that's been recorded can't be replayed later. By default a signature can be up
+  to 5 minutes old, as Stripe recommends. `toleranceSeconds` changes that, but must be at least 1.
+- **Check the type with `hasType()`**, which takes the `EventType` enum, so it can't be misspelt. `getType()` gives the
+  type as Stripe sent it, as Stripe has many more types than the enum, and adds new ones.
+- **The object the event is about** comes as its model from `getCheckoutSession()`, `getCustomer()`,
+  `getSubscription()`, `getInvoice()`, `getPaymentIntent()`, `getCharge()`, `getRefund()` or `getPaymentMethod()`,
+  which each throw an `ExceptionUnexpectedResponse` if it's something else. `getDataObjectType()` says what it is (e.g.
+  `"customer"`), and `getDataObject()` gives the SDK's object, for anything else.
+- **An event is what the object was when it happened.** Stripe can send events late, or out of order, so for anything
+  that matters, such as whether a subscription is still active, use the object's ID to retrieve it again.
+
+`createFromStripeObject()` turns any SDK object into the matching model, e.g. one you already have from the SDK:
+
+```php
+$stripeEvent = \Stripe\Event::constructFrom([
     'id' => 'evt_123',
     'object' => 'event',
     'type' => 'customer.subscription.updated',
     'data' => ['object' => \Programster\Stripe\Testing\FakeStripeHttpClient::loadFixture('subscription-active')],
 ]);
 
-$subscription = Subscription::createFromStripeObject($event->data->object, $client);
+$subscription = Subscription::createFromStripeObject($stripeEvent->data->object, $client);
 $customerId = $subscription->getCustomerId();
 ```
 
 It throws an `ExceptionUnexpectedResponse` if given the wrong kind of object, such as a charge where a subscription was
-expected. (The example builds a made-up event from a recorded subscription. Your webhook endpoint would get the event
-from `\Stripe\Webhook::constructEvent()`, which also checks Stripe's signature.)
+expected. (The example builds a made-up event from a recorded subscription.)
 
 The models can't be serialized, as they hold the client, and so your secret key. Store an object's ID instead, and
 retrieve it again when you need it.

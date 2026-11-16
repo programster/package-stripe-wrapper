@@ -110,7 +110,8 @@ final class FakeStripeHttpClient implements ClientInterface
 
         # A test can say exactly what the next responses should be, e.g. several pages of a list. Otherwise, a list
         # holds the recorded object of its type, and anything else is the recorded object of its type, apart from a
-        # new embedded checkout session, which is answered with the recorded embedded one.
+        # new embedded checkout session, which is answered with the recorded embedded one, and an invoice preview,
+        # which is answered with the recorded preview.
         $isNewEmbeddedSession = (
                $method === 'post'
             && $objectType === 'checkout.session'
@@ -124,6 +125,10 @@ final class FakeStripeHttpClient implements ClientInterface
         elseif ($isNewEmbeddedSession)
         {
             $body = self::loadFixture('checkout-session-embedded');
+        }
+        elseif ($lastSegment === 'create_preview')
+        {
+            $body = self::loadFixture('invoice-preview');
         }
         elseif ($isList)
         {

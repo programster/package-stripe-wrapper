@@ -141,6 +141,14 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
   `retrieveCharge()`, `retrieveRefund()`, `retrievePaymentMethod()`, `listInvoicePayments()` and
   `listInvoicesWithPayments()`, and `fetch...()` methods on the models for their related objects, e.g.
   `$subscription->fetchLatestInvoice()`. See [Responses](responses.md#related-objects) for the full list.
+- **Webhooks' signatures can be checked** with `verifyWebhookEvent()`, which takes a `WebhookSigningSecret` and gives
+  an `Event`, rather than calling `\Stripe\Webhook::constructEvent()` yourself. See
+  [Responses](responses.md#webhooks).
+- **Invoices can be previewed** with `previewUpcomingInvoice()`, `previewSubscriptionChange()` and
+  `previewNewSubscription()`, which give an `InvoicePreview`. See
+  [Subscriptions](subscriptions.md#previewing-an-invoice).
+- **`Metadata` has `hasKey()` and `getValue()`**, to read a value by its key, rather than through
+  `toStripeArrayForm()`.
 - **`listCharges()`'s `$paymentIntent` is now `$paymentIntentId`**, like the other methods' IDs.
 - **`$adaptivePricing` works.** The checkout methods sent it as a bare bool, which Stripe rejected, so any session
   created with it failed. It's now sent in the form Stripe takes. Nothing needs to change in your code.

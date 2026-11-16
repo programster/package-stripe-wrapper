@@ -12,6 +12,7 @@ use Programster\Stripe\Collections\Metadata;
 use Programster\Stripe\Collections\PaymentMethodTypeCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionInvoiceItemCollection;
+use Programster\Stripe\Collections\SubscriptionItemChangeCollection;
 use Programster\Stripe\Collections\SubscriptionLineItemCollection;
 use Programster\Stripe\Enums\CancellationFeedback;
 use Programster\Stripe\Enums\Currency;
@@ -37,11 +38,13 @@ use Programster\Stripe\Models\RecurringConfig;
 use Programster\Stripe\Models\SubscriptionCustomer;
 use Programster\Stripe\Models\SubscriptionInvoiceItem;
 use Programster\Stripe\Models\SubscriptionItem;
+use Programster\Stripe\Models\SubscriptionItemChange;
 use Programster\Stripe\Models\SubscriptionItemDiscount;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\Models\TrialConfig;
 use Programster\Stripe\Models\ResultLimit;
+use Programster\Stripe\Responses\InvoiceLineItem;
 use Programster\Stripe\StripeClient;
 use Programster\Stripe\Testing\LiveFixtures;
 use Programster\Stripe\Testing\SmokeTest;
@@ -179,6 +182,54 @@ $smoke->run("createSubscription: sent as an invoice", function () use (
     $invoicedSubscriptionId = $subscription->getId();
     SmokeTest::assertSame('send_invoice', $subscription->getCollectionMethod(), "collection method");
     SmokeTest::assertSame(30, $subscription->getDaysUntilDue(), "days until due");
+});
+
+$smoke->run("previewUpcomingInvoice, previewSubscriptionChange and previewNewSubscription", function () use (
+    $client,
+    $items,
+    &$subscriberId,
+    &$invoicedSubscriptionId
+): void {
+    $upcoming = $client->previewUpcomingInvoice($invoicedSubscriptionId);
+    SmokeTest::assertSame(1000, $upcoming->getAmountDue()->getAmount(), "upcoming amount due");
+    SmokeTest::assertSame(1, count($upcoming->getLines()), "upcoming lines");
+    SmokeTest::assertSame(false, $upcoming->getLines()->first()->isProration(), "upcoming isn't a proration");
+
+    # Preview tripling the quantity, then make the change as of the same time, so the prorations in the next invoice
+    # should then be exactly what was previewed. (This subscription invoices pending items weekly, so its next invoice
+    # is just the prorations, rather than the prorations and the next month.)
+    $item = $client->retrieveSubscription($invoicedSubscriptionId)->getItems()->first();
+    $changes = new SubscriptionItemChangeCollection(SubscriptionItemChange::createUpdateUsingItem($item, quantity: 3));
+    $preview = $client->previewSubscriptionChange($invoicedSubscriptionId, $changes, ProrationBehavior::CREATE);
+    $prorationDate = $preview->getProrationDate();
+    assert($prorationDate !== null, "the change's preview has no proration date");
+
+    $isProration = function (InvoiceLineItem $line): bool {
+        return $line->isProration();
+    };
+
+    $sumAmounts = function (int $total, InvoiceLineItem $line): int {
+        return $total + $line->getAmount()->getAmount();
+    };
+
+    $prorations = $preview->getLines()->filter($isProration);
+    assert(count($prorations) >= 1, "the change's preview has no prorations");
+
+    $client->updateSubscriptionItem(
+        $item->getId(),
+        prorationBehavior: ProrationBehavior::CREATE,
+        quantity: 3,
+        prorationDate: $prorationDate,
+    );
+
+    $afterChange = $client->previewUpcomingInvoice($invoicedSubscriptionId)->getLines()->filter($isProration);
+    $expected = $prorations->reduce($sumAmounts, 0);
+    SmokeTest::assertSame($expected, $afterChange->reduce($sumAmounts, 0), "prorations after the change");
+
+    $customer = SubscriptionCustomer::createUsingCustomerId($subscriberId);
+    $newSubscription = $client->previewNewSubscription($customer, $items);
+    SmokeTest::assertSame(1000, $newSubscription->getAmountDue()->getAmount(), "new subscription's amount due");
+    SmokeTest::assertSame($subscriberId, $newSubscription->getCustomerId(), "new subscription's customer");
 });
 
 if (STRIPE_CONNECTED_ACCOUNT_ID !== '')

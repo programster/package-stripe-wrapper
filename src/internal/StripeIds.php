@@ -52,6 +52,36 @@ final readonly class StripeIds
 
 
     /**
+     * Check an ID is a subscription's, which starts "sub_".
+     * @param string $id - the ID to check.
+     * @return void
+     * @throws ExceptionInvalidValue - if it isn't a subscription's ID.
+     */
+    public static function checkSubscriptionId(string $id) : void
+    {
+        if (!str_starts_with($id, 'sub_'))
+        {
+            throw new ExceptionInvalidValue("A subscription's ID starts \"sub_\", but \"{$id}\" was given.");
+        }
+    }
+
+
+    /**
+     * Check an ID is a subscription item's, which starts "si_".
+     * @param string $id - the ID to check.
+     * @return void
+     * @throws ExceptionInvalidValue - if it isn't a subscription item's ID.
+     */
+    public static function checkSubscriptionItemId(string $id) : void
+    {
+        if (!str_starts_with($id, 'si_'))
+        {
+            throw new ExceptionInvalidValue("A subscription item's ID starts \"si_\", but \"{$id}\" was given.");
+        }
+    }
+
+
+    /**
      * Check an ID could be a price's (or a legacy plan's): it isn't empty, and isn't a product's.
      * @param string $id - the ID to check.
      * @return void

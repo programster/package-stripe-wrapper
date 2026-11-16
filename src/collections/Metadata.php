@@ -9,6 +9,7 @@ namespace Programster\Stripe\Collections;
 use Programster\Collections\AbstractReadonlyCollection;
 use Programster\Stripe\Exceptions\ExceptionDuplicateKey;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
+use Programster\Stripe\Exceptions\ExceptionMissingMetadataKey;
 use Programster\Stripe\Models\MetadataItem;
 
 
@@ -44,6 +45,36 @@ final readonly class Metadata extends AbstractReadonlyCollection
         }
 
         parent::__construct(...$fields);
+    }
+
+
+    /**
+     * Check whether the metadata has a key, e.g. before calling getValue() for one that may not be there.
+     * @param string $key - the key, e.g. "order_id". Keys are case-sensitive, as they are in Stripe.
+     * @return bool
+     */
+    public function hasKey(string $key) : bool
+    {
+        return !$this->where('getKey', $key)->isEmpty();
+    }
+
+
+    /**
+     * Get the value for a key. Use hasKey() first if the key may not be there.
+     * @param string $key - the key, e.g. "order_id". Keys are case-sensitive, as they are in Stripe.
+     * @return string
+     * @throws ExceptionMissingMetadataKey - if there's no such key.
+     */
+    public function getValue(string $key) : string
+    {
+        $matches = $this->where('getKey', $key);
+
+        if ($matches->isEmpty())
+        {
+            throw new ExceptionMissingMetadataKey($key);
+        }
+
+        return $matches->first()->getValue();
     }
 
 

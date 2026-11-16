@@ -155,6 +155,13 @@ try
 
     $save('subscription-active', $sdk->subscriptions->retrieve($subscription->id));
     $save('subscription-item', $sdk->subscriptionItems->retrieve($subscription->items->data[0]->id));
+
+    $preview = $sdk->invoices->createPreview([
+        'subscription' => $subscription->id,
+        'subscription_details' => ['items' => [['id' => $subscription->items->data[0]->id, 'quantity' => 3]]],
+    ]);
+
+    $save('invoice-preview', $preview);
     $latestInvoice = $subscription->latest_invoice;
 
     if (!($latestInvoice instanceof \Stripe\Invoice))

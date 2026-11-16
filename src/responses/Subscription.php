@@ -257,6 +257,17 @@ final readonly class Subscription extends AbstractResponse
 
 
     /**
+     * Ask Stripe for a preview of the subscription's next invoice, as it stands.
+     * @return InvoicePreview
+     * @throws ApiErrorException - if Stripe can't be reached, or refuses the request.
+     */
+    public function fetchUpcomingInvoicePreview(): InvoicePreview
+    {
+        return $this->m_client->previewUpcomingInvoice($this->getId());
+    }
+
+
+    /**
      * Get a copy of the SDK's object, as Stripe sent it, for any field the model doesn't have.
      * @return \Stripe\Subscription
      */

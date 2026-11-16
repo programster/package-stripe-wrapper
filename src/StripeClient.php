@@ -13,6 +13,7 @@ use Programster\Stripe\Collections\SinglePaymentLineItemsCollection;
 use Programster\Stripe\Collections\StringCollection;
 use Programster\Stripe\Collections\SubscriptionCheckoutLineItemCollection;
 use Programster\Stripe\Collections\SubscriptionInvoiceItemCollection;
+use Programster\Stripe\Collections\SubscriptionItemChangeCollection;
 use Programster\Stripe\Collections\SubscriptionLineItemCollection;
 use Programster\Stripe\Enums\BillingAddressCollection;
 use Programster\Stripe\Enums\Currency;
@@ -33,6 +34,7 @@ use Programster\Stripe\Exceptions\ExceptionIncompleteList;
 use Programster\Stripe\Exceptions\ExceptionInvalidValue;
 use Programster\Stripe\Exceptions\ExceptionTooManyResults;
 use Programster\Stripe\Exceptions\ExceptionUnexpectedResponse;
+use Programster\Stripe\Internal\StripeIds;
 use Programster\Stripe\Models\Address;
 use Programster\Stripe\Models\AfterExpiration;
 use Programster\Stripe\Models\AutomaticTax;
@@ -64,15 +66,18 @@ use Programster\Stripe\Models\SubscriptionItemPrice;
 use Programster\Stripe\Models\SubscriptionTransferData;
 use Programster\Stripe\Models\TimePeriod;
 use Programster\Stripe\Models\TrialConfig;
+use Programster\Stripe\Models\WebhookSigningSecret;
 use Programster\Stripe\Responses\Charge;
 use Programster\Stripe\Responses\ChargeCollection;
 use Programster\Stripe\Responses\CheckoutSession;
 use Programster\Stripe\Responses\Customer;
 use Programster\Stripe\Responses\CustomerCollection;
+use Programster\Stripe\Responses\Event;
 use Programster\Stripe\Responses\Invoice;
 use Programster\Stripe\Responses\InvoiceCollection;
 use Programster\Stripe\Responses\InvoicePayment;
 use Programster\Stripe\Responses\InvoicePaymentCollection;
+use Programster\Stripe\Responses\InvoicePreview;
 use Programster\Stripe\Responses\InvoiceWithPayments;
 use Programster\Stripe\Responses\InvoiceWithPaymentsCollection;
 use Programster\Stripe\Responses\NewEmbeddedCheckoutSession;
@@ -89,6 +94,7 @@ use Programster\Stripe\Responses\SubscriptionItem;
 use Programster\Stripe\Responses\SubscriptionItemCollection;
 use Stripe\Collection;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\SignatureVerificationException;
 
 /**
  * @phpstan-import-type AfterExpirationArray from AfterExpiration
@@ -815,6 +821,112 @@ final readonly class StripeClient
     {
         $invoice = $this->m_underlyingStripeClient->invoices->retrieve($invoiceId);
         return Invoice::createFromStripeObject($invoice, $this);
+    }
+
+
+    /**
+     * Preview a subscription's next invoice, as it stands, e.g. to show the customer what they'll be charged next, and
+     * when. Nothing is created in Stripe.
+     * https://docs.stripe.com/api/invoices/create_preview
+     * @param string $subscriptionId - the subscription's ID, e.g. "sub_123".
+     * @return InvoicePreview
+     * @throws ExceptionInvalidValue - if $subscriptionId isn't a subscription's ID.
+     * @throws ApiErrorException - if there's no such subscription, or Stripe can't be reached.
+     */
+    public function previewUpcomingInvoice(string $subscriptionId) : InvoicePreview
+    {
+        StripeIds::checkSubscriptionId($subscriptionId);
+        $preview = $this->m_underlyingStripeClient->invoices->createPreview(['subscription' => $subscriptionId]);
+        return InvoicePreview::createFromStripeObject($preview, $this);
+    }
+
+
+    /**
+     * Preview what a subscription's next invoice would be if its items were changed, including the prorations for the
+     * change, e.g. to show a customer what moving to another plan would cost before they confirm it. Nothing is
+     * changed in Stripe. To then make the change at the same price, pass the preview's getProrationDate() to
+     * updateSubscriptionItem()'s $prorationDate, as the prorations otherwise depend on the moment the change is made.
+     * https://docs.stripe.com/billing/subscriptions/prorations#preview-proration
+     *
+     * @param string $subscriptionId - the subscription's ID, e.g. "sub_123".
+     *
+     * @param SubscriptionItemChangeCollection $changes - the changes to its items, made with SubscriptionItemChange.
+     * There must be at least one.
+     *
+     * @param ProrationBehavior|null $prorationBehavior - optionally, how to handle prorations. Stripe defaults to
+     * ProrationBehavior::CREATE.
+     *
+     * @param \DateTimeImmutable|null $prorationDate - optionally, the time to work the prorations out as of. Stripe
+     * defaults to now, and the preview's getProrationDate() gives the time it used.
+     *
+     * @return InvoicePreview
+     *
+     * @throws ExceptionInvalidValue - if $subscriptionId isn't a subscription's ID, or no changes are given.
+     * @throws ApiErrorException - if there's no such subscription or item, or Stripe can't be reached.
+     */
+    public function previewSubscriptionChange(
+        string $subscriptionId,
+        SubscriptionItemChangeCollection $changes,
+        ?ProrationBehavior $prorationBehavior = null,
+        ?\DateTimeImmutable $prorationDate = null,
+    ) : InvoicePreview
+    {
+        StripeIds::checkSubscriptionId($subscriptionId);
+
+        if ($changes->isEmpty())
+        {
+            throw new ExceptionInvalidValue(
+                "Previewing a change to subscription {$subscriptionId} needs at least one change to its items."
+            );
+        }
+
+        $subscriptionDetails = ['items' => $changes->toStripeArrayForm()];
+
+        if ($prorationBehavior !== null)
+        {
+            $subscriptionDetails['proration_behavior'] = $prorationBehavior->value;
+        }
+
+        if ($prorationDate !== null)
+        {
+            $subscriptionDetails['proration_date'] = $prorationDate->getTimestamp();
+        }
+
+        $params = ['subscription' => $subscriptionId, 'subscription_details' => $subscriptionDetails];
+        $preview = $this->m_underlyingStripeClient->invoices->createPreview($params);
+        return InvoicePreview::createFromStripeObject($preview, $this);
+    }
+
+
+    /**
+     * Preview the first invoice of a subscription that hasn't been created yet, e.g. to show the customer what they'd
+     * be charged, with their discounts and tax, before they subscribe. Nothing is created in Stripe.
+     * https://docs.stripe.com/api/invoices/create_preview
+     *
+     * @param SubscriptionCustomer $customer - who the subscription would be for, as for createSubscription().
+     *
+     * @param SubscriptionLineItemCollection $items - the subscription's items, as for createSubscription(). There must
+     * be at least one.
+     *
+     * @return InvoicePreview
+     *
+     * @throws ExceptionInvalidValue - if no items are given.
+     * @throws ApiErrorException - if there's no such customer, or Stripe can't be reached.
+     */
+    public function previewNewSubscription(
+        SubscriptionCustomer $customer,
+        SubscriptionLineItemCollection $items,
+    ) : InvoicePreview
+    {
+        if ($items->isEmpty())
+        {
+            throw new ExceptionInvalidValue("Previewing a new subscription needs at least one item.");
+        }
+
+        $params = $customer->getStripeParams();
+        $params['subscription_details'] = ['items' => $items->toStripeArrayForm()];
+        $preview = $this->m_underlyingStripeClient->invoices->createPreview($params);
+        return InvoicePreview::createFromStripeObject($preview, $this);
     }
 
 
@@ -1747,6 +1859,64 @@ final readonly class StripeClient
     {
         $paymentMethod = $this->m_underlyingStripeClient->paymentMethods->retrieve($paymentMethodId);
         return PaymentMethod::createFromStripeObject($paymentMethod, $this);
+    }
+
+
+    /**
+     * Check that a webhook request came from Stripe, from its signature, and get the event it holds. Stripe signs each
+     * request with the endpoint's signing secret, so a request that anyone else sent, or that's been changed, is
+     * rejected. A request whose signature is older than the tolerance is rejected too, so one that's been recorded
+     * can't be replayed later.
+     * https://docs.stripe.com/webhooks#verify-events
+     *
+     * @param string $payload - the request's body, exactly as it was received, e.g. file_get_contents('php://input').
+     * It mustn't be decoded and encoded again first, as that changes it, so the signature no longer matches.
+     *
+     * @param string $signatureHeader - the request's Stripe-Signature header, e.g. $_SERVER['HTTP_STRIPE_SIGNATURE'].
+     *
+     * @param WebhookSigningSecret $signingSecret - the endpoint's signing secret (not the API's secret key).
+     *
+     * @param int $toleranceSeconds - optionally, how old the signature can be, in seconds. Defaults to 300, as
+     * Stripe recommends. It must be at least 1, as the SDK would treat 0 as not checking the age at all.
+     *
+     * @return Event - the event, whose models use this client for their fetch...() methods.
+     *
+     * @throws SignatureVerificationException - if the signature is missing, doesn't match, or is too old, so the
+     * request didn't come from Stripe (or not to this endpoint). Respond with a 400.
+     *
+     * @throws ExceptionInvalidValue - if $toleranceSeconds is less than 1.
+     *
+     * @throws ExceptionUnexpectedResponse - if the payload is signed, but isn't an event.
+     */
+    public function verifyWebhookEvent(
+        string $payload,
+        string $signatureHeader,
+        WebhookSigningSecret $signingSecret,
+        int $toleranceSeconds = \Stripe\Webhook::DEFAULT_TOLERANCE,
+    ) : Event
+    {
+        if ($toleranceSeconds < 1)
+        {
+            throw new ExceptionInvalidValue(
+                "The tolerance must be at least 1 second, but {$toleranceSeconds} was given. Stripe recommends 300."
+            );
+        }
+
+        try
+        {
+            $stripeEvent = \Stripe\Webhook::constructEvent(
+                $payload,
+                $signatureHeader,
+                $signingSecret->getSecret(),
+                $toleranceSeconds
+            );
+        }
+        catch (\Stripe\Exception\UnexpectedValueException $e)
+        {
+            throw new ExceptionUnexpectedResponse("The webhook's payload is signed, but isn't JSON.", 0, $e);
+        }
+
+        return Event::createFromStripeObject($stripeEvent, $this);
     }
 
 
