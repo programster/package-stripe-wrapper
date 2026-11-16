@@ -2,6 +2,10 @@
 # Level 10, the highest. Each request model's array form declares its exact shape, so PHPStan checks what's sent
 # against the shapes the Stripe SDK declares for each request. The one exception, ignored below, is the empty string
 # that removes billing thresholds, which Stripe takes but the SDK's shapes leave out.
+# programster/collections' rules, e.g. reporting a write to a readonly collection with array syntax where it's written.
+# It's included here, as phpstan/extension-installer, which would load it automatically, isn't used.
+includes:
+    - vendor/programster/collections/extension.neon
 parameters:
     level: 10
     phpVersion:
