@@ -10,8 +10,10 @@ parameters:
     paths:
         - src
         - testing
+    # testing/settings.php is git-ignored, so it's only there when it's been created for the live tests. The (?)
+    # marks it optional, as PHPStan otherwise refuses to run when an excluded path doesn't exist, such as on GitHub.
     excludePaths:
-        - testing/settings.php
+        - testing/settings.php (?)
     # The live tests read their settings from testing/settings.php, which isn't committed, so the template's
     # constants are loaded instead, and treated as unknown values rather than the template's defaults.
     bootstrapFiles:
