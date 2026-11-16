@@ -17,17 +17,10 @@ use Programster\Stripe\Interfaces\Arrayable;
 final readonly class StringCollection extends AbstractReadonlyCollection implements Arrayable
 {
     /**
-     * @param string|\Stringable ...$elements - the strings. Anything Stringable is turned into a string.
+     * @param string ...$elements - the strings.
      */
-    public function __construct(string|\Stringable ...$elements)
+    public function __construct(string ...$elements)
     {
-        $toString = function (string|\Stringable $element): string {
-            return (string)$element;
-        };
-
-        parent::__construct(...array_map($toString, $elements));
+        parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return 'string'; }
 }

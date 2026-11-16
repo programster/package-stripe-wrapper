@@ -17,7 +17,4 @@ final readonly class PaymentIntentCollection extends AbstractReadonlyCollection
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return PaymentIntent::class; }
 }

@@ -38,7 +38,4 @@ final readonly class SubscriptionLineItemCollection extends AbstractReadonlyColl
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return SubscriptionItem::class; }
 }

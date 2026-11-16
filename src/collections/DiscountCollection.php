@@ -38,7 +38,4 @@ final readonly class DiscountCollection extends AbstractReadonlyCollection
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return SubscriptionItemDiscount::class; }
 }

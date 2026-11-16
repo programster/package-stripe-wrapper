@@ -36,7 +36,4 @@ final readonly class InvoiceCustomFieldCollection extends AbstractReadonlyCollec
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return InvoiceCustomField::class; }
 }

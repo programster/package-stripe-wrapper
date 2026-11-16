@@ -36,7 +36,4 @@ final readonly class AllowRedisplayFiltersCollection extends AbstractReadonlyCol
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return AllowRedisplayFilters::class; }
 }

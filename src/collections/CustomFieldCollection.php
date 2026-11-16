@@ -37,7 +37,4 @@ final readonly class CustomFieldCollection extends AbstractReadonlyCollection
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return CustomField::class; }
 }

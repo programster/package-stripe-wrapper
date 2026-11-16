@@ -36,7 +36,4 @@ final readonly class PaymentMethodTypeCollection extends AbstractReadonlyCollect
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return PaymentMethodType::class; }
 }

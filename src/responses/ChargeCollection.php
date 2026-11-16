@@ -17,7 +17,4 @@ final readonly class ChargeCollection extends AbstractReadonlyCollection
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return Charge::class; }
 }

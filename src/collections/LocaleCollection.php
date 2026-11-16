@@ -36,7 +36,4 @@ final readonly class LocaleCollection extends AbstractReadonlyCollection
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return Locale::class; }
 }

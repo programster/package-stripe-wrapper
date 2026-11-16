@@ -36,7 +36,4 @@ final readonly class ShippingCountryCodeCollection extends AbstractReadonlyColle
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return ShippingCountryCode::class; }
 }

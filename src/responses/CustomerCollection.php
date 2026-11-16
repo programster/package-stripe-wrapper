@@ -17,7 +17,4 @@ final readonly class CustomerCollection extends AbstractReadonlyCollection
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return Customer::class; }
 }

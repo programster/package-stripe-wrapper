@@ -152,9 +152,12 @@ timestamp, so seconds and milliseconds can't be mixed up. For a timestamp you al
 - **`listCharges()`'s `$paymentIntent` is now `$paymentIntentId`**, like the other methods' IDs.
 - **`$adaptivePricing` works.** The checkout methods sent it as a bare bool, which Stripe rejected, so any session
   created with it failed. It's now sent in the form Stripe takes. Nothing needs to change in your code.
-- **The request collections are readonly**, built on `programster/collections` 2.0's readonly collections, so they
+- **The request collections are readonly**, built on `programster/collections` 3.0's readonly collections, so they
   can't be changed after they're created: `append()`, `$collection[] = ...` and the other `ArrayObject` methods are
   gone. Create the collection with everything in it instead.
+- **`StringCollection` only takes strings**, as `programster/collections` 3.0 reads a collection's type from its
+  constructor, which can't be a union. It took `\Stringable` objects too, and turned them into strings, so cast any of
+  those yourself, e.g. `new StringCollection((string)$url)`.
 - **`SubscriptionItemCollection` has been removed** from `Programster\Stripe\Collections`, as it was a copy of
   `SubscriptionLineItemCollection`, which `createSubscription()` takes. The name is now the response collection, in
   `Programster\Stripe\Responses`.

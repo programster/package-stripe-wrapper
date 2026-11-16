@@ -17,7 +17,4 @@ final readonly class InvoiceLineItemCollection extends AbstractReadonlyCollectio
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return InvoiceLineItem::class; }
 }

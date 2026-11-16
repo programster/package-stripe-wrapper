@@ -673,6 +673,7 @@ $smoke->run("the retrieve methods ask for the object by its ID", function () use
     $paymentMethod = $client->retrievePaymentMethod('pm_123');
     SmokeTest::assertSame('/v1/payment_methods/pm_123', $fakeHttpClient->takeLastRequest()->getPath(), "method");
     assert($paymentMethod->hasType(PaymentMethodType::CARD), "the payment method isn't a card");
+    SmokeTest::assertSame('card', $paymentMethod->getType(), "payment method's type");
 });
 
 $smoke->run("the fetch methods ask Stripe for the related objects", function () use ($client, $fakeHttpClient): void {

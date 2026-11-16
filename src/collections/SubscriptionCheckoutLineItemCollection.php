@@ -38,7 +38,4 @@ final readonly class SubscriptionCheckoutLineItemCollection extends AbstractRead
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return SubscriptionCheckoutLineItem::class; }
 }

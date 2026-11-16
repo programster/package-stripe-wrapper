@@ -93,7 +93,4 @@ final readonly class Metadata extends AbstractReadonlyCollection
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return MetadataItem::class; }
 }

@@ -17,7 +17,4 @@ final readonly class PaymentMethodCollection extends AbstractReadonlyCollection
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return PaymentMethod::class; }
 }

@@ -17,7 +17,4 @@ final readonly class InvoiceWithPaymentsCollection extends AbstractReadonlyColle
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return InvoiceWithPayments::class; }
 }

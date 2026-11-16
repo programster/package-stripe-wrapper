@@ -36,7 +36,4 @@ final readonly class CustomerTaxIdDataCollection extends AbstractReadonlyCollect
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return CustomerTaxIdData::class; }
 }

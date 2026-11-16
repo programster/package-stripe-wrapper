@@ -38,7 +38,4 @@ final readonly class SinglePaymentLineItemsCollection extends AbstractReadonlyCo
 
         return $stripeArrayForm;
     }
-
-
-    public function getType(): string { return SinglePaymentLineItem::class; }
 }

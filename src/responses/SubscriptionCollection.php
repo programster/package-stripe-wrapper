@@ -17,7 +17,4 @@ final readonly class SubscriptionCollection extends AbstractReadonlyCollection
     {
         parent::__construct(...$elements);
     }
-
-
-    public function getType(): string { return Subscription::class; }
 }
